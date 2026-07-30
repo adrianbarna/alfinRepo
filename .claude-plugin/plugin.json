@@ -1,0 +1,8 @@
+{
+  "name": "monitorizare-legislativa",
+  "description": "Monitorizează săptămânal legislația contabilă și fiscală din România (Monitorul Oficial, avocatnet.ro, ANAF, contzilla.ro, contabilul.ro) și trimite pe email un raport detaliat cu noutățile și interpretările specialiștilor.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Adrian Barna"
+  }
+}
