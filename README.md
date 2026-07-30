@@ -53,6 +53,6 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 ## Cum funcționează în spate (pentru administrator)
 
 - Skill-ul își ține configurația și istoricul în `~/.claude/monitorizare-legislativa/state.json` (adresa destinatar, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori).
-- Sursele și metoda de acces a fiecăreia: [skills/monitorizare-legislativa/references/surse.md](skills/monitorizare-legislativa/references/surse.md).
-- Formatul raportului: [skills/monitorizare-legislativa/references/email-template.md](skills/monitorizare-legislativa/references/email-template.md).
-- Logica completă de rulare: [skills/monitorizare-legislativa/SKILL.md](skills/monitorizare-legislativa/SKILL.md).
+- Sursele și metoda de acces a fiecăreia: [skills/contaChangeSkill/references/surse.md](skills/contaChangeSkill/references/surse.md).
+- Formatul raportului: [skills/contaChangeSkill/references/email-template.md](skills/contaChangeSkill/references/email-template.md).
+- Logica completă de rulare: [skills/contaChangeSkill/SKILL.md](skills/contaChangeSkill/SKILL.md).
