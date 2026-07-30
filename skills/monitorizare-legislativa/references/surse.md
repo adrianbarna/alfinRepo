@@ -4,15 +4,16 @@ Fiecare sursă are o metodă de acces verificată. Unele site-uri blochează acc
 
 ## 1. Monitorul Oficial (sursa primară)
 
-- **URL**: https://monitoruloficial.ro/e-monitor/ — secțiunea e-Monitor, acces gratuit.
-- **Metodă**: acces direct (WebFetch). Pagina principală listează „Cele mai recente acte publicate în Monitorul Oficial, Partea I".
+- **URL**: https://monitoruloficial.ro — **pagina principală**, care listează „Cele mai recente acte publicate în Monitorul Oficial, Partea I". (Atenție: `/e-monitor/` e doar o pagină informativă, fără lista actelor.)
+- **Metodă**: acces direct (WebFetch).
 - **Ce cauți**: acte din Partea I cu impact contabil/fiscal — legi, OUG, HG, ordine ale Ministerului Finanțelor (OMF) și ANAF (OPANAF).
 - **Atenție**: aici actele apar doar cu titlul; conținutul și contextul le găsești pe site-urile de specialitate sau prin căutare web după numărul actului.
 
 ## 2. avocatnet.ro (analize + forum)
 
 - **Blochează accesul direct (403).** Nu încerca WebFetch pe site.
-- **Metodă**: căutare web, ex.: `site:avocatnet.ro noutăți fiscale contabilitate <luna> <anul>` sau `site:avocatnet.ro <numărul actului>`.
+- **Metodă**: căutare web, ex.: `site:avocatnet.ro sinteză legislativă <perioada>` sau `site:avocatnet.ro <numărul actului>`.
+- **Truc valoros**: avocatnet.ro publică săptămânal o **„Sinteză legislativă — cele mai importante acte normative publicate în perioada X–Y"** — caut-o întâi, e practic munca de colectare gata făcută; extrage actele din rezumatul rezultatului căutării.
 - **Ce oferă**: articole de analiză bine documentate + forum activ de practicieni — sursă excelentă și pentru pasul de interpretări.
 
 ## 3. ANAF – noutăți legislative
