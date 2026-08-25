@@ -93,7 +93,7 @@ Apoi, fără alte întrebări:
 5. Creează fișierul `monitorizare-legislativa-state.json` la calea implicită, cu adresa primită, `locatie_stare`, `interval_rulare` și `zi_si_ora` din răspunsuri, `ultima_rulare` = azi minus perioada aleasă la punctul 2, `acte_vazute` = [] și `acte_in_asteptare` = [].
 6. **Creează efectiv task-ul programat**, cu intervalul și ora alese. Promptul task-ului trebuie să fie explicit autonom:
 
-   > „Rulează skill-ul monitorizare-legislativa. Rulare autonomă, fără utilizator prezent: nu cere nicio confirmare, nu pune întrebări, iar la final trimite raportul pe email către adresa din fișierul de stare."
+   > „Rulează skill-ul de monitorizare legislativă (contaChangeSkill). Rulare autonomă, fără utilizator prezent: nu cere nicio confirmare, nu pune întrebări, iar la final trimite raportul pe email către adresa din fișierul de stare."
 
 7. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta ca parte din configurare, explicat într-o propoziție, fără să devină o negociere.
 8. Continuă cu pașii de mai jos — prima rulare produce și primul raport.

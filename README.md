@@ -38,7 +38,7 @@ Apăsați **Sync**.
 
 > Fără comutatorul ăsta pornit, plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără niciun avertisment.
 
-**Pasul 2 — Activați plugin-ul.** După sincronizare apare cardul **Monitorizare legislativă**. Deschideți-l cu rotița din colț și activați-l.
+**Pasul 2 — Activați plugin-ul.** După sincronizare apare cardul **Veghe legislativa**. Deschideți-l cu rotița din colț și activați-l.
 
 **Pasul 3 — Conectați Gmail.** În **Settings → Connectors**, alegeți **Gmail** și autorizați accesul. Fără Gmail raportul nu poate fi trimis — asistentul vă spune dacă lipsește și se oprește elegant.
 
@@ -63,7 +63,7 @@ Nu vă întreabă ce domenii vă interesează: raportul acoperă tot ce are impa
 
 ```
 /plugin marketplace add adrianbarna/contaLacramioara
-/plugin install monitorizare-legislativa@lacramioara-conta
+/plugin install veghe-legislativa@lacramioara-conta
 ```
 
 Dacă sumarul spune `Run /reload-plugins to activate.`, rulați și `/reload-plugins`.

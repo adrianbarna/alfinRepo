@@ -1,5 +1,5 @@
 {
-  "name": "monitorizare-legislativa",
+  "name": "veghe-legislativa",
   "description": "Monitorizează săptămânal legislația contabilă și fiscală din România — ședințele de Guvern, Monitorul Oficial, portalul legislativ și presa de specialitate (avocatnet, ANAF, CECCAR, contzilla, legestart) — și trimite pe email un raport cu noutățile și interpretările specialiștilor.",
   "author": {
     "name": "Adrian Barna"

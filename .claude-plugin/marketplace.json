@@ -6,7 +6,7 @@
   },
   "plugins": [
     {
-      "name": "monitorizare-legislativa",
+      "name": "veghe-legislativa",
       "source": "./",
       "description": "Monitorizare săptămânală a legislației contabile românești cu raport detaliat pe email."
     },
