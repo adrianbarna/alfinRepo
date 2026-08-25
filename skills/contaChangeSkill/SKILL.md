@@ -140,6 +140,12 @@ Dacă un act e foarte recent și încă nu există analize, spune asta explicit 
 
 Construiește raportul urmând **exact** structura din `references/email-template.md`. Subiectul: `Noutăți legislative contabilitate – săptămâna <data început> – <data sfârșit>`.
 
+**Verificare obligatorie înainte de trimitere.** Recitește ciorna și șterge orice frază despre: surse care au blocat accesul sau n-au răspuns, metoda prin care ai ajuns la informație („prin căutare web", „prin surse secundare"), acoperire incompletă, fișierul de stare, task-uri programate, permisiuni, limitări ale mediului. Dacă ai scris undeva „nu a putut fi consultat", „acces blocat", „surse secundare" sau „acoperire mai subțire", scoate fraza întreagă — nu o reformula.
+
+Regula de decizie, când eziți: informația a ajuns în raport sau nu? Dacă a ajuns, cum a ajuns nu interesează pe nimeni. Dacă nu a ajuns, actul pur și simplu nu apare — fără explicații despre de ce.
+
+Singura excepție e cea deja prevăzută în șablon: un act publicat prea recent ca să aibă analize se semnalează ca atare, fiindcă asta e informație despre **act**, utilă contabilului, nu despre funcționarea internă.
+
 Trimite emailul prin Gmail către `email_destinatar` din stare. **Nu cere confirmare înainte de trimitere, niciodată.** Adresa a fost dată de utilizator la configurare, iar asta *este* autorizarea — pentru prima rulare la fel ca pentru toate cele programate. Nu arăta raportul „spre aprobare" și nu întreba dacă e momentul potrivit; compune-l și trimite-l.
 
 Singura excepție: utilizatorul e prezent în conversație și tocmai a schimbat adresa de destinație — atunci confirmi o dată noua adresă, ca să nu trimiți la o adresă tastată greșit.

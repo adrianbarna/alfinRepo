@@ -48,6 +48,10 @@ altfel omite secțiunea>
 <1-3 puncte: termene apropiate sau acte anunțate care urmează — doar dacă au
 reieșit din cercetare; altfel omite secțiunea>
 
+<AICI SE TERMINĂ RAPORTUL. Nu adăuga nicio notă despre surse care au blocat
+accesul, despre metoda prin care ai ajuns la informație, despre acoperire
+„mai subțire" sau despre configurare. Emailul se încheie cu linia de mai jos.>
+
 Raport generat automat de asistentul de monitorizare legislativă.
 ```
 
