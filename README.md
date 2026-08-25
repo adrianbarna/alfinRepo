@@ -26,7 +26,11 @@ Nu aveți nevoie de git și nu aveți nevoie de terminal. Totul se face din apli
 adrianbarna/contaLacramioara
 ```
 
-Lăsați **Sync automatically** pornit — așa primiți actualizările fără să faceți nimic. Apăsați **Sync**.
+Apăsați **Sync**.
+
+**Verificați apoi că actualizările automate sunt pornite** — nu veniți pornite întotdeauna. Lângă eticheta `contaLacramioara` apăsați meniul **···**: acolo trebuie să fie activ comutatorul **Sync automatically**. Tot de acolo, **Check for updates** aduce imediat o versiune nouă, fără să așteptați. Meniul arată și `Synced commit`, adică exact ce versiune aveți.
+
+> Fără comutatorul ăsta pornit, plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără niciun avertisment.
 
 **Pasul 2 — Activați plugin-ul.** După sincronizare apare cardul **Monitorizare legislativă**. Deschideți-l cu rotița din colț și activați-l.
 
@@ -79,7 +83,7 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 - **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar plugin-ul e livrat prin cale relativă (`"source": "./"`) din același repo.
 - **De ce cale relativă și nu arhivă zip**: validatorul din Settings → Plugins nu acceptă tipul de sursă `archive` — recunoaște repo-ul, dar sincronizarea eșuează. Cu marketplace-ul clonat, calea relativă se rezolvă corect. Compromisul: instalarea din terminal cere git local.
 - **GitLab nu funcționează pentru această cale.** Dialogul de adăugare validează adresa server-side ca repo GitHub și respinge orice adresă GitLab, indiferent de formă — repo, `.git` sau raw.
-- **Actualizări**: cu `Sync automatically` pornit, clientul primește versiunea nouă după ce câmpul `version` din `.claude-plugin/plugin.json` e incrementat. Bumpați-l la fiecare release, altfel push-ul nu ajunge la el.
+- **Actualizări**: două condiții, ambele obligatorii. Câmpul `version` din `.claude-plugin/plugin.json` trebuie incrementat la fiecare release, altfel push-ul nu e văzut ca schimbare. Și `Sync automatically` trebuie pornit la client, în meniul `···` al marketplace-ului — **nu vine pornit din oficiu**, iar fără el plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără avertisment. Meniul afișează `Synced commit`, util pentru diagnostic: comparați-l cu ultimul commit de pe GitHub.
 - Sursele și metoda de acces a fiecăreia: [skills/contaChangeSkill/references/surse.md](skills/contaChangeSkill/references/surse.md).
 - Formatul raportului: [skills/contaChangeSkill/references/email-template.md](skills/contaChangeSkill/references/email-template.md).
 - Logica completă de rulare: [skills/contaChangeSkill/SKILL.md](skills/contaChangeSkill/SKILL.md).
