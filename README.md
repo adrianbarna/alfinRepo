@@ -42,21 +42,27 @@ Apăsați **Sync**.
 
 **Pasul 3 — Conectați Gmail.** În **Settings → Connectors**, alegeți **Gmail** și autorizați accesul. Fără Gmail raportul nu poate fi trimis — asistentul vă spune dacă lipsește și se oprește elegant.
 
-**Pasul 4 — Prima rulare.** Scrieți în conversație:
+**Pasul 4 — Conectați un folder de pe calculator.** Configurația și istoricul monitorizării stau într-un fișier pe calculatorul dumneavoastră, într-un folder conectat în aplicația Claude („Add folder" / butonul de folder din panoul Context). Alegeți un folder stabil, de exemplu cel de lucru al cabinetului.
 
-> Rulează monitorizarea legislativă
+**Pasul 5 — Configurarea.** Scrieți în conversație:
 
-La prima rulare, asistentul vă întreabă, într-un singur mesaj, cinci lucruri — fiecare cu o variantă propusă, ca să puteți răspunde „lăsați așa":
+> Configurează monitorizarea știrilor contabile
+
+Asistentul vă întreabă, într-un singur mesaj, cinci lucruri — fiecare cu o variantă propusă, ca să puteți răspunde „lăsați așa":
 
 | Ce vă întreabă | Ce propune |
 |---|---|
+| În ce folder conectat ține fișierul de configurare | folderul conectat la pasul 4 |
 | Adresa de email pentru rapoarte | — |
 | Cât în urmă să se uite la primul raport | ultimele 7 zile |
 | Cât de des rulează | săptămânal |
 | Ziua și ora | luni, 08:00 |
-| Unde salvează fișierul de configurare | locul implicit, sau un folder în Google Drive dacă mediul nu păstrează fișierele |
 
-Nu vă întreabă ce domenii vă interesează: raportul acoperă tot ce are impact asupra activității unui contabil. Restul îl configurează singur — programarea, permisiunile — și generează primul raport.
+Nu vă întreabă ce domenii vă interesează: raportul acoperă tot ce are impact asupra activității unui contabil.
+
+**Pasul 6 — Creați task-ul programat.** Asistentul **nu** creează programarea în locul dumneavoastră: la finalul configurării primiți o **fișă cu toate valorile** de completat în **Scheduled tasks → New task** — nume, instrucțiuni (gata de copiat), folderul, frecvența, permisiunile („Skip all approvals") și comutatorul **Require this computer** (pornit — el dă rulărilor acces la folderul cu fișierul de configurare). După salvare mai e un singur pas: deschideți task-ul și activați **Gmail** pentru el (butonul **+** → Connectors), apoi testați cu „Run now".
+
+Primul raport vi-l poate genera pe loc, în aceeași conversație: „Rulează monitorizarea".
 
 <details>
 <summary>Instalare din terminal, pentru administratori</summary>
@@ -85,11 +91,11 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 
 ## Cum funcționează în spate (pentru administrator)
 
-- Skill-ul își ține configurația și istoricul într-un fișier numit `monitorizare-legislativa-state.json` (adresa destinatar, ritmul de rulare, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori). Implicit stă în `~/.claude/monitorizare-legislativa/`, dar în mediile unde sistemul de fișiere se resetează între sesiuni, la prima rulare vi se cere un loc care persistă, de exemplu un folder în Google Drive. Numele fișierului e fix, ca să poată fi regăsit prin căutare oriunde ar fi salvat.
-- **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar fiecare plugin stă în subfolderul lui și e livrat prin cale relativă: `"source": "./veghe-legislativa"`, respectiv `"source": "./incasari-saga"`.
+- Monitorizarea are **două skill-uri**: `initial-config-monitorizare-stiri-conta` (configurarea, o singură dată) și `monitorizare-stiri-conta` (rularea). Configurația și istoricul stau într-un fișier numit `monitorizare-legislativa-state.json` (adresa destinatar, ritmul, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori), salvat **pe calculatorul utilizatorului, într-un folder conectat** — sesiunile cloud nu păstrează fișiere între rulări. Numele fișierului e fix, ca să poată fi regăsit prin căutare oriunde ar fi salvat.
+- **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar fiecare plugin stă în subfolderul lui și e livrat prin cale relativă: `"source": "./monitorizare-legislativa"`, respectiv `"source": "./incasari-saga"`.
 - **De ce cale relativă și nu arhivă zip**: validatorul din Settings → Plugins nu acceptă tipul de sursă `archive` — recunoaște repo-ul, dar sincronizarea eșuează. Cu marketplace-ul clonat, calea relativă se rezolvă corect. Compromisul: instalarea din terminal cere git local.
 - **GitLab nu funcționează pentru această cale.** Dialogul de adăugare validează adresa server-side ca repo GitHub și respinge orice adresă GitLab, indiferent de formă — repo, `.git` sau raw.
 - **Actualizări**: `version` stă **doar** în `plugin.json`-ul fiecărui plugin (niciodată în `marketplace.json` — documentația interzice dublarea) și se incrementează la fiecare release; fără bump, push-ul nu ajunge la client. La client mai trebuie o singură condiție: `Sync automatically` pornit, în meniul `···` al marketplace-ului — **nu vine pornit din oficiu**, iar fără el plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără avertisment. Meniul afișează `Synced commit`, util pentru diagnostic: comparați-l cu ultimul commit de pe GitHub.
-- Sursele și metoda de acces a fiecăreia: [veghe-legislativa/skills/contaChangeSkill/references/surse.md](veghe-legislativa/skills/contaChangeSkill/references/surse.md).
-- Formatul raportului: [veghe-legislativa/skills/contaChangeSkill/references/email-template.md](veghe-legislativa/skills/contaChangeSkill/references/email-template.md).
-- Logica completă de rulare: [veghe-legislativa/skills/contaChangeSkill/SKILL.md](veghe-legislativa/skills/contaChangeSkill/SKILL.md).
+- Sursele și metoda de acces a fiecăreia: [monitorizare-legislativa/skills/monitorizare-stiri-conta/references/surse.md](monitorizare-legislativa/skills/monitorizare-stiri-conta/references/surse.md).
+- Formatul raportului: [monitorizare-legislativa/skills/monitorizare-stiri-conta/references/email-template.md](monitorizare-legislativa/skills/monitorizare-stiri-conta/references/email-template.md).
+- Logica completă de rulare: [monitorizare-legislativa/skills/monitorizare-stiri-conta/SKILL.md](monitorizare-legislativa/skills/monitorizare-stiri-conta/SKILL.md).
