@@ -48,7 +48,9 @@ Sursă frecventă de confuzie:
 
 ## Protocol de release
 
-**Incrementează `version` în `plugin.json`-ul plugin-ului modificat, la fiecare modificare.** Fără asta, push-ul nu ajunge niciodată la client — sistemul nu-l vede ca schimbare. Nu e opțional și nu dă niciun avertisment când e omis. Cele două plugin-uri au versiuni independente: `.claude-plugin/plugin.json` pentru monitorizare, `incasari-saga/.claude-plugin/plugin.json` pentru încasări.
+**Incrementează `version` în DOUĂ locuri la fiecare modificare**: în `plugin.json`-ul plugin-ului **și** în intrarea lui din `.claude-plugin/marketplace.json`. Ambele, mereu, cu aceeași valoare.
+
+Motivul e subtil și ne-a costat câteva ore: valoarea afișată vine din `plugin.json`, dar **decizia „există o actualizare?" se ia comparând cu versiunea din intrarea de marketplace**. Fără `version` acolo, aplicația n-are cu ce compara și răspunde „Already up to date" la nesfârșit, cu butonul `Update` dezactivat — deși repo-ul e cu zece versiuni în față. Fără asta, push-ul nu ajunge niciodată la client — sistemul nu-l vede ca schimbare. Nu e opțional și nu dă niciun avertisment când e omis. Cele două plugin-uri au versiuni independente: `.claude-plugin/plugin.json` pentru monitorizare, `incasari-saga/.claude-plugin/plugin.json` pentru încasări.
 
 Push pe remote-ul **`github`**, care e sursa de adevăr. `origin` e un GitLab vechi, rămas în urmă și care respinge push-ul; nu te baza pe el.
 
