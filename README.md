@@ -36,7 +36,17 @@ Lăsați **Sync automatically** pornit — așa primiți actualizările fără s
 
 > Rulează monitorizarea legislativă
 
-La prima rulare, asistentul vă pune **o singură întrebare** — către ce adresă de email trimite rapoartele. Restul îl configurează singur: programează raportul săptămânal (implicit luni la 08:00, se mută oricând), își pregătește permisiunile ca rulările programate să meargă fără aprobări, și generează primul raport cu noutățile din ultimele șapte zile.
+La prima rulare, asistentul vă întreabă, într-un singur mesaj, cinci lucruri — fiecare cu o variantă propusă, ca să puteți răspunde „lăsați așa":
+
+| Ce vă întreabă | Ce propune |
+|---|---|
+| Adresa de email pentru rapoarte | — |
+| Cât în urmă să se uite la primul raport | ultimele 7 zile |
+| Cât de des rulează | săptămânal |
+| Ziua și ora | luni, 08:00 |
+| Unde salvează fișierul de configurare | locul implicit, sau un folder în Google Drive dacă mediul nu păstrează fișierele |
+
+Nu vă întreabă ce domenii vă interesează: raportul acoperă tot ce are impact asupra activității unui contabil. Restul îl configurează singur — programarea, permisiunile — și generează primul raport.
 
 <details>
 <summary>Instalare din terminal, pentru administratori</summary>
@@ -65,7 +75,7 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 
 ## Cum funcționează în spate (pentru administrator)
 
-- Skill-ul își ține configurația și istoricul în `~/.claude/monitorizare-legislativa/state.json` (adresa destinatar, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori).
+- Skill-ul își ține configurația și istoricul într-un fișier numit `monitorizare-legislativa-state.json` (adresa destinatar, ritmul de rulare, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori). Implicit stă în `~/.claude/monitorizare-legislativa/`, dar în mediile unde sistemul de fișiere se resetează între sesiuni, la prima rulare vi se cere un loc care persistă, de exemplu un folder în Google Drive. Numele fișierului e fix, ca să poată fi regăsit prin căutare oriunde ar fi salvat.
 - **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar plugin-ul e livrat prin cale relativă (`"source": "./"`) din același repo.
 - **De ce cale relativă și nu arhivă zip**: validatorul din Settings → Plugins nu acceptă tipul de sursă `archive` — recunoaște repo-ul, dar sincronizarea eșuează. Cu marketplace-ul clonat, calea relativă se rezolvă corect. Compromisul: instalarea din terminal cere git local.
 - **GitLab nu funcționează pentru această cale.** Dialogul de adăugare validează adresa server-side ca repo GitHub și respinge orice adresă GitLab, indiferent de formă — repo, `.git` sau raw.

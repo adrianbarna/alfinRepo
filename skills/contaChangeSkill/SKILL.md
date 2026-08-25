@@ -9,11 +9,32 @@ Acest skill transformă Claude într-un asistent de veghe legislativă pentru un
 
 ## Fișierul de stare
 
-Toată memoria skill-ului stă în `~/.claude/monitorizare-legislativa/state.json`:
+Toată memoria skill-ului stă într-un singur fișier, numit **întotdeauna** `monitorizare-legislativa-state.json`.
+
+### Unde stă, și cum îl regăsești
+
+Numele e fix tocmai ca fișierul să poată fi **găsit prin căutare**, nu ținut minte printr-o cale. Asta contează: în unele medii (Claude Desktop, Cowork, sesiuni în cloud) sistemul de fișiere local se resetează între rulări. Dacă memorezi doar calea, se pierde odată cu fișierul. Dacă îl cauți după nume, îl regăsești oriunde ar fi.
+
+**La începutul fiecărei rulări, caută-l în ordinea asta** și oprește-te la primul găsit:
+
+1. `~/.claude/monitorizare-legislativa/monitorizare-legislativa-state.json` — locul implicit, când sistemul de fișiere persistă;
+2. în serviciile de stocare conectate (Google Drive și alți conectori de fișiere disponibili) — caută **după nume**, în tot spațiul, nu doar într-un folder anume;
+3. în directorul de lucru curent și în folderul proiectului, dacă sesiunea are unul.
+
+Ai găsit fișierul, indiferent unde: **acolo continui să scrii**. Nu-l muta, nu crea o copie într-un al doilea loc — două copii care diverg sunt mai rele decât niciuna.
+
+Nu l-ai găsit nicăieri: e **prima rulare**, treci la secțiunea de configurare.
+
+Fișierul își notează propria locație în `locatie_stare`, ca un om care îl deschide să știe ce e și de unde vine. Câmpul e informativ; regăsirea se face prin căutare, nu prin el.
+
+### Structura
 
 ```json
 {
   "email_destinatar": "client@exemplu.ro",
+  "locatie_stare": "Google Drive / Monitorizare legislativă/",
+  "interval_rulare": "saptamanal",
+  "zi_si_ora": "luni 08:00",
   "ultima_rulare": "2026-07-31",
   "acte_vazute": ["OMF 1234/2026", "OUG 45/2026"],
   "acte_in_asteptare": [
@@ -45,24 +66,25 @@ Dacă Gmail **nu** este conectat: oprește-te elegant (fără eroare) și afișe
 
 ### 2. Prima rulare (configurare)
 
-Doar dacă `state.json` nu există.
+Doar dacă fișierul de stare nu a fost găsit în niciunul dintre locurile căutate mai sus.
 
-**Regula de aur a configurării: întreabă despre _când_, niciodată despre _ce_.** Ritmul e al utilizatorului și trebuie stabilit împreună cu el. Conținutul e fix și e treaba skill-ului. Pune cele patru întrebări de mai jos într-un singur mesaj, cu default-uri propuse, ca să poată răspunde „ok, lasă așa" dintr-un cuvânt.
+**Regula de aur a configurării: întreabă despre _când_, niciodată despre _ce_.** Ritmul e al utilizatorului și trebuie stabilit împreună cu el. Conținutul e fix și e treaba skill-ului. Pune cele cinci întrebări de mai jos într-un singur mesaj, cu default-uri propuse, ca să poată răspunde „ok, lasă așa" dintr-un cuvânt.
 
 1. **Adresa de email** către care se trimit rapoartele. Nu presupune adresa contului Gmail conectat — clientul poate vrea rapoartele către altă adresă (un coleg, o adresă de birou).
 2. **Perioada acoperită de primul raport** — cât în urmă să se uite acum, la prima rulare. Propune **ultimele 7 zile**; unii vor o lună, ca să prindă tot ce au ratat.
 3. **Cât de des rulează** — propune **săptămânal**. Alternative rezonabile: la două săptămâni, lunar.
 4. **Ziua și ora rulării automate** — propune **luni, 08:00**.
+5. **Unde salvezi fișierul de stare.** Verifică întâi dacă sistemul de fișiere local persistă între sesiuni. Dacă **nu** persistă — Claude Desktop, Cowork, sesiuni în cloud — spune-i clar utilizatorului că fără un loc care supraviețuiește, fiecare rulare pornește de la zero și **același act poate fi raportat de mai multe ori**, apoi propune-i, în ordinea asta: un folder într-un serviciu de stocare conectat (Google Drive sau similar), folderul proiectului curent, sau altă locație aleasă de el. Dacă sistemul de fișiere **persistă**, nu-l plictisi cu întrebarea: folosește locul implicit și mergi mai departe.
 
 Apoi, fără alte întrebări:
 
-5. Creează `~/.claude/monitorizare-legislativa/state.json` cu adresa primită, `ultima_rulare` = azi minus perioada aleasă la punctul 2, `acte_vazute` = [] și `acte_in_asteptare` = [].
-6. **Creează efectiv task-ul programat**, cu intervalul și ora alese. Promptul task-ului trebuie să fie explicit autonom:
+6. Creează fișierul `monitorizare-legislativa-state.json` în locația stabilită, cu adresa primită, `locatie_stare`, `interval_rulare` și `zi_si_ora` din răspunsuri, `ultima_rulare` = azi minus perioada aleasă la punctul 2, `acte_vazute` = [] și `acte_in_asteptare` = [].
+7. **Creează efectiv task-ul programat**, cu intervalul și ora alese. Promptul task-ului trebuie să fie explicit autonom:
 
-   > „Rulează skill-ul monitorizare-legislativa. Rulare autonomă, fără utilizator prezent: nu cere nicio confirmare, nu pune întrebări, iar la final trimite raportul pe email către adresa din `state.json`."
+   > „Rulează skill-ul monitorizare-legislativa. Rulare autonomă, fără utilizator prezent: nu cere nicio confirmare, nu pune întrebări, iar la final trimite raportul pe email către adresa din fișierul de stare."
 
-7. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta ca parte din configurare, explicat într-o propoziție, fără să devină o negociere.
-8. Continuă cu pașii de mai jos — prima rulare produce și primul raport.
+8. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta ca parte din configurare, explicat într-o propoziție, fără să devină o negociere.
+9. Continuă cu pașii de mai jos — prima rulare produce și primul raport.
 
 ### Ce NU întrebi niciodată
 
@@ -72,7 +94,7 @@ Apoi, fără alte întrebări:
 
 ### Dacă mediul nu permite programarea
 
-În unele medii nu există mecanism de task-uri programate, iar sistemul de fișiere se resetează între sesiuni — deci nici `state.json` nu supraviețuiește. Încearcă întâi să creezi task-ul. Dacă nu se poate:
+În unele medii nu există mecanism de task-uri programate. (Problema separată, a sistemului de fișiere care se resetează, se rezolvă prin locația aleasă la punctul 5 al configurării.) Încearcă întâi să creezi task-ul. Dacă nu se poate:
 
 - spune-i utilizatorului **o singură dată, în această primă sesiune**, ce n-a mers și ce înseamnă practic (va trebui să pornească manual monitorizarea, sau să configureze programarea din interfața de task-uri recurente), și oferă-te să-l ghidezi;
 - **nu repeta explicația la rulările următoare** și nu o scrie în email;
@@ -129,7 +151,7 @@ După trimiterea cu succes a emailului (sau după concluzia „nimic nou"):
 - `ultima_rulare` = data de azi;
 - adaugă identificatorii actelor **raportate cu interpretări** în `acte_vazute` (limita de 200, elimină cele mai vechi);
 - actualizează `acte_in_asteptare`: scoate intrările care au fost publicate între timp (au trecut în raportul principal), adaugă actele de Nivel A nou apărute și elimină intrările mai vechi de ~60 de zile — un act adoptat care nu s-a publicat în două luni fie a fost abandonat, fie l-am ratat la publicare;
-- salvează `state.json`.
+- salvează fișierul de stare, în aceeași locație din care l-ai citit.
 
 Actualizează starea **doar după** ce emailul a plecat — dacă trimiterea eșuează, starea rămâne neschimbată și rularea următoare reia aceleași acte, deci nimic nu se pierde.
 
