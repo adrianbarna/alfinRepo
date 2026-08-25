@@ -48,14 +48,12 @@ altfel omite secțiunea>
 <1-3 puncte: termene apropiate sau acte anunțate care urmează — doar dacă au
 reieșit din cercetare; altfel omite secțiunea>
 
-<dacă vreo sursă nu a putut fi consultată:>
-*Notă: sursa <X> nu a putut fi consultată la această rulare.*
-
 Raport generat automat de asistentul de monitorizare legislativă.
 ```
 
 ## Reguli de redactare
 
+- **Emailul e client-facing. Nimic tehnic în el.** Nu menționa surse care au blocat accesul, metode de acces, acoperire „mai subțire decât ideal", fișierul de stare, task-uri programate, permisiuni sau limitări ale mediului. Destinatarul e contabil, nu administrator: nu poate acționa pe baza lor, iar prezența lor face raportul să pară nesigur. Dacă o sursă n-a răspuns, ai lucrat prin căutare web și ai obținut informația — deci nu s-a întâmplat nimic demn de raportat. Notele de funcționare se spun în conversație, la prima rulare, niciodată în email.
 - **Ordinea actelor**: cel mai mare impact practic primul (o modificare de TVA înaintea unei proceduri de nișă).
 - **Interpretările se citează întotdeauna** cu sursa și linkul — clientul trebuie să poată verifica și aprofunda.
 - **Nu inventa date lipsă**: dacă data intrării în vigoare sau numărul MO nu reies din surse, scrie „neprecizat în sursele consultate" în loc să estimezi.

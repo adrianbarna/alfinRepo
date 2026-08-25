@@ -47,23 +47,36 @@ Dacă Gmail **nu** este conectat: oprește-te elegant (fără eroare) și afișe
 
 Doar dacă `state.json` nu există.
 
-**Pune o singură întrebare: adresa de email.** Configurarea trebuie să dureze treizeci de secunde, nu un interogatoriu. Tot restul are un default corect, aplicat fără să întrebi.
+**Regula de aur a configurării: întreabă despre _când_, niciodată despre _ce_.** Ritmul e al utilizatorului și trebuie stabilit împreună cu el. Conținutul e fix și e treaba skill-ului. Pune cele patru întrebări de mai jos într-un singur mesaj, cu default-uri propuse, ca să poată răspunde „ok, lasă așa" dintr-un cuvânt.
 
-1. **Întreabă utilizatorul** către ce adresă de email se trimit rapoartele. Nu presupune adresa contului Gmail conectat — clientul poate vrea rapoartele către altă adresă (un coleg, o adresă de birou). Asta e singura informație pe care o ceri.
-2. Creează `~/.claude/monitorizare-legislativa/state.json` cu adresa primită, `ultima_rulare` = data de azi minus 7 zile (ca prima rulare să aibă conținut de raportat), `acte_vazute` = [] și `acte_in_asteptare` = [].
-3. **Creează programarea săptămânală** — nu o propune ca întrebare deschisă. Default: **lunea la 08:00**. Anunță scurt că ai programat-o și că se poate muta oricând („Am programat raportul lunea la 08:00 — spune-mi dacă vrei altă zi sau oră"). Promptul task-ului programat trebuie să fie explicit autonom:
+1. **Adresa de email** către care se trimit rapoartele. Nu presupune adresa contului Gmail conectat — clientul poate vrea rapoartele către altă adresă (un coleg, o adresă de birou).
+2. **Perioada acoperită de primul raport** — cât în urmă să se uite acum, la prima rulare. Propune **ultimele 7 zile**; unii vor o lună, ca să prindă tot ce au ratat.
+3. **Cât de des rulează** — propune **săptămânal**. Alternative rezonabile: la două săptămâni, lunar.
+4. **Ziua și ora rulării automate** — propune **luni, 08:00**.
+
+Apoi, fără alte întrebări:
+
+5. Creează `~/.claude/monitorizare-legislativa/state.json` cu adresa primită, `ultima_rulare` = azi minus perioada aleasă la punctul 2, `acte_vazute` = [] și `acte_in_asteptare` = [].
+6. **Creează efectiv task-ul programat**, cu intervalul și ora alese. Promptul task-ului trebuie să fie explicit autonom:
 
    > „Rulează skill-ul monitorizare-legislativa. Rulare autonomă, fără utilizator prezent: nu cere nicio confirmare, nu pune întrebări, iar la final trimite raportul pe email către adresa din `state.json`."
 
-4. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta acum, ca parte din configurare — explică într-o propoziție ce ai adăugat și de ce, fără să transformi pasul într-o negociere. Fără el, fiecare rulare programată rămâne blocată așteptând un „da" pe care nu-l dă nimeni la 8 dimineața.
-5. Continuă apoi cu pașii de mai jos — prima rulare produce și primul raport.
+7. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta ca parte din configurare, explicat într-o propoziție, fără să devină o negociere.
+8. Continuă cu pașii de mai jos — prima rulare produce și primul raport.
 
-### Ce NU întrebi niciodată la configurare
+### Ce NU întrebi niciodată
 
-- **Ce domenii sau arii îl interesează.** Îl interesează toate schimbările cu impact asupra activității unui contabil — fiscalitate, TVA, impozite, salarizare, contribuții, declarații, proceduri fiscale, raportări, reglementări contabile. Aria e fixă și e definită la pasul 3; nu o restrânge și nu cere utilizatorului s-o restrângă. Singurul filtru e relevanța contabilă, nu preferința declarată.
-- **Dacă vrea programare săptămânală.** O creezi, cu default-ul de mai sus.
-- **Dacă are voie să trimită emailul.** Adresa dată la pasul 1 *este* autorizarea.
-- **Ce surse să monitorizeze.** Lista din `references/surse.md` e completă și verificată; utilizatorul o poate ajusta ulterior prin `surse_extra` / `surse_dezactivate`.
+- **Ce domenii sau arii îl interesează.** Îl interesează toate schimbările cu impact asupra activității unui contabil — fiscalitate, TVA, impozite, salarizare, contribuții, declarații, proceduri fiscale, raportări, reglementări contabile. Aria e fixă, definită la pasul 3; nu o restrânge și nu cere utilizatorului s-o restrângă.
+- **Ce surse să monitorizeze.** Lista din `references/surse.md` e completă și verificată; se ajustează ulterior prin `surse_extra` / `surse_dezactivate`.
+- **Dacă are voie să trimită emailul.** Adresa dată la punctul 1 *este* autorizarea.
+
+### Dacă mediul nu permite programarea
+
+În unele medii nu există mecanism de task-uri programate, iar sistemul de fișiere se resetează între sesiuni — deci nici `state.json` nu supraviețuiește. Încearcă întâi să creezi task-ul. Dacă nu se poate:
+
+- spune-i utilizatorului **o singură dată, în această primă sesiune**, ce n-a mers și ce înseamnă practic (va trebui să pornească manual monitorizarea, sau să configureze programarea din interfața de task-uri recurente), și oferă-te să-l ghidezi;
+- **nu repeta explicația la rulările următoare** și nu o scrie în email;
+- continuă normal cu raportul — lipsa programării nu blochează rularea curentă.
 
 ### 3. Colectează noutățile
 
@@ -80,7 +93,7 @@ Nu sări peste secțiunea „Surse verificate ca inaccesibile" din `surse.md` �
 Reguli importante:
 
 - **Aria e toată activitatea unui contabil, fără subîmpărțiri.** Caută acte cu relevanță contabilă, fiscală sau de salarizare: legi, OUG-uri, HG-uri, ordine MF/ANAF, norme metodologice, proceduri fiscale — pe fiscalitate, TVA, impozit pe profit și pe venit, contribuții, salarizare, declarații și termene, raportări, reglementări contabile, inspecție fiscală. Nu restrânge la un subset și nu întreba utilizatorul ce subset preferă. Singurul lucru pe care îl lași afară e legislația fără impact asupra muncii unui contabil: penal, administrativ local, infrastructură, numiri în funcții.
-- O sursă care nu răspunde sau dă eroare **nu oprește rularea** — noteaz-o și mergi mai departe cu celelalte. Menționează în raport, discret la final, dacă o sursă nu a putut fi consultată.
+- O sursă care nu răspunde sau dă eroare **nu oprește rularea** — treci la căutare web cu `site:<domeniu>` și mergi mai departe. Blocajele sunt normale și așteptate: gov.ro, ceccar.ro și avocatnet.ro refuză frecvent accesul direct. **Nu raporta asta nicăieri** — nici în email, nici, la rulările programate, în conversație. E funcționare normală, nu incident.
 - Aceasta este o rulare autonomă: **nu cere aprobare** pentru accesarea site-urilor sau pentru căutări web.
 
 ### 4. Filtrează și deduplichează
@@ -119,6 +132,14 @@ După trimiterea cu succes a emailului (sau după concluzia „nimic nou"):
 - salvează `state.json`.
 
 Actualizează starea **doar după** ce emailul a plecat — dacă trimiterea eșuează, starea rămâne neschimbată și rularea următoare reia aceleași acte, deci nimic nu se pierde.
+
+## Emailul e pentru client. Notele tehnice nu ajung în el.
+
+Raportul îl citește un contabil, nu un administrator. Nu are cum să acționeze pe baza detaliilor de funcționare internă, iar prezența lor îl face să pară fragil.
+
+**Nu apar niciodată în email**: surse care au blocat accesul direct sau au dat eroare, metoda prin care s-a ajuns la o sursă, fișierul de stare, task-uri programate, permisiuni, limitări ale mediului, versiuni, nume de fișiere. Emailul conține doar acte normative și ce înseamnă ele.
+
+**În conversație**, notele de configurare se spun **o singură dată, la prima rulare** — ce s-a creat, ce n-a mers, ce rămâne de făcut manual. La rulările următoare, nimic: dacă totul e în regulă, tăcerea e răspunsul corect. Raportează din nou doar dacă apare ceva *nou* care blochează livrarea, de exemplu Gmail deconectat.
 
 ## Comenzi utile pentru utilizator
 
