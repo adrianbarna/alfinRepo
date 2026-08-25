@@ -48,11 +48,17 @@ Sursă frecventă de confuzie:
 
 ## Protocol de release
 
-**Incrementează `version` în DOUĂ locuri la fiecare modificare**: în `plugin.json`-ul plugin-ului **și** în intrarea lui din `.claude-plugin/marketplace.json`. Ambele, mereu, cu aceeași valoare.
+**Push = release. Nu există câmp `version` și nu trebuie adăugat.** Niciun plugin nu declară `version` — nici în `plugin.json`, nici în intrările din `marketplace.json` — iar asta e **intenționat**, conform recomandării oficiale pentru surse git dezvoltate activ: fără `version`, versiunea e SHA-ul commit-ului, deci fiecare push devine automat o actualizare disponibilă.
 
-Motivul e subtil și ne-a costat câteva ore: valoarea afișată vine din `plugin.json`, dar **decizia „există o actualizare?" se ia comparând cu versiunea din intrarea de marketplace**. Fără `version` acolo, aplicația n-are cu ce compara și răspunde „Already up to date" la nesfârșit, cu butonul `Update` dezactivat — deși repo-ul e cu zece versiuni în față. Fără asta, push-ul nu ajunge niciodată la client — sistemul nu-l vede ca schimbare. Nu e opțional și nu dă niciun avertisment când e omis. Cele două plugin-uri au versiuni independente: `.claude-plugin/plugin.json` pentru monitorizare, `incasari-saga/.claude-plugin/plugin.json` pentru încasări.
+Documentația Anthropic (plugin-marketplaces) e explicită în ambele direcții:
 
-Push pe remote-ul **`github`**, care e sursa de adevăr. `origin` e un GitLab vechi, rămas în urmă și care respinge push-ul; nu te baza pe el.
+> „For git-based sources, if you omit `version`, Claude Code uses the source's resolved commit SHA, so users get an update whenever that commit changes; this is the simplest setup for internal or actively developed plugins."
+
+> „Avoid setting `version` in both `plugin.json` and the marketplace entry. Claude Code always uses the `plugin.json` value without warning."
+
+Am trecut prin ambele greșeli înainte să ajungem aici: cu `version` declarat, pluginul e **pinned** — push-urile fără bump nu ajung niciodată la client, în tăcere; iar cu `version` în ambele locuri, cele două diverg (s-a întâmplat în aceeași zi în care au fost introduse). **Nu reintroduce câmpul** — nici măcar pentru că `claude plugin validate` afișează avertismentul „No version specified. Consider adding a version": acel avertisment e compromisul asumat și nu e o eroare.
+
+Push pe remote-ul **`github`**, care e sursa de adevăr. `origin` e un GitLab vechi, rămas în urmă și care respinge push-ul; nu te baza pe el. Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase github main` înainte de push.
 
 La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din oficiu, iar fără el plugin-ul rămâne blocat pe versiunea de la instalare, în tăcere.
 
