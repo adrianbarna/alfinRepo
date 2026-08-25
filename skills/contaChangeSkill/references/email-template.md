@@ -38,6 +38,12 @@ situația de dinainte>
 
 [la final:]
 
+### Adoptat, urmează publicarea în Monitorul Oficial
+<doar dacă au reieșit acte din ședințele de Guvern care încă nu s-au publicat;
+altfel omite secțiunea>
+- <tip + titlu scurt> — adoptat în ședința de Guvern din <data>. Îl reluăm cu
+  detalii complete când apare în Monitorul Oficial. (<link gov.ro>)
+
 ### De reținut pentru săptămâna următoare
 <1-3 puncte: termene apropiate sau acte anunțate care urmează — doar dacă au
 reieșit din cercetare; altfel omite secțiunea>
@@ -55,3 +61,4 @@ Raport generat automat de asistentul de monitorizare legislativă.
 - **Nu inventa date lipsă**: dacă data intrării în vigoare sau numărul MO nu reies din surse, scrie „neprecizat în sursele consultate" în loc să estimezi.
 - **Concizie cu substanță**: un act = maximum o jumătate de ecran. Raportul întreg trebuie citit în 5-10 minute.
 - Dacă un act e semnalat dar interpretările încă lipsesc, spune explicit: „act publicat recent — analizele specialiștilor vor fi incluse în raportul următor".
+- **Actele adoptate, nepublicate** stau doar în secțiunea lor de la final, niciodată printre actele numerotate din raport: nu au număr, nu au dată de intrare în vigoare și nu au interpretări. O singură linie fiecare — semnalare, nu analiză. Regula „nu inventa date lipsă" se aplică cu atât mai mult aici.
