@@ -11,28 +11,36 @@ Acest skill transformă Claude într-un asistent de veghe legislativă pentru un
 
 Toată memoria skill-ului stă într-un singur fișier, numit **întotdeauna** `monitorizare-legislativa-state.json`.
 
-### Unde stă, și cum îl regăsești
+### Rulezi local, pe un disc real
 
-Numele e fix tocmai ca fișierul să poată fi **găsit prin căutare**, nu ținut minte printr-o cale. Asta contează: în unele medii (Claude Desktop, Cowork, sesiuni în cloud) sistemul de fișiere local se resetează între rulări. Dacă memorezi doar calea, se pierde odată cu fișierul. Dacă îl cauți după nume, îl regăsești oriunde ar fi.
+Acest skill e conceput să ruleze **pe calculatorul utilizatorului**, nu în cloud. Task-ul programat are opțiunea *Run on your computer* pornită, pornește dintr-un folder de lucru concret și are acces normal la fișiere.
 
-**La începutul fiecărei rulări, caută-l în ordinea asta** și oprește-te la primul găsit:
+Asta e premisa de la care pleci: **poți citi și scrie fișiere, iar ele rămân acolo între rulări.** Ai voie să te bazezi pe asta. Fișierul de stare e mecanismul prin care raportul de săptămâna viitoare știe ce a trimis raportul de săptămâna asta — fără el, aceleași acte ajung la client de mai multe ori.
 
-1. `~/.claude/monitorizare-legislativa/monitorizare-legislativa-state.json` — locul implicit, când sistemul de fișiere persistă;
-2. în serviciile de stocare conectate (Google Drive și alți conectori de fișiere disponibili) — caută **după nume**, în tot spațiul, nu doar într-un folder anume;
-3. în directorul de lucru curent și în folderul proiectului, dacă sesiunea are unul.
+**Calea implicită, absolută:**
 
-Ai găsit fișierul, indiferent unde: **acolo continui să scrii**. Nu-l muta, nu crea o copie într-un al doilea loc — două copii care diverg sunt mai rele decât niciuna.
+```
+~/.claude/monitorizare-legislativa/monitorizare-legislativa-state.json
+```
 
-Nu l-ai găsit nicăieri: e **prima rulare**, treci la secțiunea de configurare.
+Absolută, nu relativă la folderul curent: task-ul programat și o rulare manuală pornesc din directoare diferite, iar o cale relativă ar produce două fișiere paralele care diverg. Creează directorul dacă nu există.
 
-Fișierul își notează propria locație în `locatie_stare`, ca un om care îl deschide să știe ce e și de unde vine. Câmpul e informativ; regăsirea se face prin căutare, nu prin el.
+**Dacă nu găsești fișierul acolo**, caută-l după nume înainte să concluzionezi că e prima rulare — poate a fost mutat: în folderul de lucru curent, în folderul proiectului, sau într-un serviciu de stocare conectat. Numele e fix tocmai ca să poată fi regăsit prin căutare. Găsit oriunde, **acolo continui să scrii**; nu-l muta și nu crea o a doua copie.
+
+Negăsit nicăieri: e **prima rulare**, treci la configurare.
+
+Fișierul își notează propria locație în `locatie_stare`, ca un om care îl deschide să știe ce e și de unde vine.
+
+### Confirmă scrierea, nu o presupune
+
+După fiecare salvare, **recitește fișierul** și verifică prezența ultimelor acte adăugate. O scriere eșuată în tăcere e cea mai costisitoare defecțiune posibilă aici: raportul pleacă, starea nu se salvează, iar săptămâna viitoare clientul primește din nou aceleași acte. Dacă recitirea nu confirmă, spune-i utilizatorului în conversație, la rularea curentă.
 
 ### Structura
 
 ```json
 {
   "email_destinatar": "client@exemplu.ro",
-  "locatie_stare": "Google Drive / Monitorizare legislativă/",
+  "locatie_stare": "~/.claude/monitorizare-legislativa/",
   "interval_rulare": "saptamanal",
   "zi_si_ora": "luni 08:00",
   "ultima_rulare": "2026-07-31",
@@ -68,23 +76,27 @@ Dacă Gmail **nu** este conectat: oprește-te elegant (fără eroare) și afișe
 
 Doar dacă fișierul de stare nu a fost găsit în niciunul dintre locurile căutate mai sus.
 
-**Regula de aur a configurării: întreabă despre _când_, niciodată despre _ce_.** Ritmul e al utilizatorului și trebuie stabilit împreună cu el. Conținutul e fix și e treaba skill-ului. Pune cele cinci întrebări de mai jos într-un singur mesaj, cu default-uri propuse, ca să poată răspunde „ok, lasă așa" dintr-un cuvânt.
+**Regula de aur a configurării: întreabă despre _când_, niciodată despre _ce_.** Ritmul e al utilizatorului și trebuie stabilit împreună cu el. Conținutul e fix și e treaba skill-ului. Pune cele patru întrebări de mai jos într-un singur mesaj, cu default-uri propuse, ca să poată răspunde „ok, lasă așa" dintr-un cuvânt.
 
-1. **Adresa de email** către care se trimit rapoartele. Nu presupune adresa contului Gmail conectat — clientul poate vrea rapoartele către altă adresă (un coleg, o adresă de birou).
+1. **Adresa de email** către care se trimit rapoartele. Întreabă întotdeauna și salvează răspunsul în `email_destinatar` — de acolo se citește la toate rulările următoare.
+
+   **Adresa contului Gmail conectat nu este destinatarul.** Contul conectat e doar mijlocul de trimitere; destinatarul e o decizie separată, pe care numai utilizatorul o poate lua. Nu o deduce, nu o completa singur, nu o folosi „provizoriu". În particular, **niciodată `alexgherghel772@gmail.com`** — e adresa contului, nu a destinatarului.
+
+   Dacă rulezi autonom, fără fișier de stare și fără posibilitatea de a întreba, trimite către **`adrianbarna88@gmail.com`** și spune în conversație că ai folosit adresa de rezervă fiindcă lipsea configurarea. Rezerva e o plasă de siguranță pentru cazul în care nimeni nu poate răspunde, nu o scurtătură care să înlocuiască întrebarea.
 2. **Perioada acoperită de primul raport** — cât în urmă să se uite acum, la prima rulare. Propune **ultimele 7 zile**; unii vor o lună, ca să prindă tot ce au ratat.
 3. **Cât de des rulează** — propune **săptămânal**. Alternative rezonabile: la două săptămâni, lunar.
 4. **Ziua și ora rulării automate** — propune **luni, 08:00**.
-5. **Unde salvezi fișierul de stare.** Verifică întâi dacă sistemul de fișiere local persistă între sesiuni. Dacă **nu** persistă — Claude Desktop, Cowork, sesiuni în cloud — spune-i clar utilizatorului că fără un loc care supraviețuiește, fiecare rulare pornește de la zero și **același act poate fi raportat de mai multe ori**, apoi propune-i, în ordinea asta: un folder într-un serviciu de stocare conectat (Google Drive sau similar), folderul proiectului curent, sau altă locație aleasă de el. Dacă sistemul de fișiere **persistă**, nu-l plictisi cu întrebarea: folosește locul implicit și mergi mai departe.
+Nu întreba unde să salvezi fișierul de stare: îl pui la calea implicită de mai sus. Întreabă doar dacă scrierea acolo eșuează — atunci cere o locație pe care utilizatorul o poate scrie.
 
 Apoi, fără alte întrebări:
 
-6. Creează fișierul `monitorizare-legislativa-state.json` în locația stabilită, cu adresa primită, `locatie_stare`, `interval_rulare` și `zi_si_ora` din răspunsuri, `ultima_rulare` = azi minus perioada aleasă la punctul 2, `acte_vazute` = [] și `acte_in_asteptare` = [].
-7. **Creează efectiv task-ul programat**, cu intervalul și ora alese. Promptul task-ului trebuie să fie explicit autonom:
+5. Creează fișierul `monitorizare-legislativa-state.json` la calea implicită, cu adresa primită, `locatie_stare`, `interval_rulare` și `zi_si_ora` din răspunsuri, `ultima_rulare` = azi minus perioada aleasă la punctul 2, `acte_vazute` = [] și `acte_in_asteptare` = [].
+6. **Creează efectiv task-ul programat**, cu intervalul și ora alese. Promptul task-ului trebuie să fie explicit autonom:
 
    > „Rulează skill-ul monitorizare-legislativa. Rulare autonomă, fără utilizator prezent: nu cere nicio confirmare, nu pune întrebări, iar la final trimite raportul pe email către adresa din fișierul de stare."
 
-8. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta ca parte din configurare, explicat într-o propoziție, fără să devină o negociere.
-9. Continuă cu pașii de mai jos — prima rulare produce și primul raport.
+7. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta ca parte din configurare, explicat într-o propoziție, fără să devină o negociere.
+8. Continuă cu pașii de mai jos — prima rulare produce și primul raport.
 
 ### Ce NU întrebi niciodată
 
@@ -92,9 +104,13 @@ Apoi, fără alte întrebări:
 - **Ce surse să monitorizeze.** Lista din `references/surse.md` e completă și verificată; se ajustează ulterior prin `surse_extra` / `surse_dezactivate`.
 - **Dacă are voie să trimită emailul.** Adresa dată la punctul 1 *este* autorizarea.
 
+**Destinatarul nu se ghicește niciodată.** Nici din contul Gmail conectat, nici din contextul conversației, nici din adresa vreunui cont vizibil în sesiune. Vine din `email_destinatar`, sau — dacă starea lipsește și nu ai pe cine întreba — din adresa de rezervă. Nicio a treia variantă.
+
 ### Dacă mediul nu permite programarea
 
-În unele medii nu există mecanism de task-uri programate. (Problema separată, a sistemului de fișiere care se resetează, se rezolvă prin locația aleasă la punctul 5 al configurării.) Încearcă întâi să creezi task-ul. Dacă nu se poate:
+Task-ul programat trebuie creat cu **Run on your computer** pornit, ca să ruleze local, cu acces la fișiere — altfel fișierul de stare nu persistă și deduplicarea nu funcționează. Permisiunile task-ului trebuie să sară peste aprobări, ca rularea să meargă fără nimeni în fața ecranului.
+
+Dacă mediul nu oferă deloc un mecanism de task-uri programate:
 
 - spune-i utilizatorului **o singură dată, în această primă sesiune**, ce n-a mers și ce înseamnă practic (va trebui să pornească manual monitorizarea, sau să configureze programarea din interfața de task-uri recurente), și oferă-te să-l ghidezi;
 - **nu repeta explicația la rulările următoare** și nu o scrie în email;
@@ -146,7 +162,7 @@ Regula de decizie, când eziți: informația a ajuns în raport sau nu? Dacă a 
 
 Singura excepție e cea deja prevăzută în șablon: un act publicat prea recent ca să aibă analize se semnalează ca atare, fiindcă asta e informație despre **act**, utilă contabilului, nu despre funcționarea internă.
 
-Trimite emailul prin Gmail către `email_destinatar` din stare. **Nu cere confirmare înainte de trimitere, niciodată.** Adresa a fost dată de utilizator la configurare, iar asta *este* autorizarea — pentru prima rulare la fel ca pentru toate cele programate. Nu arăta raportul „spre aprobare" și nu întreba dacă e momentul potrivit; compune-l și trimite-l.
+Trimite emailul prin Gmail către `email_destinatar` din stare. **Înainte de trimitere, verifică de unde vine adresa**: din fișierul de stare, nu din contul conectat și nu din context. E ultima ocazie de a prinde o adresă dedusă greșit. **Nu cere confirmare înainte de trimitere, niciodată.** Adresa a fost dată de utilizator la configurare, iar asta *este* autorizarea — pentru prima rulare la fel ca pentru toate cele programate. Nu arăta raportul „spre aprobare" și nu întreba dacă e momentul potrivit; compune-l și trimite-l.
 
 Singura excepție: utilizatorul e prezent în conversație și tocmai a schimbat adresa de destinație — atunci confirmi o dată noua adresă, ca să nu trimiți la o adresă tastată greșit.
 
