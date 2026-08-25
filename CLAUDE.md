@@ -49,6 +49,8 @@ Sursă frecventă de confuzie:
 
 ## Protocol de release
 
+**Acest flux e VERIFICAT cap-coadă, pe ambele plugin-uri** (25.08.2026, monitorizare 1.12.0→1.12.1, incasari-saga 1.2.1→1.2.2): bump în `plugin.json` → push pe `github` → în aplicație `···` pe marketplace → *Check for updates* → butonul *Update* de pe card se activează cu „Update available" → după apăsare cardul arată versiunea nouă și „just now". Dacă lanțul ăsta se rupe vreodată, problema e nouă — nu una din capcanele deja documentate mai jos.
+
 **`version` stă într-un singur loc — `plugin.json`-ul fiecărui plugin — și se incrementează la fiecare release.** Cu `version` declarat, pluginul e *pinned*: un push fără bump **nu ajunge la client, în tăcere**. Bump-ul nu e opțional.
 
 **Niciodată `version` în intrările din `marketplace.json`.** Documentația oficială interzice dublarea — „Avoid setting `version` in both `plugin.json` and the marketplace entry. Claude Code always uses the `plugin.json` value without warning" — iar când am avut-o, cele două valori au divergat în aceeași zi. `claude plugin validate ./` prinde nepotrivirea; rulează-l înainte de push.
