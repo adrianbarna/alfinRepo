@@ -80,9 +80,9 @@ Doar dacă fișierul de stare nu a fost găsit în niciunul dintre locurile cău
 
 1. **Adresa de email** către care se trimit rapoartele. Întreabă întotdeauna și salvează răspunsul în `email_destinatar` — de acolo se citește la toate rulările următoare.
 
-   **Adresa contului Gmail conectat nu este destinatarul.** Contul conectat e doar mijlocul de trimitere; destinatarul e o decizie separată, pe care numai utilizatorul o poate lua. Nu o deduce, nu o completa singur, nu o folosi „provizoriu". În particular, **niciodată `alexgherghel772@gmail.com`** — e adresa contului, nu a destinatarului.
+   **Adresa contului Gmail conectat nu este destinatarul.** Contul conectat e doar mijlocul de trimitere; destinatarul e o decizie separată, pe care numai utilizatorul o poate lua. Nu o deduce din contul conectat, nu o completa singur, nu o folosi „provizoriu".
 
-   Dacă rulezi autonom, fără fișier de stare și fără posibilitatea de a întreba, trimite către **`adrianbarna88@gmail.com`** și spune în conversație că ai folosit adresa de rezervă fiindcă lipsea configurarea. Rezerva e o plasă de siguranță pentru cazul în care nimeni nu poate răspunde, nu o scurtătură care să înlocuiască întrebarea.
+   Nu există adresă de rezervă. Dacă rulezi autonom, fără fișier de stare și fără pe cine întreba, **nu trimite nimic**: oprește-te și spune că prima rulare trebuie făcută manual, ca să poată fi stabilită adresa. Un raport trimis unde nu trebuie e mai rău decât un raport netrimis.
 2. **Perioada acoperită de primul raport** — cât în urmă să se uite acum, la prima rulare. Propune **ultimele 7 zile**; unii vor o lună, ca să prindă tot ce au ratat.
 3. **Cât de des rulează** — propune **săptămânal**. Alternative rezonabile: la două săptămâni, lunar.
 4. **Ziua și ora rulării automate** — propune **luni, 08:00**.
@@ -104,7 +104,7 @@ Apoi, fără alte întrebări:
 - **Ce surse să monitorizeze.** Lista din `references/surse.md` e completă și verificată; se ajustează ulterior prin `surse_extra` / `surse_dezactivate`.
 - **Dacă are voie să trimită emailul.** Adresa dată la punctul 1 *este* autorizarea.
 
-**Destinatarul nu se ghicește niciodată.** Nici din contul Gmail conectat, nici din contextul conversației, nici din adresa vreunui cont vizibil în sesiune. Vine din `email_destinatar`, sau — dacă starea lipsește și nu ai pe cine întreba — din adresa de rezervă. Nicio a treia variantă.
+**Destinatarul nu se ghicește niciodată.** Nici din contul Gmail conectat, nici din contextul conversației, nici din adresa vreunui cont vizibil în sesiune. Vine din `email_destinatar`, salvat la prima rulare manuală. Dacă lipsește și nu ai pe cine întreba, nu trimiți — nu inventezi un destinatar.
 
 ### Dacă mediul nu permite programarea
 
