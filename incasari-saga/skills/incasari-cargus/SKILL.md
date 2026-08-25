@@ -64,8 +64,9 @@ python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
 RON merge pe contul 5125, orice altă valută pe 5126. Configurează doar valutele care
 există — azi, doar RON.
 
-Calea aflată în interiorul proiectului se salvează relativ (ex. `ro`), ca skill-ul
-să meargă și pe alt PC fără reconfigurare. După `--set-folder`, rulează normal.
+Calea din interiorul proiectului se salvează relativ, ca skill-ul să meargă și pe alt
+PC fără reconfigurare; una din afara lui se salvează absolut. După `--set-folder`,
+rulează normal.
 
 ### 1b. Facturi și adrese de e-mail (tot la prima rulare)
 
