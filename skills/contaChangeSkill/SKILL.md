@@ -45,13 +45,25 @@ Dacă Gmail **nu** este conectat: oprește-te elegant (fără eroare) și afișe
 
 ### 2. Prima rulare (configurare)
 
-Doar dacă `state.json` nu există:
+Doar dacă `state.json` nu există.
 
-1. **Întreabă utilizatorul** către ce adresă de email se trimit rapoartele. Nu presupune adresa contului Gmail conectat — clientul poate vrea rapoartele către altă adresă (un coleg, o adresă de birou).
+**Pune o singură întrebare: adresa de email.** Configurarea trebuie să dureze treizeci de secunde, nu un interogatoriu. Tot restul are un default corect, aplicat fără să întrebi.
+
+1. **Întreabă utilizatorul** către ce adresă de email se trimit rapoartele. Nu presupune adresa contului Gmail conectat — clientul poate vrea rapoartele către altă adresă (un coleg, o adresă de birou). Asta e singura informație pe care o ceri.
 2. Creează `~/.claude/monitorizare-legislativa/state.json` cu adresa primită, `ultima_rulare` = data de azi minus 7 zile (ca prima rulare să aibă conținut de raportat), `acte_vazute` = [] și `acte_in_asteptare` = [].
-3. **Propune programarea săptămânală**: creează un task programat (scheduled task) care rulează acest skill o dată pe săptămână — default lunea la 08:00, dar lasă utilizatorul să aleagă ziua și ora. Promptul task-ului programat: „Rulează skill-ul monitorizare-legislativa și trimite raportul săptămânal."
-4. **Pregătește rularea autonomă**: rulările programate trebuie să meargă fără aprobare manuală. Dacă mediul folosește liste de permisiuni (settings.json din Claude Code), adaugă — cu acordul utilizatorului, o singură dată, acum — permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea/scrierea fișierului de stare și trimiterea de email prin Gmail. Explică-i utilizatorului că fără acest pas fiecare rulare programată ar rămâne blocată așteptând aprobări.
+3. **Creează programarea săptămânală** — nu o propune ca întrebare deschisă. Default: **lunea la 08:00**. Anunță scurt că ai programat-o și că se poate muta oricând („Am programat raportul lunea la 08:00 — spune-mi dacă vrei altă zi sau oră"). Promptul task-ului programat trebuie să fie explicit autonom:
+
+   > „Rulează skill-ul monitorizare-legislativa. Rulare autonomă, fără utilizator prezent: nu cere nicio confirmare, nu pune întrebări, iar la final trimite raportul pe email către adresa din `state.json`."
+
+4. **Pregătește rularea autonomă.** Rulările programate trebuie să meargă fără nicio aprobare manuală. Dacă mediul folosește liste de permisiuni (`settings.json` din Claude Code), adaugă permisiuni pentru: căutare web, acces la domeniile din `references/surse.md`, citirea și scrierea fișierului de stare, și **trimiterea de email prin Gmail**. Fă asta acum, ca parte din configurare — explică într-o propoziție ce ai adăugat și de ce, fără să transformi pasul într-o negociere. Fără el, fiecare rulare programată rămâne blocată așteptând un „da" pe care nu-l dă nimeni la 8 dimineața.
 5. Continuă apoi cu pașii de mai jos — prima rulare produce și primul raport.
+
+### Ce NU întrebi niciodată la configurare
+
+- **Ce domenii sau arii îl interesează.** Îl interesează toate schimbările cu impact asupra activității unui contabil — fiscalitate, TVA, impozite, salarizare, contribuții, declarații, proceduri fiscale, raportări, reglementări contabile. Aria e fixă și e definită la pasul 3; nu o restrânge și nu cere utilizatorului s-o restrângă. Singurul filtru e relevanța contabilă, nu preferința declarată.
+- **Dacă vrea programare săptămânală.** O creezi, cu default-ul de mai sus.
+- **Dacă are voie să trimită emailul.** Adresa dată la pasul 1 *este* autorizarea.
+- **Ce surse să monitorizeze.** Lista din `references/surse.md` e completă și verificată; utilizatorul o poate ajusta ulterior prin `surse_extra` / `surse_dezactivate`.
 
 ### 3. Colectează noutățile
 
@@ -67,7 +79,7 @@ Nu sări peste secțiunea „Surse verificate ca inaccesibile" din `surse.md` �
 
 Reguli importante:
 
-- Caută doar acte cu relevanță **contabilă/fiscală/salarizare**: legi, OUG-uri, HG-uri, ordine MF/ANAF, norme metodologice, proceduri fiscale. Ignoră legislația fără impact asupra activității unui contabil (penal, administrativ local etc.).
+- **Aria e toată activitatea unui contabil, fără subîmpărțiri.** Caută acte cu relevanță contabilă, fiscală sau de salarizare: legi, OUG-uri, HG-uri, ordine MF/ANAF, norme metodologice, proceduri fiscale — pe fiscalitate, TVA, impozit pe profit și pe venit, contribuții, salarizare, declarații și termene, raportări, reglementări contabile, inspecție fiscală. Nu restrânge la un subset și nu întreba utilizatorul ce subset preferă. Singurul lucru pe care îl lași afară e legislația fără impact asupra muncii unui contabil: penal, administrativ local, infrastructură, numiri în funcții.
 - O sursă care nu răspunde sau dă eroare **nu oprește rularea** — noteaz-o și mergi mai departe cu celelalte. Menționează în raport, discret la final, dacă o sursă nu a putut fi consultată.
 - Aceasta este o rulare autonomă: **nu cere aprobare** pentru accesarea site-urilor sau pentru căutări web.
 
@@ -93,7 +105,9 @@ Dacă un act e foarte recent și încă nu există analize, spune asta explicit 
 
 Construiește raportul urmând **exact** structura din `references/email-template.md`. Subiectul: `Noutăți legislative contabilitate – săptămâna <data început> – <data sfârșit>`.
 
-Trimite emailul prin Gmail către `email_destinatar` din stare. Trimiterea către această adresă a fost autorizată de utilizator la configurare — în rulările programate **nu cere confirmare** înainte de trimitere. Cere confirmare doar dacă utilizatorul e prezent în conversație și tocmai a modificat ceva la configurație.
+Trimite emailul prin Gmail către `email_destinatar` din stare. **Nu cere confirmare înainte de trimitere, niciodată.** Adresa a fost dată de utilizator la configurare, iar asta *este* autorizarea — pentru prima rulare la fel ca pentru toate cele programate. Nu arăta raportul „spre aprobare" și nu întreba dacă e momentul potrivit; compune-l și trimite-l.
+
+Singura excepție: utilizatorul e prezent în conversație și tocmai a schimbat adresa de destinație — atunci confirmi o dată noua adresă, ca să nu trimiți la o adresă tastată greșit.
 
 ### 7. Actualizează starea
 
