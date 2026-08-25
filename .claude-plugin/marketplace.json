@@ -1,6 +1,6 @@
 {
   "name": "lacramioara-conta",
-  "description": "Plugin-uri pentru cabinetul de contabilitate — monitorizare legislativă.",
+  "description": "Plugin-uri pentru cabinetul de contabilitate — monitorizare legislativă și import de încasări în Saga.",
   "owner": {
     "name": "Adrian Barna"
   },
@@ -9,6 +9,11 @@
       "name": "monitorizare-legislativa",
       "source": "./",
       "description": "Monitorizare săptămânală a legislației contabile românești cu raport detaliat pe email."
+    },
+    {
+      "name": "incasari-saga",
+      "source": "./incasari-saga",
+      "description": "Borderourile de ramburs Cargus / Packeta devin XML de import pentru Saga, cu factura legată de fiecare încasare."
     }
   ]
 }

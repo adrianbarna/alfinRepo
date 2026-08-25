@@ -1,5 +1,11 @@
 # Monitorizare Legislație Contabilă
 
+> Repo-ul găzduiește **două plugin-uri**, ambele din aceeași sursă
+> `adrianbarna/contaLacramioara`: **Monitorizare legislativă** (mai jos) și
+> **[Încasări Saga](incasari-saga/README.md)** — borderourile de ramburs Cargus /
+> Packeta transformate în XML de import pentru Saga. Sursa se adaugă o singură dată;
+> plugin-urile se activează separat.
+
 Plugin pentru Claude (Cowork / Claude Code) care monitorizează **săptămânal** legislația contabilă și fiscală din România și trimite un **raport detaliat pe email** cu noutățile apărute și interpretările specialiștilor.
 
 ## Ce face
@@ -80,7 +86,7 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 ## Cum funcționează în spate (pentru administrator)
 
 - Skill-ul își ține configurația și istoricul într-un fișier numit `monitorizare-legislativa-state.json` (adresa destinatar, ritmul de rulare, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori). Implicit stă în `~/.claude/monitorizare-legislativa/`, dar în mediile unde sistemul de fișiere se resetează între sesiuni, la prima rulare vi se cere un loc care persistă, de exemplu un folder în Google Drive. Numele fișierului e fix, ca să poată fi regăsit prin căutare oriunde ar fi salvat.
-- **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar plugin-ul e livrat prin cale relativă (`"source": "./"`) din același repo.
+- **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar plugin-ul e livrat prin cale relativă (`"source": "./"`) din același repo. Al doilea plugin, `incasari-saga`, stă în subfolderul cu același nume (`"source": "./incasari-saga"`).
 - **De ce cale relativă și nu arhivă zip**: validatorul din Settings → Plugins nu acceptă tipul de sursă `archive` — recunoaște repo-ul, dar sincronizarea eșuează. Cu marketplace-ul clonat, calea relativă se rezolvă corect. Compromisul: instalarea din terminal cere git local.
 - **GitLab nu funcționează pentru această cale.** Dialogul de adăugare validează adresa server-side ca repo GitHub și respinge orice adresă GitLab, indiferent de formă — repo, `.git` sau raw.
 - **Actualizări**: două condiții, ambele obligatorii. Câmpul `version` din `.claude-plugin/plugin.json` trebuie incrementat la fiecare release, altfel push-ul nu e văzut ca schimbare. Și `Sync automatically` trebuie pornit la client, în meniul `···` al marketplace-ului — **nu vine pornit din oficiu**, iar fără el plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără avertisment. Meniul afișează `Synced commit`, util pentru diagnostic: comparați-l cu ultimul commit de pe GitHub.

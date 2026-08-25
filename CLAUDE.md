@@ -4,20 +4,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Ce este acest repo
 
-Un **plugin Claude Code**, nu o aplicație. Nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt patru fișiere Markdown care descriu comportamentul unui agent de veghe legislativă pentru un cabinet de contabilitate din România.
+Un **marketplace Claude Code cu două plugin-uri**, nu o aplicație:
 
-Consecința practică: **a edita acest repo înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
+| Plugin | Unde | Ce e „sursa" |
+|---|---|---|
+| `monitorizare-legislativa` | rădăcina repo-ului (`"source": "./"`) | patru fișiere Markdown |
+| `incasari-saga` | `incasari-saga/` | Markdown **plus** un script Python |
+
+Pentru **monitorizare-legislativa** nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt fișierele Markdown care descriu comportamentul unui agent de veghe legislativă. Consecința practică: **a edita acea parte înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
+
+Pentru **incasari-saga** e invers: conversia e făcută de `skills/incasari-cargus/scripts/proceseaza.py`, cod determinist, verificabil. Skill-ul doar îl rulează și rezumă raportul. **Nu genera XML de mână și nu citi borderourile cu alte unelte** — un borderou are sute de rânduri.
 
 Textul e integral în română, inclusiv comentariile și mesajele de commit. Păstrează limba.
 
 ## Comenzi
 
 ```bash
-claude plugin validate ./     # singura verificare automată: manifestele
-claude --plugin-dir .         # încarcă plugin-ul local, fără instalare
+claude plugin validate ./                 # marketplace.json + plugin-ul din rădăcină
+claude plugin validate ./incasari-saga    # manifestul celui de-al doilea plugin
+claude --plugin-dir .                     # încarcă plugin-ul local, fără instalare
 ```
 
 Nu există build, lint sau teste. `claude plugin validate` verifică doar `.claude-plugin/*.json`, niciodată conținutul instrucțiunilor.
+
+Pentru `incasari-saga` există totuși o verificare reală: o rulare de probă pe borderoul de referință, descrisă în secțiunea „Verificare".
 
 ## Cinci nume diferite pentru același lucru
 
@@ -25,16 +35,20 @@ Sursă frecventă de confuzie:
 
 | Ce | Unde e definit | Valoare |
 |---|---|---|
-| Nume plugin | `plugin.json` | `monitorizare-legislativa` |
 | Nume marketplace | `marketplace.json` | `lacramioara-conta` |
-| Nume skill | folderul + frontmatter | `contaChangeSkill` |
 | Repo GitHub | remote `github` | `adrianbarna/contaLacramioara` |
-| Instalare | — | `monitorizare-legislativa@lacramioara-conta` |
-| Invocare | — | `/monitorizare-legislativa:contaChangeSkill` |
+| Nume plugin 1 | `.claude-plugin/plugin.json` | `monitorizare-legislativa` |
+| Nume skill 1 | folderul + frontmatter | `contaChangeSkill` |
+| Instalare 1 | — | `monitorizare-legislativa@lacramioara-conta` |
+| Invocare 1 | — | `/monitorizare-legislativa:contaChangeSkill` |
+| Nume plugin 2 | `incasari-saga/.claude-plugin/plugin.json` | `incasari-saga` |
+| Nume skill 2 | folderul + frontmatter | `incasari-cargus` |
+| Instalare 2 | — | `incasari-saga@lacramioara-conta` |
+| Invocare 2 | — | `/incasari-saga:incasari-cargus` |
 
 ## Protocol de release
 
-**Incrementează `version` în `.claude-plugin/plugin.json` la fiecare modificare.** Fără asta, push-ul nu ajunge niciodată la client — sistemul nu-l vede ca schimbare. Nu e opțional și nu dă niciun avertisment când e omis.
+**Incrementează `version` în `plugin.json`-ul plugin-ului modificat, la fiecare modificare.** Fără asta, push-ul nu ajunge niciodată la client — sistemul nu-l vede ca schimbare. Nu e opțional și nu dă niciun avertisment când e omis. Cele două plugin-uri au versiuni independente: `.claude-plugin/plugin.json` pentru monitorizare, `incasari-saga/.claude-plugin/plugin.json` pentru încasări.
 
 Push pe remote-ul **`github`**, care e sursa de adevăr. `origin` e un GitLab vechi, rămas în urmă și care respinge push-ul; nu te baza pe el.
 
@@ -44,6 +58,7 @@ La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din
 
 Documentate pe larg în README, secțiunea „Cum funcționează în spate". Pe scurt, ca să nu fie reintroduse din greșeală:
 
+- **Al doilea plugin stă într-un subfolder**, `"source": "./incasari-saga"`. Plugin-ul din rădăcină a rămas la `"source": "./"` intenționat: mutarea lui într-un subfolder ar schimba sursa unei instalări care merge deja. Consecință: instalarea plugin-ului de monitorizare aduce și folderul `incasari-saga/` — inofensiv, doar fișiere.
 - **`"source": "./"` în `marketplace.json` e obligatoriu.** Tipul `archive` (zip peste HTTPS) e recunoscut de Claude Code CLI, dar validatorul server-side de la claude.ai îl respinge: găsește repo-ul, apoi sincronizarea eșuează fără explicație.
 - **GitLab nu funcționează** pentru instalarea din claude.ai. Validatorul rezolvă adresa ca repo GitHub și respinge orice formă GitLab — repo, `.git` sau raw.
 - Compromisul acceptat: cu cale relativă, instalarea din terminal clonează repo-ul, deci acolo e nevoie de git local. Instalarea din Settings nu are nevoie — clonarea se face pe serverele Anthropic.
@@ -56,6 +71,14 @@ Documentate pe larg în README, secțiunea „Cum funcționează în spate". Pe 
 - **pasul 6** → `references/email-template.md`, contractul de ieșire: structura raportului și regulile de redactare.
 
 Când modifici un comportament, verifică dacă e descris în mai multe locuri. Regulile despre ce intră în email există și în SKILL.md, și în email-template.md — o contradicție între ele s-a manifestat deja în producție.
+
+## `incasari-saga`: unde stau lucrurile
+
+- `incasari-saga/skills/incasari-cargus/SKILL.md` — fluxul conversațional.
+- `incasari-saga/skills/incasari-cargus/scripts/proceseaza.py` — toată logica. Fără dependințe externe: `.xlsx` e citit direct cu `zipfile` + `ElementTree`, ca să meargă pe orice PC cu `python3`.
+- **Configurația nu stă în plugin.** Se scrie în `~/.claude/incasari-saga/config.json`, pentru că folderul plugin-ului e rescris la fiecare actualizare. Poate fi mutată cu variabila de mediu `INCASARI_CONFIG`.
+- Scriptul merge în două așezări: instalat ca plugin (rădăcină de proiect inexistentă, căi absolute în config) și copiat într-un proiect la `<proiect>/.claude/skills/incasari-cargus/` (căi relative la proiect, config lângă skill). `_radacina_proiect()` face distincția după numele folderelor părinte — **dacă muți skill-ul, se rup căile relative.**
+- **Sursa de adevăr e plugin-ul.** Copia din proiectul de lucru al clientului (`incasari/.claude/skills/incasari-cargus/`) trebuie ținută identică; altfel cele două diverg în tăcere.
 
 ## Invariante care nu trebuie stricate
 
@@ -75,7 +98,26 @@ Fiecare vine dintr-un eșec real. Nu le slăbi fără motiv explicit.
 
 **Starea se salvează abia după ce emailul a plecat.** Dacă trimiterea eșuează, starea rămâne neatinsă și rularea următoare reia aceleași acte.
 
+**La încasări, toleranța la sumă nu se strânge la egalitate strictă.** Borderoul și factura diferă frecvent cu un ban: pe un borderou real, doar 129 din 216 totaluri coincid exact, 85 diferă cu 0,01. Cu egalitate strictă s-ar sări ~40% din rânduri.
+
+**Numele e control secundar, nu cheie.** Cheia e `RefExp1` = `inf_suplm`. Căutarea după nume e strict rezervă: folosită în paralel cu cheia, un omonim cu aceeași sumă face ambiguă o potrivire deja sigură. Un nume care diferă dă doar avertisment — pe colet e persoana, pe factură firma.
+
+**Un rând sărit e raportat, nu înghițit.** Inclusiv când *toate* rândurile sunt sărite: atunci nu se scrie niciun XML, dar raportul trebuie totuși compus și trimis — e cazul în care utilizatorul are cel mai mult de verificat.
+
 ## Verificare
+
+### `incasari-saga`
+
+Rulare de probă pe borderoul de referință din proiectul clientului:
+
+```bash
+python3 incasari-saga/skills/incasari-cargus/scripts/proceseaza.py \
+  --dry-run --reproceseaza "Cargus Packeta Iulie 2026.xlsx"
+```
+
+Rezultat așteptat: **219 linii, total 26569.26 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.10 / 6334.61 / 6951.29 / 6105.26, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, și 15 avertismente: 8 de nume, 3 de storno, 2 de sumă (0,08 și 0,02) și 2 de lungime `RefExp1`.
+
+### `monitorizare-legislativa`
 
 Nu există teste automate; singura verificare reală e o rulare live cu Gmail conectat.
 
