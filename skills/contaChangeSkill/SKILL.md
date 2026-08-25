@@ -100,7 +100,7 @@ Apoi, fără alte întrebări:
 
 ### Ce NU întrebi niciodată
 
-- **Ce domenii sau arii îl interesează.** Îl interesează toate schimbările cu impact asupra activității unui contabil — fiscalitate, TVA, impozite, salarizare, contribuții, declarații, proceduri fiscale, raportări, reglementări contabile. Aria e fixă, definită la pasul 3; nu o restrânge și nu cere utilizatorului s-o restrângă.
+- **Ce domenii sau arii îl interesează.** Îl interesează toate schimbările cu impact asupra activității unui contabil — fiscalitate, TVA, impozite, salarizare, contribuții, declarații, proceduri fiscale, raportări, reglementări contabile. Aria e fixă, definită la pasul 3, și nu se negociază cu utilizatorul. Asta nu slăbește filtrul de relevanță contabilă de la pasul 3 — el rămâne strict.
 - **Ce surse să monitorizeze.** Lista din `references/surse.md` e completă și verificată; se ajustează ulterior prin `surse_extra` / `surse_dezactivate`.
 - **Dacă are voie să trimită emailul.** Adresa dată la punctul 1 *este* autorizarea.
 
@@ -118,7 +118,14 @@ Dacă mediul nu oferă deloc un mecanism de task-uri programate:
 
 ### 3. Colectează noutățile
 
-Perioada de interes: de la `ultima_rulare` până azi.
+**Perioada e exact de la `ultima_rulare` până azi.** O citești din fișierul de stare; nu o alegi tu.
+
+Nu lărgi fereastra. Nici „ca să fim siguri", nici ca să prinzi ce s-ar fi putut rata, nici pentru că o săptămână pare puțin. Actele mai vechi au fost deja raportate — a le relua înseamnă exact dubla raportare pe care fișierul de stare există ca s-o prevină.
+
+Cazuri limită:
+- `ultima_rulare` lipsește sau nu se poate citi, dar fișierul de stare există → folosește `interval_rulare` (implicit 7 zile), nu mai mult;
+- fereastra iese sub o zi, pentru că ultima rulare a fost recent → e în regulă, raportează ce e nou în intervalul acela sau nimic;
+- doar **prima** rulare folosește o fereastră mai lungă, și doar pe cea aleasă de utilizator la configurare.
 
 Citește `references/surse.md` pentru lista surselor și metoda de acces potrivită fiecăreia (unele site-uri blochează accesul direct și se interoghează prin căutare web). Sursele sunt grupate pe trei niveluri — parcurge **toate**, în ordine:
 
@@ -130,7 +137,13 @@ Nu sări peste secțiunea „Surse verificate ca inaccesibile" din `surse.md` �
 
 Reguli importante:
 
-- **Aria e toată activitatea unui contabil, fără subîmpărțiri.** Caută acte cu relevanță contabilă, fiscală sau de salarizare: legi, OUG-uri, HG-uri, ordine MF/ANAF, norme metodologice, proceduri fiscale — pe fiscalitate, TVA, impozit pe profit și pe venit, contribuții, salarizare, declarații și termene, raportări, reglementări contabile, inspecție fiscală. Nu restrânge la un subset și nu întreba utilizatorul ce subset preferă. Singurul lucru pe care îl lași afară e legislația fără impact asupra muncii unui contabil: penal, administrativ local, infrastructură, numiri în funcții.
+- **Filtrează strict pe relevanță contabilă.** Testul, pentru fiecare act: *schimbă ceva în munca unui contabil din România?* Dacă nu, îl lași afară — indiferent cât de important e actul în sine. Un act major de infrastructură sau de sănătate rămâne în afara raportului.
+
+  Ce intră: fiscalitate, TVA, impozit pe profit și pe venit, contribuții, salarizare, declarații și termene, raportări, reglementări contabile, proceduri fiscale, inspecție fiscală. Ca formă: legi, OUG-uri, HG-uri, ordine MF/ANAF, norme metodologice.
+
+  Ce nu intră, oricât de vizibil ar fi în presă: penal, administrativ local, infrastructură, mediu, educație, sănătate, energie, numiri în funcții, titluri și distincții, concesiuni, urbanism.
+
+  „Fără subîmpărțiri" înseamnă că **în interiorul** ariei contabile nu alegi un subset preferat — nu că nu filtrezi. Filtrul de relevanță contabilă e cel mai important lucru pe care îl faci la acest pas: un raport plin de acte irelevante e mai rău decât unul scurt.
 - O sursă care nu răspunde sau dă eroare **nu oprește rularea** — treci la căutare web cu `site:<domeniu>` și mergi mai departe. Blocajele sunt normale și așteptate: gov.ro, ceccar.ro și avocatnet.ro refuză frecvent accesul direct. **Nu raporta asta nicăieri** — nici în email, nici, la rulările programate, în conversație. E funcționare normală, nu incident.
 - Aceasta este o rulare autonomă: **nu cere aprobare** pentru accesarea site-urilor sau pentru căutări web.
 
