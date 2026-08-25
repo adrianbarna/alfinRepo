@@ -27,9 +27,19 @@ folderul plugin-ului e rescris la fiecare actualizare. Nu o edita de mână: o s
 comenzile `--set-*`.
 
 Fiecare rând de borderou e legat de **factura lui** din folderul de facturi (exportul
-XML din Saga). `<FacturaNumar>` primește `nr_iesire` de pe factură. Un rând care nu
-poate fi legat sigur de o factură **nu intră în XML** — ajunge în raportul trimis pe
-e-mail, ca să fie verificat manual.
+XML din Saga). `<FacturaNumar>` primește `nr_iesire` de pe factură, iar `<Suma>` ia
+valoarea **de pe factură**, ca factura să se stingă exact. Un rând care nu poate fi
+legat sigur de o factură **nu intră în XML** — ajunge în raportul trimis pe e-mail,
+ca să fie verificat manual.
+
+Structura de lucru: **valuta e dată de folder, sursa nu are folder**. Cargus și eMAG
+stau împreună; formatul se recunoaște după coloane.
+
+```
+borderouri/ron/  .xlsx  +  procesate/      facturi/  exporturile XML din Saga
+borderouri/eur/  .xlsx  +  procesate/
+borderouri/huf/  .xlsx  +  procesate/
+```
 
 ## Regula de aur
 
@@ -44,11 +54,15 @@ Rolul tău: rulezi scriptul și rezumi raportul în chat, în română.
 ### 1. Prima rulare (sau config lipsă)
 
 Rulează scriptul. Dacă iese cu **codul 2**, nu știe unde sunt borderourile.
-Întreabă utilizatorul unde le ține (folderul RON) — **nu ghici calea** — apoi:
+Întreabă utilizatorul unde le ține — **nu ghici calea** — apoi, câte o rulare per valută:
 
 ```bash
-python3 <skill-dir>/scripts/proceseaza.py --set-folder "<calea dată de utilizator>"
+python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
+python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda EUR
+python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda HUF
 ```
+
+RON merge pe contul 5125, EUR și HUF pe 5126. Configurează doar valutele care există.
 
 Calea aflată în interiorul proiectului se salvează relativ (ex. `ro`), ca skill-ul
 să meargă și pe alt PC fără reconfigurare. După `--set-folder`, rulează normal.
@@ -160,6 +174,11 @@ Windows-1252). Câmpurile folosite: `nr_iesire`, `denumire`, `total`, `inf_suplm
    tăcut; între 0,02 și 0,10 trec, dar cu avertisment; peste 0,10 factura **nu** e
    considerată confirmată. Totalul departajează și când același `RefExp1` are mai
    multe facturi (tipic: factura inițială plus stornarea ei).
+
+   **În valută nu poate confirma nimic:** exportul de facturi nu are câmp de valută,
+   `total` e în lei, iar `curs_ref` e zero la aproape toate. Atunci departajează semnul
+   (o stornare nu e o încasare pozitivă), `<Suma>` rămâne suma din borderou, iar
+   raportul spune o dată, agregat, la câte linii nu s-a putut verifica.
 3. **Numele e al doilea control**, comparat fără diacritice, fără majuscule și fără
    să conteze ordinea sau forma juridică (SRL, PFA…). Dacă diferă, rândul **intră**
    în XML cu un avertisment — e normal ca pe colet să fie persoana și pe factură firma
@@ -197,6 +216,11 @@ neconfirmat pentru Cargus.
 - rânduri **sărite** — lipsește `Data OP`, `Suma`, `Destinatar` sau `RefExp1`, suma nu
   se poate interpreta, ori nu s-a găsit o factură sigură. Raportul spune numărul
   rândului din Excel și cât lipsește din total, ca nimic să nu se piardă în tăcere;
+- **exporturi de facturi care se contrazic** — aceeași factură cu alt total în două
+  exporturi. Câștigă exportul cu perioada mai târzie, dar diferența e semnalată;
+- **un export de facturi lipsă** — când multe rânduri nu găsesc nicio factură, raportul
+  spune ce perioadă acoperă exporturile și că probabil lipsește unul. Atunci: aduci
+  exportul și rulezi `--reproceseaza` pe borderoul respectiv;
 - factura găsită doar după nume, nume diferit față de factură, sumă diferită de total
   cu mai mult de 0,01, `RefExp1` care are și factură de storno.
 

@@ -10,9 +10,10 @@ La fiecare rulare:
 
 1. Se uită în folderul cu borderouri și ia **doar fișierele noi** — ține minte ce a
    procesat deja, deci poate fi rulat oricând fără să dubleze nimic.
-2. Pentru fiecare rând, caută factura în exportul XML de facturi din Saga. Cheia e
+2. Pentru fiecare rând, caută factura în exporturile XML de facturi din Saga. Cheia e
    numărul de expediție (`RefExp1` = `inf_suplm`); **numele și totalul confirmă**
-   potrivirea. Numărul facturii (`nr_iesire`) intră în `<FacturaNumar>`.
+   potrivirea. Numărul facturii (`nr_iesire`) intră în `<FacturaNumar>`, iar suma
+   încasată e luată **de pe factură**, ca factura să se stingă exact.
 3. Scrie un XML per borderou, gata de importat.
 4. Rândurile care **nu** pot fi legate sigur de o factură nu intră în XML — ajung
    într-un raport trimis pe email, cu motiv, sumă și numărul rândului din Excel.
@@ -51,11 +52,22 @@ La prima rulare vi se cer trei lucruri, o singură dată:
 
 | Ce vă întreabă | De ce |
 |---|---|
-| Folderul cu borderourile `.xlsx` | de acolo citește fișierele noi |
+| Folderul cu borderourile `.xlsx`, per valută | de acolo citește fișierele noi |
 | Folderul cu exportul XML de facturi din Saga | de acolo ia numerele de factură |
 | Adresa (sau adresele) de email pentru raport | acolo ajung rândurile de verificat |
 
 Răspunsurile se salvează în `~/.claude/incasari-saga/config.json` și nu mai sunt cerute.
+
+Structura așteptată — **valuta e dată de folder**, sursa nu are folder (Cargus și eMAG
+stau împreună, formatul se recunoaște după coloane):
+
+```
+borderouri/ron/   .xlsx  +  procesate/        facturi/   exporturile XML din Saga
+borderouri/eur/   .xlsx  +  procesate/
+borderouri/huf/   .xlsx  +  procesate/
+```
+
+RON merge pe contul 5125, EUR și HUF pe 5126. Configurați doar valutele care există.
 
 <details>
 <summary>Instalare din terminal, pentru administratori</summary>
@@ -85,7 +97,8 @@ Dacă sumarul spune `Run /reload-plugins to activate.`, rulați și `/reload-plu
    referință se potrivește pe toate cele 219 rânduri.
 2. **Totalul confirmă**, cu toleranță: diferențele de un ban sunt rotunjiri normale și
    trec tăcut, până la 10 bani trec cu avertisment, peste — factura nu e considerată
-   confirmată. (Pe un borderou real, doar 129 din 216 totaluri coincid exact.)
+   confirmată. (Pe un borderou real, doar 129 din 216 totaluri coincid exact.) În lei,
+   suma care intră în XML e **cea de pe factură**.
 3. **Numele e al doilea control**, fără diacritice, fără majuscule, fără să conteze
    ordinea sau forma juridică. Dacă diferă, rândul **intră** în XML cu un avertisment —
    e normal ca pe colet să fie persoana și pe factură firma.
@@ -103,7 +116,11 @@ când rămân mai multe la fel de plauzibile.
 - sumă diferită de totalul facturii cu mai mult de un ban;
 - număr de expediție care are și **factură de storno** — banii au intrat, dar factura e
   anulată;
-- rânduri incomplete în borderou, numere de expediție duplicate sau de lungime atipică.
+- rânduri incomplete în borderou, numere de expediție duplicate sau de lungime atipică;
+- **exporturi de facturi care se contrazic** — aceeași factură cu alt total în două
+  exporturi; câștigă exportul cu perioada mai târzie, iar diferența e semnalată;
+- **un export de facturi lipsă** — raportul spune ce perioadă acoperă exporturile
+  existente, în loc să înșire sute de rânduri nepotrivite.
 
 ## Pentru administrator
 
@@ -115,6 +132,11 @@ când rămân mai multe la fel de plauzibile.
   ca să supraviețuiască actualizărilor. Poate fi mutată cu variabila `INCASARI_CONFIG`.
 - **Emailul nu e trimis de script.** Scriptul compune raportul; plugin-ul îl trimite cu
   conectorul Gmail, după confirmarea de la prima trimitere.
-- **Valute:** RON → cont 5125. Structura acceptă și alte valute (cont 5126), dar
-  maparea nu a fost verificată pe un borderou real în valută.
+- **Valute:** RON → 5125, EUR și HUF → 5126. Exportul de facturi **nu are câmp de
+  valută** (`total` e în lei, `curs_ref` e zero la aproape toate), deci în valută
+  totalul facturii nu poate confirma potrivirea: departajează semnul, `<Suma>` rămâne
+  suma din borderou, iar raportul o spune agregat. Maparea în valută nu a fost încă
+  verificată pe un borderou real.
+- **Exporturile de facturi se acumulează** și pot acoperi perioade oricât de lungi;
+  perioada se deduce din conținut, nu din numele fișierului.
 - Logica completă: [skills/incasari-cargus/SKILL.md](skills/incasari-cargus/SKILL.md).

@@ -345,16 +345,25 @@ def citeste_facturi_xml(cale):
             "total": normalizeaza_suma(camp("total")),
             "inf_suplm": camp("inf_suplm"),
             "data": camp("data"),
+            "curs_ref": normalizeaza_suma(camp("curs_ref")),
             "sursa": cale.name,
         })
     return facturi
 
 
 def incarca_facturi(folder):
-    """Indexeaza toate XML-urile din folder dupa inf_suplm (= RefExp1) si dupa nume."""
-    idx = {"dupa_inf": {}, "dupa_nume": {}, "numar": 0, "fisiere": [], "erori": []}
-    vazute = set()
-    for cale in sorted(folder.iterdir()):
+    """Indexeaza toate exporturile din folder (si subfoldere) dupa inf_suplm si nume.
+
+    Exporturile se suprapun: unul poate acoperi mai multe luni, iar aceeasi factura
+    poate aparea in doua. Castiga exportul a carui perioada se termina mai tarziu;
+    daca versiunile difera, se semnaleaza - o factura corectata in tacere e mai rea
+    decat una raportata.
+    """
+    idx = {"dupa_inf": {}, "dupa_nume": {}, "numar": 0, "fisiere": [], "erori": [],
+           "de_la": None, "pana_la": None, "corectate": []}
+
+    exporturi = []
+    for cale in sorted(folder.rglob("*")):
         if not cale.is_file() or cale.suffix.lower() != ".xml" or cale.name.startswith("~$"):
             continue
         try:
@@ -362,18 +371,47 @@ def incarca_facturi(folder):
         except Exception as exc:
             idx["erori"].append("%s: %s" % (cale.name, exc))
             continue
-        idx["fisiere"].append(cale.name)
-        for f in facturi:
-            if f["nr_iesire"] in vazute:  # acelasi export livrat de doua ori
-                continue
-            vazute.add(f["nr_iesire"])
-            if f["inf_suplm"]:
-                idx["dupa_inf"].setdefault(f["inf_suplm"], []).append(f)
-            k = cheie_nume(f["denumire"])
-            if k:
-                idx["dupa_nume"].setdefault(k, []).append(f)
+        date = sorted(f["data"] for f in facturi if f["data"])
+        exporturi.append({"nume": cale.name, "facturi": facturi,
+                          "de_la": date[0] if date else "",
+                          "pana_la": date[-1] if date else ""})
+
+    idx["fisiere"] = [e["nume"] for e in exporturi]
+    exporturi.sort(key=lambda e: (e["pana_la"], e["nume"]))
+
+    vazute = {}
+    for e in exporturi:
+        for f in e["facturi"]:
+            veche = vazute.get(f["nr_iesire"])
+            if veche is not None and (veche["total"] != f["total"]
+                                      or veche["denumire"] != f["denumire"]):
+                idx["corectate"].append(
+                    "factura %s difera intre exporturi: %s '%s' in %s -> %s '%s' in %s "
+                    "(se foloseste a doua)"
+                    % (f["nr_iesire"], veche["total"], veche["denumire"], veche["sursa"],
+                       f["total"], f["denumire"], f["sursa"]))
+            vazute[f["nr_iesire"]] = f
+
+    for f in vazute.values():
+        if f["inf_suplm"]:
+            idx["dupa_inf"].setdefault(f["inf_suplm"], []).append(f)
+        k = cheie_nume(f["denumire"])
+        if k:
+            idx["dupa_nume"].setdefault(k, []).append(f)
+
+    toate = [f["data"] for f in vazute.values() if f["data"]]
+    if toate:
+        idx["de_la"], idx["pana_la"] = min(toate), max(toate)
     idx["numar"] = len(vazute)
     return idx
+
+
+def perioada_facturi(idx):
+    """'01.05.2026-31.07.2026' sau '' daca nu se stie."""
+    if not idx or not idx.get("de_la"):
+        return ""
+    return "%s-%s" % (normalizeaza_data(idx["de_la"]) or idx["de_la"],
+                      normalizeaza_data(idx["pana_la"]) or idx["pana_la"])
 
 
 def _dupa_nume(dest, idx):
@@ -387,8 +425,25 @@ def _dupa_nume(dest, idx):
     return [f for kf, lst in idx["dupa_nume"].items() if k < kf for f in lst]
 
 
-def alege_factura(ref, dest, suma, idx):
-    """-> (factura | None, avertismente, motiv_esec | None).
+def suma_comparabila(f, moneda):
+    """Totalul facturii adus in valuta borderoului, sau None daca nu se poate.
+
+    Exportul de facturi nu are camp de valuta: `total` e in lei, iar `curs_ref` e 0
+    la aproape toate. Pentru un borderou in valuta, totalul devine comparabil doar
+    daca factura are curs; altfel suma pur si simplu nu poate confirma nimic.
+    """
+    if f["total"] is None:
+        return None
+    if moneda == "RON":
+        return f["total"]
+    curs = f.get("curs_ref")
+    if curs and curs > 0:
+        return (f["total"] / curs).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    return None
+
+
+def alege_factura(ref, dest, suma, idx, moneda="RON"):
+    """-> (factura | None, suma_de_scris, avertismente, motiv_esec | None).
 
     Cheia e RefExp1 = inf_suplm; numele si totalul doar confirma. Cautarea dupa nume
     e strict rezerva, pentru cand RefExp1 nu duce nicaieri - altfel un omonim cu
@@ -398,12 +453,20 @@ def alege_factura(ref, dest, suma, idx):
     av = []
 
     def dif(f):
-        return abs(f["total"] - suma) if f["total"] is not None else None
+        comp = suma_comparabila(f, moneda)
+        return abs(comp - suma) if comp is not None else None
 
     def filtreaza(candidati):
-        buni = [f for f in candidati if dif(f) is not None and dif(f) <= TOL_MAX]
+        cu_dif = [(f, dif(f)) for f in candidati]
+        if cu_dif and all(d is None for _, d in cu_dif):
+            # Suma nu poate departaja, dar semnul da: o stornare nu poate fi incasarea
+            # unui ramburs pozitiv. Asa raman separabile perechile factura + storno.
+            acelasi_semn = [f for f, _ in cu_dif if f["total"] is None
+                            or (f["total"] < 0) == (suma < 0)]
+            return acelasi_semn or [f for f, _ in cu_dif]
+        buni = [f for f, d in cu_dif if d is not None and d <= TOL_MAX]
         if len(buni) > 1:
-            exacte = [f for f in buni if f["total"] == suma]
+            exacte = [f for f, d in cu_dif if d == 0]
             if len(exacte) == 1:
                 return exacte
         return buni
@@ -422,11 +485,11 @@ def alege_factura(ref, dest, suma, idx):
     if not buni:
         if dupa_ref:
             detaliu = ", ".join("%s = %s" % (f["nr_iesire"], f["total"]) for f in dupa_ref[:4])
-            return None, av, ("totalul nu confirma factura de pe RefExp1 %s "
-                              "(borderou %s; gasite: %s)" % (ref, suma, detaliu))
-        return None, av, "nicio factura pe RefExp1 %s si niciuna pe numele '%s'" % (ref, dest)
+            return None, suma, av, ("totalul nu confirma factura de pe RefExp1 %s "
+                                    "(borderou %s; gasite: %s)" % (ref, suma, detaliu))
+        return None, suma, av, "nicio factura pe RefExp1 %s si niciuna pe numele '%s'" % (ref, dest)
     if len(buni) > 1:
-        return None, av, "mai multe facturi se potrivesc: %s" % ", ".join(
+        return None, suma, av, "mai multe facturi se potrivesc: %s" % ", ".join(
             f["nr_iesire"] for f in buni)
 
     f = buni[0]
@@ -441,11 +504,22 @@ def alege_factura(ref, dest, suma, idx):
     if not nume_se_potrivesc(dest, f["denumire"]):
         av.append("numele difera: borderou '%s' vs factura %s '%s'"
                   % (dest, f["nr_iesire"], f["denumire"]))
+
+    # In XML intra suma de pe factura, ca factura sa se stinga exact. Doar cand e
+    # exprimata in valuta borderoului: conversia prin curs_ref e neverificata.
+    suma_finala = suma
     d = dif(f)
-    if d is not None and d > TOL_TACITA:
-        av.append("suma difera cu %s: borderou %s vs factura %s (%s)"
-                  % (d, suma, f["total"], f["nr_iesire"]))
-    return f, av, None
+    if d is None:
+        pass  # necomparabil: se raporteaza agregat, nu rand cu rand
+    elif moneda == "RON":
+        suma_finala = f["total"]
+        if d > TOL_TACITA:
+            av.append("suma luata din factura %s: borderou %s -> factura %s (diferenta %s)"
+                      % (f["nr_iesire"], suma, f["total"], d))
+    elif d > TOL_TACITA:
+        av.append("suma difera cu %s fata de factura %s (convertita la cursul %s) - "
+                  "a ramas suma din borderou" % (d, f["nr_iesire"], f["curs_ref"]))
+    return f, suma_finala, av, None
 
 
 # --------------------------------------------------------------------------
@@ -491,6 +565,9 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
         "total": Decimal("0.00"),
         "total_sarit": Decimal("0.00"),
         "pe_data": {},
+        "corectate": 0,
+        "corectie": Decimal("0.00"),
+        "neverificate": 0,
         "eroare": None,
     }
 
@@ -559,7 +636,7 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
 
         factura_nr = ""
         if facturi is not None:
-            factura, av, motiv = alege_factura(ref, dest, suma, facturi)
+            factura, suma_xml, av, motiv = alege_factura(ref, dest, suma, facturi, moneda)
             for a in av:
                 rez["avertismente"].append("randul %d: %s" % (i, a))
             if factura is None:
@@ -569,12 +646,33 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
                 rez["total_sarit"] += suma
                 continue
             factura_nr = factura["nr_iesire"]
+            if suma_comparabila(factura, moneda) is None:
+                rez["neverificate"] += 1
+            if suma_xml != suma:
+                rez["corectate"] += 1
+                rez["corectie"] += suma_xml - suma
+                suma = suma_xml
 
         rez["linii"].append({"rand": i, "Data": data, "Numar": ref, "Suma": suma,
                              "Cont": cont, "Explicatie": "%s - %s" % (PREFIX_EXPLICATIE, dest),
                              "FacturaID": ref, "FacturaNumar": factura_nr, "Moneda": moneda})
         rez["total"] += suma
         rez["pe_data"][data] = rez["pe_data"].get(data, Decimal("0.00")) + suma
+
+    # Multe randuri fara nicio factura, cu borderoul in afara perioadei acoperite:
+    # cauza probabila e un export lipsa, nu sute de potriviri ratate.
+    if rez["neverificate"]:
+        rez["avertismente"].insert(0, (
+            "la %d linii suma nu a putut fi verificata pe factura: borderoul e in %s, "
+            "iar facturile nu au curs - a ramas suma din borderou"
+            % (rez["neverificate"], moneda)))
+
+    negasite = [x for x in rez["sarite"] if x["motiv"].startswith("nicio factura")]
+    if facturi is not None and negasite and len(negasite) >= max(5, (len(rez["linii"]) + len(negasite)) // 5):
+        rez["avertismente"].insert(0, (
+            "%d randuri nu au nicio factura, iar exporturile acopera %s: "
+            "probabil lipseste un export de facturi"
+            % (len(negasite), perioada_facturi(facturi) or "o perioada necunoscuta")))
 
     # RefExp1 in afara tiparului dominant de lungime
     lungimi = {}
@@ -803,7 +901,9 @@ def main(argv=None):
     adrese = normalizeaza_email((cfg or {}).get("email"))
     raport = {"stare": "ok", "dry_run": a.dry_run, "foldere": [],
               "facturi": ({"cale": str(dir_facturi), "numar": facturi["numar"],
-                           "fisiere": facturi["fisiere"], "erori": facturi["erori"]}
+                           "fisiere": facturi["fisiere"], "erori": facturi["erori"],
+                           "perioada": perioada_facturi(facturi),
+                           "corectate": facturi["corectate"]}
                           if facturi is not None else None),
               "email": {"catre": adrese, "neconfigurat": not adrese}}
     lipsa = []
@@ -865,6 +965,8 @@ def main(argv=None):
                 "avertismente": rez["avertismente"],
                 "sarite": rez["sarite"],
                 "total_sarit": str(rez["total_sarit"]),
+                "corectate": rez["corectate"],
+                "corectie": str(rez["corectie"]),
             })
 
         raport["foldere"].append(r_folder)
@@ -936,10 +1038,13 @@ def corp_email(raport):
         r.append("MOD DE PROBA (--dry-run): nu s-a scris nimic pe disc.\n")
     fact = raport.get("facturi")
     if fact:
-        r.append("Facturi citite: %d din %s (%s)."
-                 % (fact["numar"], fact["cale"], ", ".join(fact["fisiere"]) or "-"))
+        r.append("Facturi citite: %d din %s (%s), acoperind %s."
+                 % (fact["numar"], fact["cale"], ", ".join(fact["fisiere"]) or "-",
+                    fact["perioada"] or "o perioada necunoscuta"))
         for e in fact["erori"]:
             r.append("  ATENTIE fisier de facturi necitit: %s" % e)
+        for c in fact["corectate"]:
+            r.append("  ATENTIE %s" % c)
     else:
         r.append("Rulare fara legarea facturilor: <FacturaNumar> a ramas gol peste tot.")
     r.append("")
@@ -949,6 +1054,10 @@ def corp_email(raport):
             r.append("%s -> %s" % (p["fisier"], Path(p["xml"]).name))
             r.append("  %d linii importabile, total %s %s"
                      % (p["linii"], p["total"], f["moneda"]))
+            if p.get("corectate"):
+                r.append("  la %d linii suma vine de pe factura, nu din borderou "
+                         "(diferenta totala %s %s)"
+                         % (p["corectate"], p["corectie"], f["moneda"]))
             if len(p["pe_data"]) > 1:
                 r.append("  pe data: " + ", ".join(
                     "%s = %s" % (d, s) for d, s in p["pe_data"].items()))
@@ -974,10 +1083,13 @@ def text_raport(raport):
         r.append("MOD DE PROBA (--dry-run): nu s-a scris nimic pe disc.\n")
     fact = raport.get("facturi")
     if fact:
-        r.append("Facturi: %d din %s (%s)"
-                 % (fact["numar"], fact["cale"], ", ".join(fact["fisiere"]) or "-"))
+        r.append("Facturi: %d din %s (%s), acoperind %s"
+                 % (fact["numar"], fact["cale"], ", ".join(fact["fisiere"]) or "-",
+                    fact["perioada"] or "o perioada necunoscuta"))
         for e in fact["erori"]:
             r.append("  ! fisier de facturi necitit: %s" % e)
+        for c in fact["corectate"]:
+            r.append("  ! %s" % c)
     else:
         r.append("Facturi: nelegate (--fara-facturi), FacturaNumar ramane gol")
     for f in raport["foldere"]:
@@ -987,6 +1099,9 @@ def text_raport(raport):
         for p in f["procesate"]:
             r.append("  + %s -> %s" % (p["fisier"], Path(p["xml"]).name))
             r.append("      %d linii, total %s %s" % (p["linii"], p["total"], f["moneda"]))
+            if p.get("corectate"):
+                r.append("      %d linii cu suma de pe factura (diferenta %s %s)"
+                         % (p["corectate"], p["corectie"], f["moneda"]))
             if len(p["pe_data"]) > 1:
                 r.append("      pe data: " + ", ".join(
                     "%s = %s" % (d, s) for d, s in p["pe_data"].items()))
