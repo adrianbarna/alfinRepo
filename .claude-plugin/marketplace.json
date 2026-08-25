@@ -15,7 +15,7 @@
       "name": "incasari-saga",
       "source": "./incasari-saga",
       "description": "Borderourile de ramburs Cargus / Packeta devin XML de import pentru Saga, cu factura legată de fiecare încasare.",
-      "version": "1.2.0"
+      "version": "1.2.1"
     }
   ]
 }
