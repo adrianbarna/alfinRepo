@@ -7,10 +7,7 @@
   "plugins": [
     {
       "name": "monitorizare-legislativa",
-      "source": {
-        "source": "archive",
-        "url": "https://github.com/adrianbarna/contaLacramioara/archive/refs/heads/main.zip"
-      },
+      "source": "./",
       "description": "Monitorizare săptămânală a legislației contabile românești cu raport detaliat pe email."
     }
   ]
