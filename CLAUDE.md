@@ -8,7 +8,7 @@ Un **marketplace Claude Code cu două plugin-uri**, nu o aplicație:
 
 | Plugin | Unde | Ce e „sursa" |
 |---|---|---|
-| `veghe-legislativa` | rădăcina repo-ului (`"source": "./"`) | patru fișiere Markdown |
+| `veghe-legislativa` | `veghe-legislativa/` | patru fișiere Markdown |
 | `incasari-saga` | `incasari-saga/` | Markdown **plus** un script Python |
 
 Pentru **veghe-legislativa** nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt fișierele Markdown care descriu comportamentul unui agent de veghe legislativă. Consecința practică: **a edita acea parte înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
@@ -20,8 +20,9 @@ Textul e integral în română, inclusiv comentariile și mesajele de commit. P�
 ## Comenzi
 
 ```bash
-claude plugin validate ./                 # marketplace.json + plugin-ul din rădăcină
-claude plugin validate ./incasari-saga    # manifestul celui de-al doilea plugin
+claude plugin validate ./                 # marketplace.json + toate intrările
+claude plugin validate ./veghe-legislativa
+claude plugin validate ./incasari-saga
 claude --plugin-dir .                     # încarcă plugin-ul local, fără instalare
 ```
 
@@ -66,15 +67,15 @@ La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din
 
 Documentate pe larg în README, secțiunea „Cum funcționează în spate". Pe scurt, ca să nu fie reintroduse din greșeală:
 
-- **Al doilea plugin stă într-un subfolder**, `"source": "./incasari-saga"`. Plugin-ul din rădăcină a rămas la `"source": "./"` intenționat: mutarea lui într-un subfolder ar schimba sursa unei instalări care merge deja. Consecință: instalarea plugin-ului de monitorizare aduce și folderul `incasari-saga/` — inofensiv, doar fișiere.
-- **`"source": "./"` în `marketplace.json` e obligatoriu.** Tipul `archive` (zip peste HTTPS) e recunoscut de Claude Code CLI, dar validatorul server-side de la claude.ai îl respinge: găsește repo-ul, apoi sincronizarea eșuează fără explicație.
+- **Fiecare plugin stă în propriul subfolder** (`"source": "./veghe-legislativa"`, `"source": "./incasari-saga"`), iar rădăcina ține doar `marketplace.json`. Pluginul de monitorizare a stat inițial în rădăcină (`"source": "./"`) și a fost mutat: serverul Directory părea să lege artefactul cache-uit și de calea sursei, iar redenumirea singură nu l-a făcut să apară în catalog. Nu mai pune niciun plugin în rădăcină.
+- **Sursele din `marketplace.json` trebuie să fie căi relative.** Tipul `archive` (zip peste HTTPS) e recunoscut de Claude Code CLI, dar validatorul server-side de la claude.ai îl respinge: găsește repo-ul, apoi sincronizarea eșuează fără explicație.
 - **GitLab nu funcționează** pentru instalarea din claude.ai. Validatorul rezolvă adresa ca repo GitHub și respinge orice formă GitLab — repo, `.git` sau raw.
 - Compromisul acceptat: cu cale relativă, instalarea din terminal clonează repo-ul, deci acolo e nevoie de git local. Instalarea din Settings nu are nevoie — clonarea se face pe serverele Anthropic.
 - **Numele pluginului e `veghe-legislativa`; nu reutiliza numele vechi `monitorizare-legislativa`.** Suprafața Directory (claude.ai / Desktop) cache-uiește snapshot-ul instalabil **pe numele pluginului** și nu-l reconstruiește nici la sync, nici la dezinstalare + reinstalare — înregistrarea veche a rămas înghețată pe o versiune depășită, iar redenumirea a fost singura deblocare. Fișierul de stare păstrează **intenționat** numele vechi (`monitorizare-legislativa-state.json`, folderul `~/.claude/monitorizare-legislativa/`), ca starea existentă să nu se piardă — nu-l redenumi odată cu pluginul.
 
 ## Arhitectura celor trei documente
 
-`skills/contaChangeSkill/SKILL.md` e bucla de rulare, în șapte pași. Citește celelalte două la momente precise:
+`veghe-legislativa/skills/contaChangeSkill/SKILL.md` e bucla de rulare, în șapte pași. Citește celelalte două la momente precise:
 
 - **pasul 3** → `references/surse.md`, catalogul surselor, grupat pe trei niveluri: *ce urmează* (ședințe de Guvern, SGG), *ce s-a publicat* (Monitorul Oficial, portalul legislativ), *ce înseamnă pentru contabil* (presa de specialitate). Fișierul conține și o listă de domenii testate ca inaccesibile, cu data verificării — acolo, nu în SKILL.md.
 - **pasul 6** → `references/email-template.md`, contractul de ieșire: structura raportului și regulile de redactare.
