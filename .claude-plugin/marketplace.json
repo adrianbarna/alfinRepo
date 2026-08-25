@@ -9,7 +9,7 @@
       "name": "monitorizare-legislativa",
       "source": "./",
       "description": "Monitorizare săptămânală a legislației contabile românești cu raport detaliat pe email.",
-      "version": "1.10.0"
+      "version": "1.11.0"
     },
     {
       "name": "incasari-saga",
