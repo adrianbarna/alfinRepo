@@ -8,10 +8,10 @@ Un **marketplace Claude Code cu două plugin-uri**, nu o aplicație:
 
 | Plugin | Unde | Ce e „sursa" |
 |---|---|---|
-| `veghe-legislativa` | `veghe-legislativa/` | patru fișiere Markdown |
+| `monitorizare-legislativa` | `veghe-legislativa/` | patru fișiere Markdown |
 | `incasari-saga` | `incasari-saga/` | Markdown **plus** un script Python |
 
-Pentru **veghe-legislativa** nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt fișierele Markdown care descriu comportamentul unui agent de veghe legislativă. Consecința practică: **a edita acea parte înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
+Pentru **monitorizare-legislativa** nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt fișierele Markdown care descriu comportamentul unui agent de veghe legislativă. Consecința practică: **a edita acea parte înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
 
 Pentru **incasari-saga** e invers: conversia e făcută de `skills/incasari-cargus/scripts/proceseaza.py`, cod determinist, verificabil. Skill-ul doar îl rulează și rezumă raportul. **Nu genera XML de mână și nu citi borderourile cu alte unelte** — un borderou are sute de rânduri.
 
@@ -38,10 +38,10 @@ Sursă frecventă de confuzie:
 |---|---|---|
 | Nume marketplace | `marketplace.json` | `lacramioara-conta` |
 | Repo GitHub | remote `github` | `adrianbarna/contaLacramioara` |
-| Nume plugin 1 | `.claude-plugin/plugin.json` | `veghe-legislativa` |
+| Nume plugin 1 | `veghe-legislativa/.claude-plugin/plugin.json` | `monitorizare-legislativa` |
 | Nume skill 1 | folderul + frontmatter | `contaChangeSkill` |
-| Instalare 1 | — | `veghe-legislativa@lacramioara-conta` |
-| Invocare 1 | — | `/veghe-legislativa:contaChangeSkill` |
+| Instalare 1 | — | `monitorizare-legislativa@lacramioara-conta` |
+| Invocare 1 | — | `/monitorizare-legislativa:contaChangeSkill` |
 | Nume plugin 2 | `incasari-saga/.claude-plugin/plugin.json` | `incasari-saga` |
 | Nume skill 2 | folderul + frontmatter | `incasari-cargus` |
 | Instalare 2 | — | `incasari-saga@lacramioara-conta` |
@@ -49,15 +49,11 @@ Sursă frecventă de confuzie:
 
 ## Protocol de release
 
-**Push = release. Nu există câmp `version` și nu trebuie adăugat.** Niciun plugin nu declară `version` — nici în `plugin.json`, nici în intrările din `marketplace.json` — iar asta e **intenționat**, conform recomandării oficiale pentru surse git dezvoltate activ: fără `version`, versiunea e SHA-ul commit-ului, deci fiecare push devine automat o actualizare disponibilă.
+**`version` stă într-un singur loc — `plugin.json`-ul fiecărui plugin — și se incrementează la fiecare release.** Cu `version` declarat, pluginul e *pinned*: un push fără bump **nu ajunge la client, în tăcere**. Bump-ul nu e opțional.
 
-Documentația Anthropic (plugin-marketplaces) e explicită în ambele direcții:
+**Niciodată `version` în intrările din `marketplace.json`.** Documentația oficială interzice dublarea — „Avoid setting `version` in both `plugin.json` and the marketplace entry. Claude Code always uses the `plugin.json` value without warning" — iar când am avut-o, cele două valori au divergat în aceeași zi. `claude plugin validate ./` prinde nepotrivirea; rulează-l înainte de push.
 
-> „For git-based sources, if you omit `version`, Claude Code uses the source's resolved commit SHA, so users get an update whenever that commit changes; this is the simplest setup for internal or actively developed plugins."
-
-> „Avoid setting `version` in both `plugin.json` and the marketplace entry. Claude Code always uses the `plugin.json` value without warning."
-
-Am trecut prin ambele greșeli înainte să ajungem aici: cu `version` declarat, pluginul e **pinned** — push-urile fără bump nu ajung niciodată la client, în tăcere; iar cu `version` în ambele locuri, cele două diverg (s-a întâmplat în aceeași zi în care au fost introduse). **Nu reintroduce câmpul** — nici măcar pentru că `claude plugin validate` afișează avertismentul „No version specified. Consider adding a version": acel avertisment e compromisul asumat și nu e o eroare.
+Alternativa fără `version` (versiunea = SHA-ul commit-ului, push = release) e și ea validă oficial și a fost folosită temporar; dacă bump-ul devine o povară, e calea de simplificare.
 
 Push pe remote-ul **`github`**, care e sursa de adevăr. `origin` e un GitLab vechi, rămas în urmă și care respinge push-ul; nu te baza pe el. Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase github main` înainte de push.
 
@@ -71,7 +67,7 @@ Documentate pe larg în README, secțiunea „Cum funcționează în spate". Pe 
 - **Sursele din `marketplace.json` trebuie să fie căi relative.** Tipul `archive` (zip peste HTTPS) e recunoscut de Claude Code CLI, dar validatorul server-side de la claude.ai îl respinge: găsește repo-ul, apoi sincronizarea eșuează fără explicație.
 - **GitLab nu funcționează** pentru instalarea din claude.ai. Validatorul rezolvă adresa ca repo GitHub și respinge orice formă GitLab — repo, `.git` sau raw.
 - Compromisul acceptat: cu cale relativă, instalarea din terminal clonează repo-ul, deci acolo e nevoie de git local. Instalarea din Settings nu are nevoie — clonarea se face pe serverele Anthropic.
-- **Numele pluginului e `veghe-legislativa`; nu reutiliza numele vechi `monitorizare-legislativa`.** Suprafața Directory (claude.ai / Desktop) cache-uiește snapshot-ul instalabil **pe numele pluginului** și nu-l reconstruiește nici la sync, nici la dezinstalare + reinstalare — înregistrarea veche a rămas înghețată pe o versiune depășită, iar redenumirea a fost singura deblocare. Fișierul de stare păstrează **intenționat** numele vechi (`monitorizare-legislativa-state.json`, folderul `~/.claude/monitorizare-legislativa/`), ca starea existentă să nu se piardă — nu-l redenumi odată cu pluginul.
+- **Cache-ul Directory: nu refolosi sursa `./` și nu muta niciun plugin în rădăcină.** Înregistrarea inițială (nume `monitorizare-legislativa`, sursă `./`) a rămas înghețată pe o versiune depășită, imună la sync, la dezinstalare și la reinstalare; abia o intrare cu **nume și cale noi** a apărut curată. Numele a fost apoi restaurat pe calea nouă `./veghe-legislativa`, ca experiment — dacă acel card reapare vreodată înghețat pe versiunea veche, cheia otrăvită include și numele, iar pluginul se redenumește la loc `veghe-legislativa`. Folderul rămâne `veghe-legislativa/` indiferent de numele pluginului: redenumirea lui ar schimba iar calea sursei. Fișierul de stare (`monitorizare-legislativa-state.json`, `~/.claude/monitorizare-legislativa/`) nu se redenumește niciodată.
 
 ## Arhitectura celor trei documente
 
@@ -127,7 +123,7 @@ python3 incasari-saga/skills/incasari-cargus/scripts/proceseaza.py \
 
 Rezultat așteptat: **219 linii, total 26569.26 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.10 / 6334.61 / 6951.29 / 6105.26, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, și 15 avertismente: 8 de nume, 3 de storno, 2 de sumă (0,08 și 0,02) și 2 de lungime `RefExp1`.
 
-### `veghe-legislativa`
+### `monitorizare-legislativa`
 
 Nu există teste automate; singura verificare reală e o rulare live cu Gmail conectat.
 

@@ -38,7 +38,7 @@ Apăsați **Sync**.
 
 > Fără comutatorul ăsta pornit, plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără niciun avertisment.
 
-**Pasul 2 — Activați plugin-ul.** După sincronizare apare cardul **Veghe legislativa**. Deschideți-l cu rotița din colț și activați-l.
+**Pasul 2 — Activați plugin-ul.** După sincronizare apare cardul **Monitorizare legislativa**. Deschideți-l cu rotița din colț și activați-l.
 
 **Pasul 3 — Conectați Gmail.** În **Settings → Connectors**, alegeți **Gmail** și autorizați accesul. Fără Gmail raportul nu poate fi trimis — asistentul vă spune dacă lipsește și se oprește elegant.
 
@@ -63,7 +63,7 @@ Nu vă întreabă ce domenii vă interesează: raportul acoperă tot ce are impa
 
 ```
 /plugin marketplace add adrianbarna/contaLacramioara
-/plugin install veghe-legislativa@lacramioara-conta
+/plugin install monitorizare-legislativa@lacramioara-conta
 ```
 
 Dacă sumarul spune `Run /reload-plugins to activate.`, rulați și `/reload-plugins`.
@@ -89,7 +89,7 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 - **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar fiecare plugin stă în subfolderul lui și e livrat prin cale relativă: `"source": "./veghe-legislativa"`, respectiv `"source": "./incasari-saga"`.
 - **De ce cale relativă și nu arhivă zip**: validatorul din Settings → Plugins nu acceptă tipul de sursă `archive` — recunoaște repo-ul, dar sincronizarea eșuează. Cu marketplace-ul clonat, calea relativă se rezolvă corect. Compromisul: instalarea din terminal cere git local.
 - **GitLab nu funcționează pentru această cale.** Dialogul de adăugare validează adresa server-side ca repo GitHub și respinge orice adresă GitLab, indiferent de formă — repo, `.git` sau raw.
-- **Actualizări: push = release.** Plugin-urile **nu declară** câmpul `version`, intenționat — recomandarea oficială pentru surse git dezvoltate activ. Fără el, versiunea e SHA-ul commit-ului, deci fiecare push pe GitHub devine automat o actualizare disponibilă; cu el, plugin-ul ar fi *pinned* și push-urile fără bump nu ar ajunge niciodată la client, în tăcere. Nu reintroduceți câmpul. La client mai trebuie o singură condiție: `Sync automatically` pornit, în meniul `···` al marketplace-ului — **nu vine pornit din oficiu**, iar fără el plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără avertisment. Meniul afișează `Synced commit`, util pentru diagnostic: comparați-l cu ultimul commit de pe GitHub.
+- **Actualizări**: `version` stă **doar** în `plugin.json`-ul fiecărui plugin (niciodată în `marketplace.json` — documentația interzice dublarea) și se incrementează la fiecare release; fără bump, push-ul nu ajunge la client. La client mai trebuie o singură condiție: `Sync automatically` pornit, în meniul `···` al marketplace-ului — **nu vine pornit din oficiu**, iar fără el plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără avertisment. Meniul afișează `Synced commit`, util pentru diagnostic: comparați-l cu ultimul commit de pe GitHub.
 - Sursele și metoda de acces a fiecăreia: [veghe-legislativa/skills/contaChangeSkill/references/surse.md](veghe-legislativa/skills/contaChangeSkill/references/surse.md).
 - Formatul raportului: [veghe-legislativa/skills/contaChangeSkill/references/email-template.md](veghe-legislativa/skills/contaChangeSkill/references/email-template.md).
 - Logica completă de rulare: [veghe-legislativa/skills/contaChangeSkill/SKILL.md](veghe-legislativa/skills/contaChangeSkill/SKILL.md).
