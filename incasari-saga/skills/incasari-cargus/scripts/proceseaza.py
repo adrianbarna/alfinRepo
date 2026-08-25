@@ -345,7 +345,6 @@ def citeste_facturi_xml(cale):
             "total": normalizeaza_suma(camp("total")),
             "inf_suplm": camp("inf_suplm"),
             "data": camp("data"),
-            "curs_ref": normalizeaza_suma(camp("curs_ref")),
             "sursa": cale.name,
         })
     return facturi
@@ -425,48 +424,26 @@ def _dupa_nume(dest, idx):
     return [f for kf, lst in idx["dupa_nume"].items() if k < kf for f in lst]
 
 
-def suma_comparabila(f, moneda):
-    """Totalul facturii adus in valuta borderoului, sau None daca nu se poate.
-
-    Exportul de facturi nu are camp de valuta: `total` e in lei, iar `curs_ref` e 0
-    la aproape toate. Pentru un borderou in valuta, totalul devine comparabil doar
-    daca factura are curs; altfel suma pur si simplu nu poate confirma nimic.
-    """
-    if f["total"] is None:
-        return None
-    if moneda == "RON":
-        return f["total"]
-    curs = f.get("curs_ref")
-    if curs and curs > 0:
-        return (f["total"] / curs).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-    return None
-
-
-def alege_factura(ref, dest, suma, idx, moneda="RON"):
+def alege_factura(ref, dest, suma, idx):
     """-> (factura | None, suma_de_scris, avertismente, motiv_esec | None).
 
     Cheia e RefExp1 = inf_suplm; numele si totalul doar confirma. Cautarea dupa nume
     e strict rezerva, pentru cand RefExp1 nu duce nicaieri - altfel un omonim cu
     aceeasi suma ar face ambigua o potrivire deja sigura. Totalul departajeaza cand
     raman mai multi candidati (tipic: factura initiala plus stornarea ei).
+
+    `total` de pe factura e in valuta facturii, deci comparatia cu suma din borderou
+    e directa, oricare ar fi valuta folderului (confirmat de client, 25.08.2026).
     """
     av = []
 
     def dif(f):
-        comp = suma_comparabila(f, moneda)
-        return abs(comp - suma) if comp is not None else None
+        return abs(f["total"] - suma) if f["total"] is not None else None
 
     def filtreaza(candidati):
-        cu_dif = [(f, dif(f)) for f in candidati]
-        if cu_dif and all(d is None for _, d in cu_dif):
-            # Suma nu poate departaja, dar semnul da: o stornare nu poate fi incasarea
-            # unui ramburs pozitiv. Asa raman separabile perechile factura + storno.
-            acelasi_semn = [f for f, _ in cu_dif if f["total"] is None
-                            or (f["total"] < 0) == (suma < 0)]
-            return acelasi_semn or [f for f, _ in cu_dif]
-        buni = [f for f, d in cu_dif if d is not None and d <= TOL_MAX]
+        buni = [f for f in candidati if dif(f) is not None and dif(f) <= TOL_MAX]
         if len(buni) > 1:
-            exacte = [f for f, d in cu_dif if d == 0]
+            exacte = [f for f in buni if f["total"] == suma]
             if len(exacte) == 1:
                 return exacte
         return buni
@@ -505,20 +482,12 @@ def alege_factura(ref, dest, suma, idx, moneda="RON"):
         av.append("numele difera: borderou '%s' vs factura %s '%s'"
                   % (dest, f["nr_iesire"], f["denumire"]))
 
-    # In XML intra suma de pe factura, ca factura sa se stinga exact. Doar cand e
-    # exprimata in valuta borderoului: conversia prin curs_ref e neverificata.
-    suma_finala = suma
+    # In XML intra suma de pe factura, ca factura sa se stinga exact.
+    suma_finala = f["total"] if f["total"] is not None else suma
     d = dif(f)
-    if d is None:
-        pass  # necomparabil: se raporteaza agregat, nu rand cu rand
-    elif moneda == "RON":
-        suma_finala = f["total"]
-        if d > TOL_TACITA:
-            av.append("suma luata din factura %s: borderou %s -> factura %s (diferenta %s)"
-                      % (f["nr_iesire"], suma, f["total"], d))
-    elif d > TOL_TACITA:
-        av.append("suma difera cu %s fata de factura %s (convertita la cursul %s) - "
-                  "a ramas suma din borderou" % (d, f["nr_iesire"], f["curs_ref"]))
+    if d is not None and d > TOL_TACITA:
+        av.append("suma luata din factura %s: borderou %s -> factura %s (diferenta %s)"
+                  % (f["nr_iesire"], suma, f["total"], d))
     return f, suma_finala, av, None
 
 
@@ -567,7 +536,6 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
         "pe_data": {},
         "corectate": 0,
         "corectie": Decimal("0.00"),
-        "neverificate": 0,
         "eroare": None,
     }
 
@@ -636,7 +604,7 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
 
         factura_nr = ""
         if facturi is not None:
-            factura, suma_xml, av, motiv = alege_factura(ref, dest, suma, facturi, moneda)
+            factura, suma_xml, av, motiv = alege_factura(ref, dest, suma, facturi)
             for a in av:
                 rez["avertismente"].append("randul %d: %s" % (i, a))
             if factura is None:
@@ -646,8 +614,6 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
                 rez["total_sarit"] += suma
                 continue
             factura_nr = factura["nr_iesire"]
-            if suma_comparabila(factura, moneda) is None:
-                rez["neverificate"] += 1
             if suma_xml != suma:
                 rez["corectate"] += 1
                 rez["corectie"] += suma_xml - suma
@@ -661,12 +627,6 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
 
     # Multe randuri fara nicio factura, cu borderoul in afara perioadei acoperite:
     # cauza probabila e un export lipsa, nu sute de potriviri ratate.
-    if rez["neverificate"]:
-        rez["avertismente"].insert(0, (
-            "la %d linii suma nu a putut fi verificata pe factura: borderoul e in %s, "
-            "iar facturile nu au curs - a ramas suma din borderou"
-            % (rez["neverificate"], moneda)))
-
     negasite = [x for x in rez["sarite"] if x["motiv"].startswith("nicio factura")]
     if facturi is not None and negasite and len(negasite) >= max(5, (len(rez["linii"]) + len(negasite)) // 5):
         rez["avertismente"].insert(0, (

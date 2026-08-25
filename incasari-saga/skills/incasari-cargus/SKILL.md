@@ -37,9 +37,10 @@ stau împreună; formatul se recunoaște după coloane.
 
 ```
 borderouri/ron/  .xlsx  +  procesate/      facturi/  exporturile XML din Saga
-borderouri/eur/  .xlsx  +  procesate/
-borderouri/huf/  .xlsx  +  procesate/
 ```
+
+**Azi e configurat doar RON.** O altă valută se adaugă cu o singură comandă
+(`--set-folder borderouri/eur --moneda EUR`, cont 5126) — nu e nevoie de cod nou.
 
 ## Regula de aur
 
@@ -54,15 +55,14 @@ Rolul tău: rulezi scriptul și rezumi raportul în chat, în română.
 ### 1. Prima rulare (sau config lipsă)
 
 Rulează scriptul. Dacă iese cu **codul 2**, nu știe unde sunt borderourile.
-Întreabă utilizatorul unde le ține — **nu ghici calea** — apoi, câte o rulare per valută:
+Întreabă utilizatorul unde le ține — **nu ghici calea** — apoi:
 
 ```bash
 python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
-python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda EUR
-python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda HUF
 ```
 
-RON merge pe contul 5125, EUR și HUF pe 5126. Configurează doar valutele care există.
+RON merge pe contul 5125, orice altă valută pe 5126. Configurează doar valutele care
+există — azi, doar RON.
 
 Calea aflată în interiorul proiectului se salvează relativ (ex. `ro`), ca skill-ul
 să meargă și pe alt PC fără reconfigurare. După `--set-folder`, rulează normal.
@@ -175,10 +175,8 @@ Windows-1252). Câmpurile folosite: `nr_iesire`, `denumire`, `total`, `inf_suplm
    considerată confirmată. Totalul departajează și când același `RefExp1` are mai
    multe facturi (tipic: factura inițială plus stornarea ei).
 
-   **În valută nu poate confirma nimic:** exportul de facturi nu are câmp de valută,
-   `total` e în lei, iar `curs_ref` e zero la aproape toate. Atunci departajează semnul
-   (o stornare nu e o încasare pozitivă), `<Suma>` rămâne suma din borderou, iar
-   raportul spune o dată, agregat, la câte linii nu s-a putut verifica.
+   `total` de pe factură e **în valuta facturii**, deci comparația e directă oricare ar
+   fi valuta folderului — exportul nu are nevoie de un câmp de valută.
 3. **Numele e al doilea control**, comparat fără diacritice, fără majuscule și fără
    să conteze ordinea sau forma juridică (SRL, PFA…). Dacă diferă, rândul **intră**
    în XML cu un avertisment — e normal ca pe colet să fie persoana și pe factură firma
@@ -202,11 +200,10 @@ automat după ce adaugi maparea):
   `Client name`); maparea lor e în `mappings.md`, dar nu e implementată aici;
 - orice fișier fără header recunoscut.
 
-**EUR / HUF:** structura de config suportă mai multe foldere
-(`--set-folder <cale> --moneda EUR` → cont `5126`), dar **nu a fost verificată pe
-un borderou real în valută**. Când apare primul, verifică maparea înainte de a te
-baza pe rezultat; la HUF, `mappings.md` menționează un factor de 100 la eMAG —
-neconfirmat pentru Cargus.
+**Alte valute:** azi e configurat doar RON. Se adaugă cu `--set-folder <cale>
+--moneda EUR` (cont `5126`) și nu au nevoie de cod nou: `total` de pe factură e deja
+în valuta facturii. **HUF e ignorat deocamdată** — factorul de 100 din `mappings.md`
+e documentat doar pentru eMAG, nu pentru Cargus.
 
 ## Anomalii pe care le semnalează scriptul
 

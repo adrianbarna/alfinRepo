@@ -63,11 +63,10 @@ stau împreună, formatul se recunoaște după coloane):
 
 ```
 borderouri/ron/   .xlsx  +  procesate/        facturi/   exporturile XML din Saga
-borderouri/eur/   .xlsx  +  procesate/
-borderouri/huf/   .xlsx  +  procesate/
 ```
 
-RON merge pe contul 5125, EUR și HUF pe 5126. Configurați doar valutele care există.
+RON merge pe contul 5125, orice altă valută pe 5126. Momentan e configurat doar RON;
+o valută nouă se adaugă spunând asistentului unde stau borderourile ei.
 
 <details>
 <summary>Instalare din terminal, pentru administratori</summary>
@@ -97,8 +96,8 @@ Dacă sumarul spune `Run /reload-plugins to activate.`, rulați și `/reload-plu
    referință se potrivește pe toate cele 219 rânduri.
 2. **Totalul confirmă**, cu toleranță: diferențele de un ban sunt rotunjiri normale și
    trec tăcut, până la 10 bani trec cu avertisment, peste — factura nu e considerată
-   confirmată. (Pe un borderou real, doar 129 din 216 totaluri coincid exact.) În lei,
-   suma care intră în XML e **cea de pe factură**.
+   confirmată. (Pe un borderou real, doar 129 din 216 totaluri coincid exact.)
+   **Suma care intră în XML e cea de pe factură**, ca factura să se stingă exact.
 3. **Numele e al doilea control**, fără diacritice, fără majuscule, fără să conteze
    ordinea sau forma juridică. Dacă diferă, rândul **intră** în XML cu un avertisment —
    e normal ca pe colet să fie persoana și pe factură firma.
@@ -132,11 +131,10 @@ când rămân mai multe la fel de plauzibile.
   ca să supraviețuiască actualizărilor. Poate fi mutată cu variabila `INCASARI_CONFIG`.
 - **Emailul nu e trimis de script.** Scriptul compune raportul; plugin-ul îl trimite cu
   conectorul Gmail, după confirmarea de la prima trimitere.
-- **Valute:** RON → 5125, EUR și HUF → 5126. Exportul de facturi **nu are câmp de
-  valută** (`total` e în lei, `curs_ref` e zero la aproape toate), deci în valută
-  totalul facturii nu poate confirma potrivirea: departajează semnul, `<Suma>` rămâne
-  suma din borderou, iar raportul o spune agregat. Maparea în valută nu a fost încă
-  verificată pe un borderou real.
+- **Valute:** RON → 5125, orice altă valută → 5126. Exportul de facturi nu are câmp de
+  valută, dar nu e nevoie: `total` e exprimat în valuta facturii, iar factura găsită
+  prin numărul de expediție e în aceeași valută ca borderoul, deci comparația e directă.
+  Azi e activ doar RON.
 - **Exporturile de facturi se acumulează** și pot acoperi perioade oricât de lungi;
   perioada se deduce din conținut, nu din numele fișierului.
 - Logica completă: [skills/incasari-cargus/SKILL.md](skills/incasari-cargus/SKILL.md).
