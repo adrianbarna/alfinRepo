@@ -18,12 +18,12 @@ Dacă într-o săptămână nu apare nimic nou, nu primiți email.
 
 ## Instalare (o singură dată)
 
-Nu aveți nevoie de git instalat — plugin-ul se descarcă printr-o simplă adresă web.
+Nu aveți nevoie de git instalat — descărcarea se face pe serverele Anthropic.
 
 **Pasul 1 — Instalați plugin-ul.** În Claude Code, rulați pe rând cele două comenzi:
 
 ```
-/plugin marketplace add https://gitlab.com/abarna/contaScrapper/-/raw/main/.claude-plugin/marketplace.json
+/plugin marketplace add adrianbarna/contaLacramioara
 ```
 
 ```

@@ -9,7 +9,7 @@
       "name": "monitorizare-legislativa",
       "source": {
         "source": "archive",
-        "url": "https://gitlab.com/abarna/contaScrapper/-/archive/main/contaScrapper-main.zip"
+        "url": "https://github.com/adrianbarna/contaLacramioara/archive/refs/heads/main.zip"
       },
       "description": "Monitorizare săptămânală a legislației contabile românești cu raport detaliat pe email."
     }
