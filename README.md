@@ -28,7 +28,7 @@ adrianbarna/contaLacramioara
 
 Apăsați **Sync**.
 
-**Verificați apoi că actualizările automate sunt pornite** — nu veniți pornite întotdeauna. Lângă eticheta `contaLacramioara` apăsați meniul **···**: acolo trebuie să fie activ comutatorul **Sync automatically**. Tot de acolo, **Check for updates** aduce imediat o versiune nouă, fără să așteptați. Meniul arată și `Synced commit`, adică exact ce versiune aveți.
+**Verificați apoi că actualizările automate sunt pornite** — nu vin pornite întotdeauna. Lângă eticheta `contaLacramioara` apăsați meniul **···**: acolo trebuie să fie activ comutatorul **Sync automatically**. Tot de acolo, **Check for updates** aduce imediat o versiune nouă, fără să așteptați. Meniul arată și `Synced commit`, adică exact ce versiune aveți.
 
 > Fără comutatorul ăsta pornit, plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără niciun avertisment.
 
