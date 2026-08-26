@@ -21,6 +21,7 @@ Utilizare:
     proceseaza.py --facturi <cale>       # folderul cu facturi, doar pentru rularea asta
     proceseaza.py --set-facturi <cale>   # salveaza folderul de facturi in config.json
     proceseaza.py --set-email a@b.ro,c@d.ro   # cui se trimite raportul
+    proceseaza.py --arata-config         # arata configurarea curenta si iese
     proceseaza.py --fara-facturi         # nu lega facturile (FacturaNumar ramane gol)
     proceseaza.py --json                 # raport JSON in loc de text
 
@@ -55,8 +56,10 @@ def _radacina_proiect():
 
 PROJECT_ROOT = _radacina_proiect()
 
-# Ca plugin, folderul skill-ului e rescris la fiecare actualizare: configul ar fi
-# pierdut acolo. In proiectul local ramane langa skill, ca pana acum.
+# Configul sta la nivel de utilizator, NU in folderul skill-ului (decizia din
+# 26.08.2026): skill-ul se copiaza pe masina clientului fara nicio cale setata,
+# iar prima configurare o face skill-ul config-incasari-cargus. Un config.json
+# ramas langa skill (instalari vechi) are inca prioritate, ca sa nu se piarda.
 CONFIG_LOCAL = SKILL_ROOT / "config.json"
 CONFIG_UTILIZATOR = Path.home() / ".claude" / "incasari-saga" / "config.json"
 
@@ -778,6 +781,8 @@ def main(argv=None):
                     help="salveaza folderul de facturi in config.json si iese")
     ap.add_argument("--set-email", dest="set_email",
                     help="adresele pentru raport, separate prin virgula; iese dupa salvare")
+    ap.add_argument("--arata-config", action="store_true", dest="arata_config",
+                    help="arata configurarea curenta si iese")
     ap.add_argument("--fara-facturi", action="store_true", dest="fara_facturi",
                     help="nu lega facturile (FacturaNumar ramane gol, nimic nu se sare)")
     ap.add_argument("--reproceseaza", action="append", default=[],
@@ -788,6 +793,34 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     moneda = a.moneda.upper()
+
+    if a.arata_config:
+        cale = cale_config()
+        cfg = citeste_config() or {}
+        if a.ca_json:
+            print(json.dumps({"config": str(cale), "exista": cale.exists(),
+                              "foldere": cfg.get("foldere", []),
+                              "facturi": cfg.get("facturi"),
+                              "email": normalizeaza_email(cfg.get("email"))},
+                             ensure_ascii=False, indent=2))
+            return 0
+        print("Config: %s%s" % (cale, "" if cale.exists() else " (nu exista inca)"))
+        if not cfg.get("foldere"):
+            print("Borderouri: neconfigurat -> --set-folder <cale> [--moneda RON]")
+        for f in cfg.get("foldere", []):
+            print("Borderouri %s (cont %s): %s%s"
+                  % (f.get("moneda", "?"), f.get("cont", "?"), f.get("cale"),
+                     "" if rezolva(f.get("cale", "")) else "  ! FOLDERUL NU EXISTA"))
+        if cfg.get("facturi"):
+            print("Facturi: %s%s"
+                  % (cfg["facturi"],
+                     "" if rezolva(cfg["facturi"]) else "  ! FOLDERUL NU EXISTA"))
+        else:
+            print("Facturi: neconfigurat -> --set-facturi <cale>")
+        adrese = normalizeaza_email(cfg.get("email"))
+        print("E-mail: %s" % (", ".join(adrese) if adrese
+                              else "neconfigurat -> --set-email a@b.ro,c@d.ro"))
+        return 0
 
     if a.set_facturi:
         p = Path(a.set_facturi).expanduser()

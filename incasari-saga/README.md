@@ -89,6 +89,7 @@ Dacă sumarul spune `Run /reload-plugins to activate.`, rulați și `/reload-plu
 | Refacerea unui borderou corectat | „Reprocesează borderoul <nume>" |
 | Schimbarea adresei de raport | „Trimite raportul de încasări pe <adresa>" |
 | Alt folder de borderouri sau de facturi | „Borderourile sunt acum în <cale>" |
+| Verificarea sau refacerea configurării | „Configurează încasările" |
 
 ## Cum găsește factura
 
@@ -129,6 +130,8 @@ când rămân mai multe la fel de plauzibile.
   (cheie = numele fișierului `.xlsx`) și `ultimul-raport.txt` — textul trimis pe email.
 - **Configurația** stă în `~/.claude/incasari-saga/config.json`, în afara plugin-ului,
   ca să supraviețuiască actualizărilor. Poate fi mutată cu variabila `INCASARI_CONFIG`.
+  Plugin-ul vine fără căi setate; prima configurare (și orice schimbare ulterioară) o
+  face skill-ul `config-incasari-cargus`, conversațional.
 - **Emailul nu e trimis de script.** Scriptul compune raportul; plugin-ul îl trimite cu
   conectorul Gmail, după confirmarea de la prima trimitere.
 - **Valute:** RON → 5125, orice altă valută → 5126. Exportul de facturi nu are câmp de

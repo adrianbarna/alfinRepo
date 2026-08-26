@@ -54,8 +54,12 @@ Rolul tău: rulezi scriptul și rezumi raportul în chat, în română.
 
 ### 1. Prima rulare (sau config lipsă)
 
-Rulează scriptul. Dacă iese cu **codul 2**, nu știe unde sunt borderourile.
-Întreabă utilizatorul unde le ține — **nu ghici calea** — apoi:
+Plugin-ul se livrează **fără căi setate** — pe fiecare mașină, prima configurare o
+face skill-ul **`config-incasari-cargus`** din același plugin.
+
+Rulează scriptul. Dacă iese cu **codul 2**, nu știe unde sunt borderourile —
+treci pe fluxul din `config-incasari-cargus`. Pe scurt: întreabă utilizatorul
+unde le ține — **nu ghici calea** — apoi:
 
 ```bash
 python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
@@ -124,6 +128,7 @@ trebuie verificat.
 | `--folder <cale>` | o rulare punctuală pe alt folder, fără să atingi configul |
 | `--facturi <cale>` | alt folder de facturi, doar pentru rularea asta |
 | `--fara-facturi` | nu lega facturile: `FacturaNumar` rămâne gol și nimic nu se sare |
+| `--arata-config` | arată configurarea curentă (folosit de `config-incasari-cargus`) |
 | `--json` | raport structurat, dacă ai nevoie să-l prelucrezi |
 
 Cod de ieșire: `0` = a mers, `2` = configurare lipsă (întreabă utilizatorul), `1` = eroare.

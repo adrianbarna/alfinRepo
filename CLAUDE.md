@@ -48,6 +48,8 @@ Sursă frecventă de confuzie:
 | Nume skill 2 | folderul + frontmatter | `incasari-cargus` |
 | Instalare 2 | — | `incasari-saga@lacramioara-conta` |
 | Invocare 2 | — | `/incasari-saga:incasari-cargus` |
+| Skill 2b (configurare) | folderul + frontmatter | `config-incasari-cargus` |
+| Invocare 2b | — | `/incasari-saga:config-incasari-cargus` |
 
 ## Protocol de release
 
@@ -59,7 +61,7 @@ Sursă frecventă de confuzie:
 
 Alternativa fără `version` (versiunea = SHA-ul commit-ului, push = release) e și ea validă oficial și a fost folosită temporar; dacă bump-ul devine o povară, e calea de simplificare.
 
-Push pe remote-ul **`github`**, care e sursa de adevăr. `origin` e un GitLab vechi, rămas în urmă și care respinge push-ul; nu te baza pe el. Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase github main` înainte de push.
+Push pe **`origin`**, care indică GitHub-ul (`github.com:adrianbarna/contaLacramioara`) — sursa de adevăr. (Istoric: `origin` a fost un GitLab vechi, iar GitHub-ul stătea pe un remote separat `github`; remote-urile au fost consolidate, verificat 26.08.2026.) Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase origin main` înainte de push.
 
 La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din oficiu, iar fără el plugin-ul rămâne blocat pe versiunea de la instalare, în tăcere.
 
@@ -86,10 +88,11 @@ Când modifici un comportament, verifică dacă e descris în mai multe locuri. 
 
 ## `incasari-saga`: unde stau lucrurile
 
-- `incasari-saga/skills/incasari-cargus/SKILL.md` — fluxul conversațional.
+- `incasari-saga/skills/incasari-cargus/SKILL.md` — fluxul conversațional de procesare.
+- `incasari-saga/skills/config-incasari-cargus/SKILL.md` — fluxul de configurare: prima rulare pe o mașină nouă și orice schimbare de căi/adrese. Rulează scriptul din skill-ul frate (`--arata-config`, `--set-*`).
 - `incasari-saga/skills/incasari-cargus/scripts/proceseaza.py` — toată logica. Fără dependințe externe: `.xlsx` e citit direct cu `zipfile` + `ElementTree`, ca să meargă pe orice PC cu `python3`.
-- **Configurația nu stă în plugin.** Se scrie în `~/.claude/incasari-saga/config.json`, pentru că folderul plugin-ului e rescris la fiecare actualizare. Poate fi mutată cu variabila de mediu `INCASARI_CONFIG`.
-- Scriptul merge în două așezări: instalat ca plugin (rădăcină de proiect inexistentă, căi absolute în config) și copiat într-un proiect la `<proiect>/.claude/skills/incasari-cargus/` (căi relative la proiect, config lângă skill). `_radacina_proiect()` face distincția după numele folderelor părinte — **dacă muți skill-ul, se rup căile relative.**
+- **Configurația nu stă în plugin.** Se scrie în `~/.claude/incasari-saga/config.json`, pentru că folderul plugin-ului e rescris la fiecare actualizare. Poate fi mutată cu variabila de mediu `INCASARI_CONFIG`. **Plugin-ul se livrează fără căi setate** (decizia din 26.08.2026): pe o mașină nouă, configurarea o face `config-incasari-cargus`.
+- Scriptul merge în două așezări: instalat ca plugin (rădăcină de proiect inexistentă, căi absolute în config) și copiat într-un proiect la `<proiect>/.claude/skills/incasari-cargus/` (căi relative la proiect). În ambele, configul e la nivel de utilizator; un `config.json` rămas lângă skill din instalări vechi are încă prioritate. `_radacina_proiect()` face distincția după numele folderelor părinte — **dacă muți skill-ul, se rup căile relative.**
 - **Sursa de adevăr e plugin-ul.** Copia din proiectul de lucru al clientului (`incasari/.claude/skills/incasari-cargus/`) trebuie ținută identică; altfel cele două diverg în tăcere.
 
 ## Invariante care nu trebuie stricate
@@ -127,7 +130,7 @@ python3 incasari-saga/skills/incasari-cargus/scripts/proceseaza.py \
   --dry-run --reproceseaza "Cargus Packeta Iulie 2026.xlsx"
 ```
 
-Rezultat așteptat: **219 linii, total 26569.26 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.10 / 6334.61 / 6951.29 / 6105.26, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, și 15 avertismente: 8 de nume, 3 de storno, 2 de sumă (0,08 și 0,02) și 2 de lungime `RefExp1`.
+Rezultat așteptat: **219 linii, total 26570.21 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.35 / 6334.85 / 6951.57 / 6105.44, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, **87 de linii cu suma preluată de pe factură** (diferență totală +0,95 RON — `<Suma>` ia valoarea de pe factură, ca factura să se stingă exact), și 15 avertismente: 8 de nume, 3 de storno, 2 de sumă (0,08 și 0,02) și 2 de lungime `RefExp1`.
 
 ### `monitorizare-legislativa`
 
