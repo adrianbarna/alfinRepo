@@ -12,6 +12,10 @@ din Saga, <VFPData><c_xml>): cheia e RefExp1 = inf_suplm, iar numele (fara diacr
 si totalul sunt dublul control. <FacturaNumar> primeste nr_iesire de pe factura.
 Randurile fara factura sigura NU intra in XML, ci in raportul trimis pe e-mail.
 
+Cerinte: Python 3.8+, doar biblioteca standard. Se porneste cu `python3` pe
+macOS/Linux si cu `py -3` (sau `python`) pe Windows; in rest comenzile sunt identice
+si merg la fel in bash si in PowerShell.
+
 Utilizare:
     proceseaza.py                        # proceseaza doar fisierele noi
     proceseaza.py --dry-run              # arata ce ar face, nu scrie nimic
@@ -35,6 +39,7 @@ import argparse
 import datetime as _dt
 import json
 import os
+import platform
 import re
 import sys
 import unicodedata
@@ -702,6 +707,24 @@ def stocheaza(cale):
     return str(p)
 
 
+def _consola_utf8():
+    """Iesirea in UTF-8 si fara crash: consola Windows (cp1252/cp1250) nu stie s, t."""
+    if os.environ.get("PYTHONIOENCODING"):
+        return
+    for flux in (sys.stdout, sys.stderr):
+        if hasattr(flux, "reconfigure"):
+            try:
+                flux.reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
+def _scrie(cale, text):
+    """Text UTF-8 cu LF, identic pe orice sistem (write_text ar pune CRLF pe Windows)."""
+    with open(cale, "w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
 def citeste_config():
     cale = cale_config()
     if not cale.exists():
@@ -715,8 +738,7 @@ def citeste_config():
 def scrie_config(cfg):
     cale = cale_config()
     cale.parent.mkdir(parents=True, exist_ok=True)
-    cale.write_text(
-        json.dumps(cfg, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    _scrie(cale, json.dumps(cfg, ensure_ascii=False, indent=2) + "\n")
     return cale
 
 
@@ -754,9 +776,8 @@ def citeste_jurnal(dir_procesate):
 
 
 def scrie_jurnal(dir_procesate, procesate):
-    (dir_procesate / JURNAL).write_text(
-        json.dumps({"procesate": procesate}, ensure_ascii=False, indent=2) + "\n",
-        encoding="utf-8")
+    _scrie(dir_procesate / JURNAL,
+           json.dumps({"procesate": procesate}, ensure_ascii=False, indent=2) + "\n")
 
 
 # --------------------------------------------------------------------------
@@ -770,6 +791,7 @@ def eroare_config(mesaj, ca_json):
 
 
 def main(argv=None):
+    _consola_utf8()
     ap = argparse.ArgumentParser(add_help=True, description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--folder", help="proceseaza aceasta cale, ignorand config.json")
@@ -797,13 +819,16 @@ def main(argv=None):
     if a.arata_config:
         cale = cale_config()
         cfg = citeste_config() or {}
+        sistem = "%s (%s)" % (platform.system() or "?", sys.platform)
         if a.ca_json:
-            print(json.dumps({"config": str(cale), "exista": cale.exists(),
+            print(json.dumps({"python": platform.python_version(), "sistem": sistem,
+                              "config": str(cale), "exista": cale.exists(),
                               "foldere": cfg.get("foldere", []),
                               "facturi": cfg.get("facturi"),
                               "email": normalizeaza_email(cfg.get("email"))},
                              ensure_ascii=False, indent=2))
             return 0
+        print("Python %s pe %s" % (platform.python_version(), sistem))
         print("Config: %s%s" % (cale, "" if cale.exists() else " (nu exista inca)"))
         if not cfg.get("foldere"):
             print("Borderouri: neconfigurat -> --set-folder <cale> [--moneda RON]")
@@ -937,10 +962,11 @@ def main(argv=None):
                 })
                 continue
 
-            iesire = dir_procesate / (cale.stem + ".xml")
+            # Numele borderoului, dar fara spatii (cerinta clientului, 31.08.2026).
+            iesire = dir_procesate / (re.sub(r"\s+", "_", cale.stem) + ".xml")
             if not a.dry_run:
                 dir_procesate.mkdir(parents=True, exist_ok=True)
-                iesire.write_text(construieste_xml(rez["linii"]), encoding="utf-8")
+                _scrie(iesire, construieste_xml(rez["linii"]))
                 jurnal[cale.name] = {
                     "procesat_la": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "xml": iesire.name,
@@ -982,7 +1008,7 @@ def main(argv=None):
                 if f["procesate"] or any(e.get("sarite") for e in f["esuate"]):
                     cale_raport = Path(f["cale"]) / DIR_PROCESATE / RAPORT_EMAIL
                     cale_raport.parent.mkdir(parents=True, exist_ok=True)
-                    cale_raport.write_text(raport["email"]["corp"], encoding="utf-8")
+                    _scrie(cale_raport, raport["email"]["corp"])
                     f["raport"] = str(cale_raport)
 
     if a.ca_json:

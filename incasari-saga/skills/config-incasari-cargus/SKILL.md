@@ -12,25 +12,37 @@ description: >
 
 # Configurarea skill-ului incasari-cargus
 
-Plugin-ul se livrează **fără nicio cale setată** — căile diferă de la o mașină la
-alta, așa că se stabilesc aici, la prima rulare pe fiecare mașină. Configul stă la
-`~/.claude/incasari-saga/config.json`, **în afara plugin-ului** — folderul
-plugin-ului e rescris la fiecare actualizare.
+Skill-ul `incasari-cargus` se livrează **fără nicio cale setată** — căile diferă de
+la o mașină la alta, așa că se stabilesc aici, la prima rulare pe fiecare mașină.
+Configul stă la `~/.claude/incasari-saga/config.json` (în afara skill-ului, ca să
+supraviețuiască actualizărilor și să nu plece cu skill-ul spre altă mașină).
 
-Totul trece prin scriptul skill-ului frate `incasari-cargus`, din același plugin:
-`<plugin-dir>/skills/incasari-cargus/scripts/proceseaza.py`. Folosește-i **calea
-absolută** — utilizatorul rulează din folderul lui de lucru, nu din folderul
-plugin-ului:
+Totul trece prin scriptul skill-ului frate `incasari-cargus`. Mai jos, `<skills-dir>` e
+folderul care conține ambele skill-uri (calea afișată la încărcarea skill-ului, fără
+ultimul segment): instalat ca plugin, `<plugin-dir>/skills`; copiat într-un proiect,
+`<proiect>/.claude/skills`. Folosește **calea absolută** — utilizatorul rulează din
+folderul lui de lucru:
 
-```bash
-python3 <plugin-dir>/skills/incasari-cargus/scripts/proceseaza.py --arata-config
 ```
+python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --arata-config
+```
+
+**Interpretorul depinde de sistem:** `python3` pe macOS/Linux, `py -3` (sau `python`)
+pe Windows — verifică o dată cu `--version`. Comenzile de mai jos sunt scrise cu
+`python3`, pe Windows pui `py -3` în loc; merg la fel în bash și în PowerShell (o comandă
+pe linie, fără `&&`, `||`, redirecționări sau `cd`). Ordinea de încercare pe Windows și
+ce înseamnă mesajul „Python was not found": secțiunea „Cum rulezi scriptul" din skill-ul
+`incasari-cargus`. Pe Windows configul ajunge la
+`C:\Users\<utilizator>\.claude\incasari-saga\config.json`. Căile primite de la
+utilizator se pun între ghilimele duble; pe Windows merg și cu `\`, și cu `/`.
 
 ## Regula de aur
 
 **Nu edita `config.json` de mână și nu ghici nicio cale.** Fiecare cale vine de la
 utilizator; scriptul o validează (refuză căile inexistente) și o salvează singur.
-Nu crea foldere în locul utilizatorului.
+Nu crea foldere în locul utilizatorului. **Nu crea fișiere de lansare (`.bat`, `.ps1`,
+`.sh`) și nu instala Python** — dacă lipsește, spune-i utilizatorului să-l instaleze de
+pe python.org.
 
 ## Flux
 
@@ -46,20 +58,20 @@ lipsește sau ce cale nu mai există pe disc.
 
 1. **Unde ține borderourile în lei?** (folderul cu fișierele .xlsx)
 
-   ```bash
-   python3 <plugin-dir>/skills/incasari-cargus/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
+   ```
+   python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
    ```
 
 2. **Unde ține exporturile XML de facturi din Saga?**
 
-   ```bash
-   python3 <plugin-dir>/skills/incasari-cargus/scripts/proceseaza.py --set-facturi "<cale>"
+   ```
+   python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --set-facturi "<cale>"
    ```
 
 3. **Cui se trimite raportul pe e-mail?** (pot fi mai multe adrese)
 
-   ```bash
-   python3 <plugin-dir>/skills/incasari-cargus/scripts/proceseaza.py --set-email "adresa1@exemplu.ro,adresa2@exemplu.ro"
+   ```
+   python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --set-email "adresa1@exemplu.ro,adresa2@exemplu.ro"
    ```
 
 Dacă scriptul răspunde „Calea nu exista sau nu e un folder", spune-i utilizatorului
@@ -70,8 +82,8 @@ Dacă scriptul răspunde „Calea nu exista sau nu e un folder", spune-i utiliza
 Rulează din nou `--arata-config` și arată utilizatorului configurarea rezultată.
 Apoi propune o probă fără efecte:
 
-```bash
-python3 <plugin-dir>/skills/incasari-cargus/scripts/proceseaza.py --dry-run
+```
+python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --dry-run
 ```
 
 Dacă proba arată borderouri de procesat, procesarea propriu-zisă e treaba
@@ -94,8 +106,9 @@ conturile le pune scriptul, nu se cer utilizatorului. **HUF e ignorat deocamdat�
 
 ## De știut
 
-- Instalat ca plugin, căile se salvează absolut. (Copiat într-un proiect la
-  `<proiect>/.claude/skills/`, căile din interiorul proiectului se salvează relativ.)
+- Instalat ca plugin, căile se salvează absolut. Copiat într-un proiect la
+  `<proiect>/.claude/skills/`, căile din interiorul proiectului se salvează relativ
+  (merge pe alt PC fără reconfigurare), cele din afara lui absolut.
 - Mutarea unui folder de valută nu pierde evidența: jurnalul `.procesate.json`
   călătorește cu folderul. După mutare trebuie doar refăcut `--set-folder`.
 - Variabila de mediu `INCASARI_CONFIG` poate indica alt fișier de config (util la

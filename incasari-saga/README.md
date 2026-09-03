@@ -1,6 +1,6 @@
 # Încasări Saga — borderouri Cargus / Packeta → XML
 
-Plugin pentru Claude (Cowork / Claude Code) care transformă **borderourile de ramburs**
+Plugin pentru Claude Code (inclusiv fila **Code** din aplicația Claude Desktop) care transformă **borderourile de ramburs**
 Cargus / Packeta (`.xlsx`) în fișiere **XML de import pentru Saga**
 (Import documente → Încasări) și leagă fiecare încasare de **factura ei**.
 
@@ -126,12 +126,19 @@ când rămân mai multe la fel de plauzibile.
 
 - **Ce citește:** `.xlsx` fără dependențe externe (doar `python3` din stdlib) și export
   XML de facturi din Saga (`<VFPData><c_xml>`, Windows-1252).
-- **Ce scrie:** `<folder>/procesate/<nume borderou>.xml`, jurnalul `.procesate.json`
+- **Ce scrie:** `<folder>/procesate/<nume borderou, cu spațiile înlocuite de _>.xml`, jurnalul `.procesate.json`
   (cheie = numele fișierului `.xlsx`) și `ultimul-raport.txt` — textul trimis pe email.
 - **Configurația** stă în `~/.claude/incasari-saga/config.json`, în afara plugin-ului,
   ca să supraviețuiască actualizărilor. Poate fi mutată cu variabila `INCASARI_CONFIG`.
   Plugin-ul vine fără căi setate; prima configurare (și orice schimbare ulterioară) o
   face skill-ul `config-incasari-cargus`, conversațional.
+- **Windows:** are nevoie de Python 3 instalat (python.org, cu „Add python.exe to PATH"
+  bifat); asistentul îl apelează cu `py -3` și nu instalează nimic. Se folosește fila
+  **Code** din Claude Desktop, nu Cowork (Cowork rulează comenzile într-o mașină
+  virtuală Linux care pe Windows pornește greu și nu are acces la folderele locale în
+  task-urile programate). Rularea săptămânală se face din **Routines → New routine →
+  Local**, cu folderul de lucru ales și „Run now" la prima rulare, ca să se aprobe
+  o dată comenzile.
 - **Emailul nu e trimis de script.** Scriptul compune raportul; plugin-ul îl trimite cu
   conectorul Gmail, după confirmarea de la prima trimitere.
 - **Valute:** RON → 5125, orice altă valută → 5126. Exportul de facturi nu are câmp de

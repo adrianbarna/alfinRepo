@@ -61,7 +61,7 @@ Sursă frecventă de confuzie:
 
 Alternativa fără `version` (versiunea = SHA-ul commit-ului, push = release) e și ea validă oficial și a fost folosită temporar; dacă bump-ul devine o povară, e calea de simplificare.
 
-Push pe **`origin`**, care indică GitHub-ul (`github.com:adrianbarna/contaLacramioara`) — sursa de adevăr. (Istoric: `origin` a fost un GitLab vechi, iar GitHub-ul stătea pe un remote separat `github`; remote-urile au fost consolidate, verificat 26.08.2026.) Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase origin main` înainte de push.
+Push pe remote-ul care indică GitHub-ul (`github.com:adrianbarna/contaLacramioara`) — sursa de adevăr. **Verifică-i numele cu `git remote -v`**: în clona de pe Mac-ul lui Adrian (`clienti/pfa/lacramioaraConta/monitorizare-legislativa-plugin/`) se numește `github`, iar `origin` e încă GitLab-ul vechi, rămas în urmă și care respinge push-ul (constatat 03.09.2026; nota din 26.08 despre consolidarea remote-urilor nu se aplică acestei clone). Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase github main` înainte de push.
 
 La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din oficiu, iar fără el plugin-ul rămâne blocat pe versiunea de la instalare, în tăcere.
 
@@ -90,10 +90,11 @@ Când modifici un comportament, verifică dacă e descris în mai multe locuri. 
 
 - `incasari-saga/skills/incasari-cargus/SKILL.md` — fluxul conversațional de procesare.
 - `incasari-saga/skills/config-incasari-cargus/SKILL.md` — fluxul de configurare: prima rulare pe o mașină nouă și orice schimbare de căi/adrese. Rulează scriptul din skill-ul frate (`--arata-config`, `--set-*`).
-- `incasari-saga/skills/incasari-cargus/scripts/proceseaza.py` — toată logica. Fără dependințe externe: `.xlsx` e citit direct cu `zipfile` + `ElementTree`, ca să meargă pe orice PC cu `python3`.
+- `incasari-saga/skills/incasari-cargus/scripts/proceseaza.py` — toată logica. Fără dependințe externe: `.xlsx` e citit direct cu `zipfile` + `ElementTree`, ca să meargă pe orice PC cu Python 3 (`python3` pe macOS/Linux, `py -3` sau `python` pe Windows; fără Python nu merge nimic și nu se instalează automat).
 - **Configurația nu stă în plugin.** Se scrie în `~/.claude/incasari-saga/config.json`, pentru că folderul plugin-ului e rescris la fiecare actualizare. Poate fi mutată cu variabila de mediu `INCASARI_CONFIG`. **Plugin-ul se livrează fără căi setate** (decizia din 26.08.2026): pe o mașină nouă, configurarea o face `config-incasari-cargus`.
 - Scriptul merge în două așezări: instalat ca plugin (rădăcină de proiect inexistentă, căi absolute în config) și copiat într-un proiect la `<proiect>/.claude/skills/incasari-cargus/` (căi relative la proiect). În ambele, configul e la nivel de utilizator; un `config.json` rămas lângă skill din instalări vechi are încă prioritate. `_radacina_proiect()` face distincția după numele folderelor părinte — **dacă muți skill-ul, se rup căile relative.**
-- **Sursa de adevăr e plugin-ul.** Copia din proiectul de lucru al clientului (`incasari/.claude/skills/incasari-cargus/`) trebuie ținută identică; altfel cele două diverg în tăcere.
+- **Sursa de adevăr e plugin-ul.** Copia din proiectul de lucru (`incasari/.claude/skills/`, **ambele skill-uri**) trebuie ținută identică (`diff -r`); altfel cele două diverg în tăcere — s-a întâmplat între 26.08 și 03.09.2026. De aceea comenzile din SKILL.md folosesc `<skill-dir>` / `<skills-dir>` (folderul skill-ului, cale absolută), valabile și din cache-ul plugin-ului, și dintr-un proiect.
+- **Windows / Claude Desktop (03.09.2026).** La client plugin-ul rulează din **aplicația Claude Desktop, fila Code**, nu din Cowork: Cowork rulează bash într-o mașină virtuală Linux (Hyper-V) cu un bug cunoscut de pornire pe Windows, nu citește skill-urile din folder, iar task-urile lui programate nu pot fi legate de un folder local. Fila Code rulează nativ; fără Git for Windows shell-ul e **PowerShell**, care nu traduce comenzi bash — de aceea comenzile din SKILL.md sunt neutre față de shell (o comandă pe linie, fără `&&`/`||`/redirecționări) și **nu se creează fișiere `.bat`/`.ps1`/`.sh`**. Rularea săptămânală: Routines → New routine → Local, folder = folderul de lucru, prima dată „Run now" + „always allow" la promptul de Python. Scriptul forțează UTF-8 pe consolă (`errors=replace`) și LF în fișiere; `--arata-config` arată pe prima linie versiunea de Python și sistemul, pentru depanare de la distanță.
 
 ## Invariante care nu trebuie stricate
 

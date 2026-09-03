@@ -11,20 +11,8 @@ description: >
 
 # Borderouri Cargus / Packeta → XML Saga
 
-## Unde e scriptul
-
-Toată conversia trece prin `proceseaza.py`, care vine împreună cu acest SKILL.md, în
-`scripts/`. Folosește-i **calea absolută** — utilizatorul rulează din folderul lui de
-lucru, nu din folderul skill-ului:
-
-```bash
-python3 <skill-dir>/scripts/proceseaza.py
-```
-
-Configurația (folderul cu borderouri, folderul cu facturi, adresele de e-mail) se
-salvează singură în `~/.claude/incasari-saga/config.json`, **în afara plugin-ului** —
-folderul plugin-ului e rescris la fiecare actualizare. Nu o edita de mână: o scriu
-comenzile `--set-*`.
+Toată conversia trece prin `scripts/proceseaza.py`, care vine împreună cu acest
+SKILL.md (vezi „Cum rulezi scriptul").
 
 Fiecare rând de borderou e legat de **factura lui** din folderul de facturi (exportul
 XML din Saga). `<FacturaNumar>` primește `nr_iesire` de pe factură, iar `<Suma>` ia
@@ -42,6 +30,40 @@ borderouri/ron/  .xlsx  +  procesate/      facturi/  exporturile XML din Saga
 **Azi e configurat doar RON.** O altă valută se adaugă cu o singură comandă
 (`--set-folder borderouri/eur --moneda EUR`, cont 5126) — nu e nevoie de cod nou.
 
+## Cum rulezi scriptul (macOS / Windows)
+
+Scriptul e `scripts/proceseaza.py`, lângă acest SKILL.md. Folosește-i **calea absolută**
+— utilizatorul rulează din folderul lui de lucru, nu din folderul skill-ului. Mai jos,
+`<skill-dir>` e folderul acestui SKILL.md (calea afișată la încărcarea skill-ului):
+instalat ca plugin, `<plugin-dir>/skills/incasari-cargus`; copiat într-un proiect,
+`<proiect>/.claude/skills/incasari-cargus`. Are nevoie doar de Python 3, fără pachete.
+
+**Interpretorul depinde de sistem:** pe macOS/Linux e `python3`; pe Windows e `py -3`
+(sau `python`, dacă `py` lipsește). Verifică **o singură dată** pe sesiune, cu
+`--version`; pe Windows încearcă în ordine `py -3`, `python`, `python3`. Dacă răspunsul e
+„Python was not found; run without arguments to install from the Microsoft Store", ăla e
+stub-ul Windows, nu Python — treci la următorul nume. Dacă niciunul nu merge, spune
+utilizatorului să instaleze Python 3 de pe python.org (cu „Add python.exe to PATH" bifat).
+**Nu instala tu nimic.**
+
+Comenzile de mai jos sunt scrise cu `python3`; pe Windows pui `py -3` în loc, restul
+rămâne identic:
+
+```
+python3 <skill-dir>/scripts/proceseaza.py --dry-run     # macOS / Linux
+py -3 <skill-dir>/scripts/proceseaza.py --dry-run       # Windows
+```
+
+Comenzile merg la fel **în bash și în PowerShell**: o singură comandă pe linie, fără
+`&&`, `||`, `2>/dev/null`, variabile `$X`, backticks sau `cd`. Căile primite de la
+utilizator se pun între ghilimele duble; pe Windows merg și cu `\`, și cu `/`.
+
+**Nu crea fișiere de lansare (`.bat`, `.ps1`, `.sh`).** Scriptul se apelează direct, iar
+un task programat îl apelează exact la fel.
+
+Configul stă la `~/.claude/incasari-saga/config.json` — pe Windows
+`C:\Users\<utilizator>\.claude\incasari-saga\config.json`.
+
 ## Regula de aur
 
 **Nu genera XML de mână și nu citi borderourile cu alte unelte.** Un borderou are
@@ -54,14 +76,17 @@ Rolul tău: rulezi scriptul și rezumi raportul în chat, în română.
 
 ### 1. Prima rulare (sau config lipsă)
 
-Plugin-ul se livrează **fără căi setate** — pe fiecare mașină, prima configurare o
-face skill-ul **`config-incasari-cargus`** din același plugin.
+Skill-ul se livrează **fără căi setate** — pe fiecare mașină, prima configurare o
+face skill-ul **`config-incasari-cargus`** (din același plugin, respectiv același folder
+`.claude/skills/`). Configul stă la `~/.claude/incasari-saga/config.json`, **în afara
+skill-ului** — folderul plugin-ului e rescris la fiecare actualizare.
 
-Rulează scriptul. Dacă iese cu **codul 2**, nu știe unde sunt borderourile —
+Alege întâi interpretorul (vezi „Cum rulezi scriptul"), apoi rulează scriptul. Dacă
+iese cu **codul 2**, nu știe unde sunt borderourile —
 treci pe fluxul din `config-incasari-cargus`. Pe scurt: întreabă utilizatorul
 unde le ține — **nu ghici calea** — apoi:
 
-```bash
+```
 python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
 ```
 
@@ -78,26 +103,26 @@ Scriptul iese tot cu **codul 2** dacă nu găsește folderul cu facturi (caută 
 apoi `config.json`, apoi `facturi/` din proiect). Întreabă utilizatorul unde ține
 exportul XML de facturi din Saga și salvează:
 
-```bash
+```
 python3 <skill-dir>/scripts/proceseaza.py --set-facturi "<calea dată de utilizator>"
 ```
 
 Dacă raportul spune **„E-MAIL: nicio adresă configurată"**, întreabă utilizatorul
 **cui se trimite raportul** — pot fi mai multe adrese — și salvează-le:
 
-```bash
+```
 python3 <skill-dir>/scripts/proceseaza.py --set-email "adresa1@exemplu.ro,adresa2@exemplu.ro"
 ```
 
 ### 2. Rulare normală (cazul obișnuit)
 
-```bash
+```
 python3 <skill-dir>/scripts/proceseaza.py
 ```
 
 Se uită în folder, sare peste borderourile deja procesate și scrie pentru fiecare
-fișier nou un XML în `<folder>/procesate/`, cu **același nume ca borderoul**
-(`Cargus Packeta Iulie 2026.xlsx` → `Cargus Packeta Iulie 2026.xml`).
+fișier nou un XML în `<folder>/procesate/`, cu **numele borderoului, dar fără
+spații** (`Cargus Packeta Iulie 2026.xlsx` → `Cargus_Packeta_Iulie_2026.xml`).
 
 Rezumă în chat: ce fișiere s-au procesat, câte linii, totalul, unde s-a scris
 XML-ul. **Raportează întotdeauna avertismentele și rândurile sărite** — sunt
