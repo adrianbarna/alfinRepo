@@ -130,8 +130,9 @@ când rămân mai multe la fel de plauzibile.
   (cheie = numele fișierului `.xlsx`) și `ultimul-raport.txt` — textul trimis pe email.
 - **Configurația** stă în `~/.claude/incasari-saga/config.json`, în afara plugin-ului,
   ca să supraviețuiască actualizărilor. Poate fi mutată cu variabila `INCASARI_CONFIG`.
-  Plugin-ul vine fără căi setate; prima configurare (și orice schimbare ulterioară) o
-  face skill-ul `config-incasari-cargus`, conversațional.
+  Plugin-ul vine fără căi setate; prima configurare (și orice schimbare ulterioară) se
+  face conversațional, cu skill-ul `incasari-cargus` — el propune căile de lucru și le
+  salvează prin script.
 - **Windows:** are nevoie de Python 3 instalat (python.org, cu „Add python.exe to PATH"
   bifat); asistentul îl apelează cu `py -3` și nu instalează nimic. Se folosește fila
   **Code** din Claude Desktop, nu Cowork (Cowork rulează comenzile într-o mașină

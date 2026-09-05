@@ -27,7 +27,7 @@ poată fi versionat doar ce nu conține date de client:
 ```
 alfinRepo/incasari/   ← AICI. În git, fără date de client.
   .claude/skills/incasari-cargus/          skill-ul de procesare
-  .claude/skills/config-incasari-cargus/   skill-ul de configurare (prima rulare)
+    references/configurare.md              fluxul de configurare (citit la nevoie)
   CLAUDE.md   mappings.md
 
 ~/.claude/incasari-saga/config.json        ← Configul. Per mașină, nu se livrează.
@@ -40,8 +40,8 @@ clienti/test-incasari/                     ← Datele. Niciodată în git.
 Structura datelor — **valuta e dată de folder, sursa nu are folder**. Calea către ele
 e absolută în `config.json`; se schimbă cu `--set-folder` / `--set-facturi`, niciodată
 editând configul de mână. **Skill-ul se livrează fără căi setate** (decizie din
-26.08.2026): pe o mașină nouă, prima configurare o face skill-ul
-`config-incasari-cargus`, care întreabă utilizatorul căile și le salvează prin script.
+26.08.2026): pe o mașină nouă, prima configurare urmează
+`references/configurare.md`, care propune căile și le salvează prin script.
 
 **Azi skill-ul e doar pe RON** (decizie din 25.08.2026). EUR se adaugă cu o
 singură comandă când apare primul borderou — `--set-folder borderouri/eur --moneda EUR`
@@ -321,7 +321,7 @@ cumpărătorului intră în `Explicatie`, iar cursul/suma în valută sunt acope
    va trebui să fie alta decât `RefExp1`; de stabilit ce leagă `Order ID` de `nr_iesire`.
 6. **Windows (03.09.2026) — de testat pe PC-ul de lucru**, din fila Code:
    `py -3 … --arata-config` (prima linie arată versiunea de Python și sistemul),
-   configurarea prin `config-incasari-cargus`, `--dry-run`, o rulare reală (XML UTF-8 cu
+   configurarea prin `references/configurare.md`, `--dry-run`, o rulare reală (XML UTF-8 cu
    LF), apoi task-ul local săptămânal cu **Run now**. De rezolvat **trimiterea e-mailului
    în rulare neasistată**: `SKILL.md` cere confirmare la prima trimitere, iar conectorul
    Gmail trebuie configurat și aprobat („always allow") în task, altfel rularea se
@@ -332,8 +332,8 @@ cumpărătorului intră în `Explicatie`, iar cursul/suma în valută sunt acope
 
 - `.claude/skills/incasari-cargus/` — skill-ul de procesare: `SKILL.md` (fluxul
   conversațional) + `scripts/proceseaza.py`
-- `.claude/skills/config-incasari-cargus/` — skill-ul de configurare: prima rulare pe
-  o mașină nouă și orice schimbare de căi/adrese ulterioară
+- `.claude/skills/incasari-cargus/references/configurare.md` — fluxul de configurare:
+  prima rulare pe o mașină nouă și orice schimbare de căi/adrese ulterioară
 - `~/.claude/incasari-saga/config.json` — configul mașinii curente (foldere, facturi,
   e-mail); se creează la prima configurare, nu se livrează cu skill-ul
 - `<date>/facturi/` — exporturile XML de facturi din Saga, sursa pentru `FacturaNumar`

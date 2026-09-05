@@ -3,10 +3,13 @@ name: incasari-cargus
 description: >
   Transformă borderourile de ramburs Cargus / Packeta (.xlsx) în fișiere XML de
   import pentru programul de contabilitate Saga (Import documente → Încasări).
-  Procesează doar borderourile noi și ține minte
-  ce a procesat deja. Folosește acest skill când apare „borderou", „borderouri",
-  „încasări", „ramburs", „Cargus", „Packeta", „xml pentru Saga", „procesează
-  borderourile", „mai sunt borderouri noi", „generează încasările".
+  Procesează doar borderourile noi și ține minte ce a procesat deja. Folosește
+  acest skill când apare „borderou", „borderouri", „încasări", „ramburs",
+  „Cargus", „Packeta", „xml pentru Saga", „procesează borderourile", „mai sunt
+  borderouri noi", „generează încasările". Tot el acoperă și configurarea —
+  „configurează încasările", „config încasări", „schimbă folderul de borderouri",
+  „setează folderul de facturi", „schimbă adresele de raport", „adaugă EUR",
+  „mută borderourile" — al cărei flux stă în references/configurare.md.
 ---
 
 # Borderouri Cargus / Packeta → XML Saga
@@ -30,7 +33,35 @@ borderouri/ron/  .xlsx  +  procesate/      facturi/  exporturile XML din Saga
 **Azi e configurat doar RON.** O altă valută se adaugă cu o singură comandă
 (`--set-folder borderouri/eur --moneda EUR`, cont 5126) — nu e nevoie de cod nou.
 
-## Cum rulezi scriptul (macOS / Windows)
+## Unde stau fișierele
+
+La ALFIN Consult, borderourile și facturile stau în **Google Drive, sincronizat în
+modul Mirror** pe calculatorul cu Saga — deci sunt fișiere reale pe disc, nu
+referințe către cloud:
+
+```
+C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron
+C:\Users\Barna\My Drive\claude\incasari-saga\facturi
+```
+
+Trei consecințe practice:
+
+- **Nu folosi litera `G:`** în căi, chiar dacă există pe mașină. E un drive virtual
+  montat doar în sesiunea interactivă a utilizatorului logat, deci un task programat
+  nu-l vede. Calea de sub `C:\Users\<utilizator>\My Drive` e o cale reală și merge
+  în ambele situații.
+- **XML-ul generat urcă singur în Drive.** Scriptul scrie în `borderouri\ron\procesate\`,
+  iar sincronizarea îl duce în cloud. Nu încărca nimic manual și nu folosi conectorul
+  de Drive pentru asta.
+- **Rulează de pe un singur calculator.** Jurnalul `.procesate.json` stă într-un folder
+  sincronizat; două mașini care procesează în paralel produc un al doilea fișier de
+  jurnal, iar evidența se rupe în tăcere.
+
+Dacă tocmai s-a pus un borderou nou în Drive, verifică întâi că sincronizarea s-a
+terminat (iconița Drive din bara de sistem). Un fișier pe jumătate sincronizat se
+citește ca `.xlsx` corupt.
+
+## Cum rulezi scriptul (Windows / macOS)
 
 Scriptul e `scripts/proceseaza.py`, lângă acest SKILL.md. Folosește-i **calea absolută**
 — utilizatorul rulează din folderul lui de lucru, nu din folderul skill-ului. Mai jos,
@@ -38,23 +69,23 @@ Scriptul e `scripts/proceseaza.py`, lângă acest SKILL.md. Folosește-i **calea
 instalat ca plugin, `<plugin-dir>/skills/incasari-cargus`; copiat într-un proiect,
 `<proiect>/.claude/skills/incasari-cargus`. Are nevoie doar de Python 3, fără pachete.
 
-**Interpretorul depinde de sistem:** pe macOS/Linux e `python3`; pe Windows e `py -3`
-(sau `python`, dacă `py` lipsește). Verifică **o singură dată** pe sesiune, cu
-`--version`; pe Windows încearcă în ordine `py -3`, `python`, `python3`. Dacă răspunsul e
-„Python was not found; run without arguments to install from the Microsoft Store", ăla e
-stub-ul Windows, nu Python — treci la următorul nume. Dacă niciunul nu merge, spune
-utilizatorului să instaleze Python 3 de pe python.org (cu „Add python.exe to PATH" bifat).
-**Nu instala tu nimic.**
+**Mașina de lucru e Windows**, deci interpretorul e `py -3` (sau `python`, dacă `py`
+lipsește); pe macOS/Linux e `python3`. Verifică **o singură dată** pe sesiune, cu
+`--version`; pe Windows încearcă în ordine `py -3`, `python`, `python3`. Dacă răspunsul
+e „Python was not found; run without arguments to install from the Microsoft Store", ăla
+e stub-ul Windows, nu Python — treci la următorul nume. Dacă niciunul nu merge, spune
+utilizatorului să instaleze Python 3 de pe python.org (cu „Add python.exe to PATH"
+bifat). **Nu instala tu nimic.**
 
-Comenzile de mai jos sunt scrise cu `python3`; pe Windows pui `py -3` în loc, restul
+Comenzile de mai jos sunt scrise cu `py -3`; pe macOS pui `python3` în loc, restul
 rămâne identic:
 
 ```
-python3 <skill-dir>/scripts/proceseaza.py --dry-run     # macOS / Linux
 py -3 <skill-dir>/scripts/proceseaza.py --dry-run       # Windows
+python3 <skill-dir>/scripts/proceseaza.py --dry-run     # macOS / Linux
 ```
 
-Comenzile merg la fel **în bash și în PowerShell**: o singură comandă pe linie, fără
+Comenzile merg la fel **în PowerShell și în bash**: o singură comandă pe linie, fără
 `&&`, `||`, `2>/dev/null`, variabile `$X`, backticks sau `cd`. Căile primite de la
 utilizator se pun între ghilimele duble; pe Windows merg și cu `\`, și cu `/`.
 
@@ -74,51 +105,10 @@ Rolul tău: rulezi scriptul și rezumi raportul în chat, în română.
 
 ## Flux
 
-### 1. Prima rulare (sau config lipsă)
-
-Skill-ul se livrează **fără căi setate** — pe fiecare mașină, prima configurare o
-face skill-ul **`config-incasari-cargus`** (din același plugin, respectiv același folder
-`.claude/skills/`). Configul stă la `~/.claude/incasari-saga/config.json`, **în afara
-skill-ului** — folderul plugin-ului e rescris la fiecare actualizare.
-
-Alege întâi interpretorul (vezi „Cum rulezi scriptul"), apoi rulează scriptul. Dacă
-iese cu **codul 2**, nu știe unde sunt borderourile —
-treci pe fluxul din `config-incasari-cargus`. Pe scurt: întreabă utilizatorul
-unde le ține — **nu ghici calea** — apoi:
+### 1. Rulare normală (cazul obișnuit)
 
 ```
-python3 <skill-dir>/scripts/proceseaza.py --set-folder "<cale>" --moneda RON
-```
-
-RON merge pe contul 5125, orice altă valută pe 5126. Configurează doar valutele care
-există — azi, doar RON.
-
-Calea din interiorul proiectului se salvează relativ, ca skill-ul să meargă și pe alt
-PC fără reconfigurare; una din afara lui se salvează absolut. După `--set-folder`,
-rulează normal.
-
-### 1b. Facturi și adrese de e-mail (tot la prima rulare)
-
-Scriptul iese tot cu **codul 2** dacă nu găsește folderul cu facturi (caută `--facturi`,
-apoi `config.json`, apoi `facturi/` din proiect). Întreabă utilizatorul unde ține
-exportul XML de facturi din Saga și salvează:
-
-```
-python3 <skill-dir>/scripts/proceseaza.py --set-facturi "<calea dată de utilizator>"
-```
-
-Dacă raportul spune **„E-MAIL: nicio adresă configurată"**, întreabă utilizatorul
-**cui se trimite raportul** — pot fi mai multe adrese — propunându-i ca variantă
-implicită adresa cabinetului, `alfin.consult.ai@gmail.com`, și salvează ce confirmă:
-
-```
-python3 <skill-dir>/scripts/proceseaza.py --set-email "alfin.consult.ai@gmail.com"
-```
-
-### 2. Rulare normală (cazul obișnuit)
-
-```
-python3 <skill-dir>/scripts/proceseaza.py
+py -3 <skill-dir>/scripts/proceseaza.py
 ```
 
 Se uită în folder, sare peste borderourile deja procesate și scrie pentru fiecare
@@ -130,22 +120,37 @@ XML-ul. **Raportează întotdeauna avertismentele și rândurile sărite** — s
 lucruri pe care utilizatorul trebuie să le verifice înainte de importul în Saga.
 Dacă nu e nimic nou, spune-o într-o propoziție, fără ceremonie.
 
-### 2b. Trimite raportul pe e-mail
+### 2. Trimite raportul pe e-mail
 
 Când s-a procesat ceva nou, scriptul compune raportul și îl scrie în
 `<folder>/procesate/ultimul-raport.txt`. Cu `--json` îl ai gata de trimis în
 `email.subiect` și `email.corp`, iar destinatarii în `email.catre`.
 
-Trimite-l cu unealta de Gmail către adresele din `email.catre`. **Prima dată cere
-confirmarea utilizatorului**; după ce a acceptat, trimite fără să mai întrebi și
-spune în chat cui ai trimis.
+Trimite-l cu unealta de Gmail către adresele din `email.catre`, apoi spune în chat cui
+ai trimis. **Nu cere confirmare înainte de trimitere, niciodată** — nici la prima
+rulare. Adresele au fost stabilite la configurare, iar asta *este* autorizarea. O rulare
+programată care așteaptă un „da" la 8 dimineața e o rulare ratată.
 
-Dacă `email.neconfigurat` e `true`, întâi întreabă adresele și rulează `--set-email`
-(vezi pasul 1b). Raportul se trimite **și când niciun rând nu a putut fi legat de o
-factură** — atunci nu se scrie niciun XML, dar lista rândurilor sărite e exact ce
-trebuie verificat.
+Singura excepție: utilizatorul e prezent și tocmai a schimbat adresele — atunci confirmi
+o dată lista nouă, ca să nu trimiți la o adresă tastată greșit.
 
-### 3. Alte comenzi
+Raportul se trimite **și când niciun rând nu a putut fi legat de o factură** — atunci nu
+se scrie niciun XML, dar lista rândurilor sărite e exact ce trebuie verificat.
+
+Dacă `email.neconfigurat` e `true`, sau uneltele Gmail lipsesc din sesiune, vezi
+`references/configurare.md`.
+
+### 3. Configurare lipsă sau de schimbat
+
+Scriptul iese cu **codul 2** când nu știe unde sunt borderourile sau facturile. Tot
+acolo ajungi când utilizatorul cere schimbarea unei căi, a valutei sau a adreselor de
+raport.
+
+În oricare din cazuri: **citește `references/configurare.md` și urmează-l.** Nu improviza
+comenzi `--set-*` de aici și nu ghici nicio cale — fluxul complet, cu valorile implicite
+propuse, e acolo.
+
+### 4. Alte comenzi
 
 | Comandă | Când |
 |---|---|
@@ -154,10 +159,10 @@ trebuie verificat.
 | `--folder <cale>` | o rulare punctuală pe alt folder, fără să atingi configul |
 | `--facturi <cale>` | alt folder de facturi, doar pentru rularea asta |
 | `--fara-facturi` | nu lega facturile: `FacturaNumar` rămâne gol și nimic nu se sare |
-| `--arata-config` | arată configurarea curentă (folosit de `config-incasari-cargus`) |
+| `--arata-config` | arată configurarea curentă |
 | `--json` | raport structurat, dacă ai nevoie să-l prelucrezi |
 
-Cod de ieșire: `0` = a mers, `2` = configurare lipsă (întreabă utilizatorul), `1` = eroare.
+Cod de ieșire: `0` = a mers, `2` = configurare lipsă (vezi pasul 3), `1` = eroare.
 
 ## Ce produce
 

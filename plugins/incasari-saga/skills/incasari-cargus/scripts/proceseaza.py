@@ -62,8 +62,8 @@ def _radacina_proiect():
 PROJECT_ROOT = _radacina_proiect()
 
 # Configul sta la nivel de utilizator, NU in folderul skill-ului (decizia din
-# 26.08.2026): skill-ul se copiaza pe masina clientului fara nicio cale setata,
-# iar prima configurare o face skill-ul config-incasari-cargus. Un config.json
+# 26.08.2026): skill-ul se livreaza fara nicio cale setata, iar prima
+# configurare o face references/configurare.md din skill. Un config.json
 # ramas langa skill (instalari vechi) are inca prioritate, ca sa nu se piarda.
 CONFIG_LOCAL = SKILL_ROOT / "config.json"
 CONFIG_UTILIZATOR = Path.home() / ".claude" / "incasari-saga" / "config.json"

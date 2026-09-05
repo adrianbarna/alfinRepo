@@ -1,7 +1,7 @@
-# Instalare Google Drive ca drive local (G:)
+# Instalare Google Drive pe calculatorul de lucru
 
-Ghid pentru montarea Google Drive ca un drive normal **G:** pe laptop, folosit de toate
-conturile Windows de pe mașină, cu **un singur cont Google partajat**
+Ghid pentru a avea fișierele din Google Drive ca **fișiere reale pe disc** pe laptop,
+folosite de skill-urile din acest repo, cu **un singur cont Google partajat**
 (`alfin.consult.ai@gmail.com`).
 
 ## De ce Mirror, nu Stream
@@ -13,10 +13,10 @@ Google Drive for Desktop oferă două moduri de sincronizare:
 - **Mirror files** — ține o copie fizică locală, sincronizată. Fișierele sunt mereu
   prezente pe disc, indiferent de rețea.
 
-Pentru **task-uri programate** (scheduled tasks / cron), **Mirror** e alegerea corectă:
-cu Stream, un task care rulează fără conexiune bună sau înainte ca fișierul să fie
-hidratat poate eșua sau citi un placeholder gol. Cu Mirror, fișierul e mereu disponibil
-local, instant.
+Pentru **task-uri programate** (scheduled tasks / Routines), **Mirror** e alegerea
+corectă: cu Stream, un task care rulează fără conexiune bună sau înainte ca fișierul să
+fie hidratat poate eșua sau citi un placeholder gol. Cu Mirror, fișierul e mereu
+disponibil local, instant.
 
 ## Instalare
 
@@ -31,7 +31,7 @@ fiecare cont trebuie să facă propriul sign-in (vezi mai jos).
 ## Configurare (per cont Windows)
 
 Pași repetați o dată pentru **fiecare** cont Windows de pe laptop care are nevoie de
-acces la G:\:
+acces la fișiere:
 
 1. Loghează-te pe acel cont Windows.
 2. Deschide **Google Drive** din Start (pornește automat după prima configurare, la
@@ -39,16 +39,37 @@ acces la G:\:
 3. Sign-in cu contul Google partajat: **alfin.consult.ai@gmail.com**.
 4. Click pe iconița **⚙️ (Settings)** din colțul dreapta-sus al ferestrei Drive →
    **Preferences** → **Google Drive** (în panoul din stânga, sub numele contului).
-5. La **„My Drive syncing options"** alege **Mirror files** (nu Stream files) — ține o
-   copie fizică locală a fișierelor, nu doar acces la cerere din cloud.
-6. Setează litera driverului la **G** (opțiunea de „Drive letter" e în același ecran de
-   Preferences, lângă setările de sincronizare, sau sub rotița ⚙️ de lângă „My Drive").
+5. La **„My Drive syncing options"** alege **Mirror files**.
+6. Verifică **folderul local** în care se face mirror-ul — e afișat în același ecran și
+   poate fi schimbat. Implicit e `C:\Users\<utilizator>\My Drive`.
 
-După acest setup, **G:** apare ca un drive normal în Explorer, cu conținutul Drive-ului
-partajat, de fiecare dată când acel cont Windows e logat. În modul Mirror, copia fizică
-locală stă și într-un folder normal, per cont Windows — de exemplu
-`C:\Users\Barna\My Drive` — pe lângă litera G:. Ambele căi arată același conținut; G:
-e doar litera de drive atribuită acelui folder.
+## Calea de folosit peste tot: folderul de mirror, nu litera de disc
+
+Aceasta e partea care contează pentru skill-uri, și e ușor de greșit.
+
+Drive for Desktop montează și un **disc virtual** (de obicei `G:`), care apare în
+Explorer alături de folderul de mirror. Sunt două căi diferite către (parțial) același
+conținut, și **numai una e utilizabilă din task-uri**:
+
+| Cale | Ce e | Bună pentru task-uri? |
+|---|---|---|
+| `C:\Users\<utilizator>\My Drive\...` | folderul de mirror, fișiere reale pe disc | **da** |
+| `G:\My Drive\...` | disc virtual montat în sesiune | **nu** |
+
+`G:` e montat **doar în sesiunea interactivă a utilizatorului logat**, ca orice drive
+mapat pe Windows. Un task configurat cu **„Run whether user is logged on or not"** (cont
+SYSTEM sau altă sesiune) **nu-l vede deloc**, indiferent de Stream sau Mirror — și
+eșuează cu „calea nu există", ceea ce arată exact ca o configurare greșită.
+
+**Regula: în `config.json`, în skill-uri și în orice task, folosește calea de sub
+`C:\Users\<utilizator>\My Drive`.** Nu folosi `G:` nicăieri.
+
+Pe mașina curentă (contul Windows `Barna`), folderele de lucru ale încasărilor sunt:
+
+```
+C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron
+C:\Users\Barna\My Drive\claude\incasari-saga\facturi
+```
 
 ## Atenție la spațiu pe disc
 
@@ -56,15 +77,45 @@ Cu Mirror, **fiecare cont Windows ține o copie fizică proprie** a fișierelor 
 nu una singură partajată la nivel de mașină. Spațiul ocupat se înmulțește cu numărul de
 conturi Windows care fac mirror pe același Google Drive.
 
-## Task-uri programate (scheduled tasks)
+## Sincronizarea nu e instantanee
 
-G: e un drive virtual montat **doar în sesiunea interactivă a utilizatorului logat** —
-la fel ca orice network/mapped drive pe Windows. Dacă un task din Task Scheduler e
-configurat cu opțiunea **„Run whether user is logged on or not"** (cont SYSTEM sau altă
-sesiune), **nu va vedea deloc G:**, indiferent de Stream sau Mirror.
+Două consecințe practice, ambele au produs deja confuzie:
 
-Pentru ca un task programat să acceseze G:\:
+- **Un borderou pus acum în Drive nu e gata de procesat imediat.** Până se termină
+  sincronizarea, fișierul poate exista pe disc incomplet și se citește ca `.xlsx`
+  corupt. Verifică iconița Drive din bara de sistem înainte de a rula.
+- **XML-ul generat nu apare instant în cloud.** Scriptul scrie în
+  `borderouri\ron\procesate\`, iar sincronizarea îl urcă după aceea. Nu încărca nimic
+  manual în Drive și nu folosi conectorul de Drive pentru asta — se dublează fișierele.
 
-- Rulează-l sub contul Windows care are Drive montat și logat.
-- Folosește opțiunea **„Run only when user is logged on"** în Task Scheduler.
-- Ține laptopul logat (nu doar pornit) la orele când rulează task-ul.
+## Rulare pe un singur calculator
+
+Jurnalul `.procesate.json` (evidența borderourilor deja procesate) stă într-un folder
+sincronizat. **Procesează de pe un singur calculator.** Două mașini care rulează în
+paralel produc un al doilea fișier de jurnal, de tip `.procesate (1).json`, iar evidența
+se rupe fără niciun mesaj de eroare.
+
+## Cum se rulează, pe Windows
+
+Skill-urile din acest repo rulează din **aplicația Claude Desktop, fila Code**, nu din
+Cowork: Cowork execută comenzile într-o mașină virtuală Linux (Hyper-V) care pe Windows
+are un bug cunoscut de pornire („Workspace unavailable… isolated Linux environment
+failed to start"), nu citește `.claude/skills/` din folder, iar task-urile lui programate
+nu pot fi legate de un folder local.
+
+Fila Code rulează nativ și citește `CLAUDE.md` + `.claude/skills/` din folderul de lucru.
+Fără Git for Windows, shell-ul e **PowerShell**, care nu traduce comenzi bash — de aceea
+instrucțiunile skill-urilor sunt neutre față de shell și scriptul se apelează cu `py -3`.
+
+Rularea periodică: **Routines → New routine → Local**, folder = folderul de lucru,
+frecvența dorită. La prima rulare apasă **Run now** și alege **„always allow"** la
+promptul de Python, altfel rulările următoare se blochează așteptând o aprobare.
+
+Laptopul trebuie să fie **logat**, nu doar pornit, la orele când rulează routine-ul.
+
+## Ce urmează
+
+Python 3 trebuie instalat separat (python.org, cu „Add python.exe to PATH" bifat) —
+skill-urile nu instalează nimic. După aceea, configurarea căilor și a adreselor de
+raport se face conversațional, cu skill-ul `incasari-cargus`; detaliile sunt în
+`plugins/incasari-saga/skills/incasari-cargus/references/configurare.md`.
