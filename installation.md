@@ -94,18 +94,38 @@ shell** — o comandă pe linie, fără `&&`, `||` sau redirecționări — ca s
 
 ## 2. Python 3
 
-Se instalează de la <https://python.org>, cu **„Add python.exe to PATH" bifat**.
-Skill-urile nu instalează nimic singure.
+```powershell
+winget install --id Python.Python.3.12 -e --source winget --accept-package-agreements --accept-source-agreements
+```
 
-Verificare:
+Alternativ, de la <https://python.org>, cu **„Add python.exe to PATH" bifat**. În ambele
+cazuri skill-urile nu instalează nimic singure.
+
+### Verificare
+
+Cere un **terminal nou**, deschis după instalare — PATH-ul nu se actualizează în
+terminalele deja deschise:
 
 ```powershell
 py -3 --version
 ```
 
 Dacă răspunsul e `Python was not found; run without arguments to install from the
-Microsoft Store`, ăla e stub-ul Windows, nu Python — încearcă `python --version`, iar
-dacă nici acela nu răspunde, Python chiar lipsește.
+Microsoft Store`, ăla e stub-ul Windows, nu Python — încearcă `python --version`. Dacă
+nici acela nu răspunde într-un terminal nou, verifică direct calea de instalare:
+
+```powershell
+& "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe" --version
+```
+
+Dacă nici acolo nu răspunde nimic, Python chiar lipsește.
+
+### Atenție la conturi multiple pe aceeași mașină
+
+winget instalează Python **per cont Windows curent**
+(`%LOCALAPPDATA%\Programs\Python\Python312\`), nu la nivel de mașină. Ca și la Google
+Drive (pasul 3), fiecare cont Windows care rulează skill-urile — inclusiv un cont
+dedicat de Routines, dacă e cazul — are nevoie de propria instalare.
 
 `proceseaza.py` nu are dependențe externe: `.xlsx` e citit direct cu `zipfile` +
 `ElementTree`. Deci nu e nevoie de `pip install` pentru nimic.
