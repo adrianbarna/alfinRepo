@@ -1,7 +1,7 @@
 # Monitorizare Legislație Contabilă
 
 > Repo-ul găzduiește **două plugin-uri**, ambele din aceeași sursă
-> `adrianbarna/contaLacramioara`: **Monitorizare legislativă** (mai jos) și
+> `adrianbarna/alfinRepo`: **Monitorizare legislativă** (mai jos) și
 > **[Încasări Saga](incasari-saga/README.md)** — borderourile de ramburs Cargus /
 > Packeta transformate în XML de import pentru Saga. Sursa se adaugă o singură dată;
 > plugin-urile se activează separat.
@@ -29,12 +29,12 @@ Nu aveți nevoie de git și nu aveți nevoie de terminal. Totul se face din apli
 **Pasul 1 — Adăugați sursa plugin-ului.** Deschideți **Settings → Customize → Plugins** (sau, în aplicație, meniul **Directory → Plugins**). Alegeți fila **Personal** și apăsați **+** din dreapta. În câmpul URL scrieți exact:
 
 ```
-adrianbarna/contaLacramioara
+adrianbarna/alfinRepo
 ```
 
 Apăsați **Sync**.
 
-**Verificați apoi că actualizările automate sunt pornite** — nu vin pornite întotdeauna. Lângă eticheta `contaLacramioara` apăsați meniul **···**: acolo trebuie să fie activ comutatorul **Sync automatically**. Tot de acolo, **Check for updates** aduce imediat o versiune nouă, fără să așteptați. Meniul arată și `Synced commit`, adică exact ce versiune aveți.
+**Verificați apoi că actualizările automate sunt pornite** — nu vin pornite întotdeauna. Lângă eticheta `alfinRepo` apăsați meniul **···**: acolo trebuie să fie activ comutatorul **Sync automatically**. Tot de acolo, **Check for updates** aduce imediat o versiune nouă, fără să așteptați. Meniul arată și `Synced commit`, adică exact ce versiune aveți.
 
 > Fără comutatorul ăsta pornit, plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără niciun avertisment.
 
@@ -68,7 +68,7 @@ Primul raport vi-l poate genera pe loc, în aceeași conversație: „Rulează m
 <summary>Instalare din terminal, pentru administratori</summary>
 
 ```
-/plugin marketplace add adrianbarna/contaLacramioara
+/plugin marketplace add adrianbarna/alfinRepo
 /plugin install monitorizare-legislativa@lacramioara-conta
 ```
 
@@ -92,7 +92,7 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 ## Cum funcționează în spate (pentru administrator)
 
 - Monitorizarea are **două skill-uri**: `initial-config-monitorizare-stiri-conta` (configurarea, o singură dată) și `monitorizare-stiri-conta` (rularea). Configurația și istoricul stau într-un fișier numit `monitorizare-legislativa-state.json` (adresa destinatar, ritmul, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori), salvat **pe calculatorul utilizatorului, într-un folder conectat** — sesiunile cloud nu păstrează fișiere între rulări. Numele fișierului e fix, ca să poată fi regăsit prin căutare oriunde ar fi salvat.
-- **Distribuție**: repo public pe GitHub, `adrianbarna/contaLacramioara`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar fiecare plugin stă în subfolderul lui și e livrat prin cale relativă: `"source": "./monitorizare-legislativa"`, respectiv `"source": "./incasari-saga"`.
+- **Distribuție**: repo public pe GitHub, `adrianbarna/alfinRepo`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar fiecare plugin stă în subfolderul lui și e livrat prin cale relativă: `"source": "./monitorizare-legislativa-plugin/monitorizare-legislativa"`, respectiv `"source": "./monitorizare-legislativa-plugin/incasari-saga"`.
 - **De ce cale relativă și nu arhivă zip**: validatorul din Settings → Plugins nu acceptă tipul de sursă `archive` — recunoaște repo-ul, dar sincronizarea eșuează. Cu marketplace-ul clonat, calea relativă se rezolvă corect. Compromisul: instalarea din terminal cere git local.
 - **GitLab nu funcționează pentru această cale.** Dialogul de adăugare validează adresa server-side ca repo GitHub și respinge orice adresă GitLab, indiferent de formă — repo, `.git` sau raw.
 - **Actualizări**: `version` stă **doar** în `plugin.json`-ul fiecărui plugin (niciodată în `marketplace.json` — documentația interzice dublarea) și se incrementează la fiecare release; fără bump, push-ul nu ajunge la client. La client mai trebuie o singură condiție: `Sync automatically` pornit, în meniul `···` al marketplace-ului — **nu vine pornit din oficiu**, iar fără el plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără avertisment. Meniul afișează `Synced commit`, util pentru diagnostic: comparați-l cu ultimul commit de pe GitHub.

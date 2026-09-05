@@ -4,12 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Ce este acest repo
 
-Un **marketplace Claude Code cu două plugin-uri**, nu o aplicație:
+Un **marketplace Claude Code cu două plugin-uri**, nu o aplicație. Din 05.09.2026
+folderul ăsta nu mai e rădăcina repo-ului: e un subfolder în **`alfinRepo`**, alături
+de `incasari/` (folderul de lucru cu borderourile). `marketplace.json` a urcat la
+rădăcina repo-ului, ca marketplace-ul să rămână instalabil.
 
-| Plugin | Unde | Ce e „sursa" |
+```
+alfinRepo/                                ← rădăcina git, remote `origin` → adrianbarna/alfinRepo
+  .claude-plugin/marketplace.json         cele două intrări, cu căi spre subfoldere
+  monitorizare-legislativa-plugin/        ← AICI
+    monitorizare-legislativa/  incasari-saga/
+  incasari/                               copia de lucru a skill-urilor de încasări
+```
+
+| Plugin | Unde (față de rădăcina repo-ului) | Ce e „sursa" |
 |---|---|---|
-| `monitorizare-legislativa` | `monitorizare-legislativa/` | cinci fișiere Markdown, două skill-uri |
-| `incasari-saga` | `incasari-saga/` | Markdown **plus** un script Python |
+| `monitorizare-legislativa` | `monitorizare-legislativa-plugin/monitorizare-legislativa/` | cinci fișiere Markdown, două skill-uri |
+| `incasari-saga` | `monitorizare-legislativa-plugin/incasari-saga/` | Markdown **plus** un script Python |
 
 Pentru **monitorizare-legislativa** nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt fișierele Markdown care descriu comportamentul unui agent de veghe legislativă. Consecința practică: **a edita acea parte înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
 
@@ -19,11 +30,13 @@ Textul e integral în română, inclusiv comentariile și mesajele de commit. P�
 
 ## Comenzi
 
+Din **rădăcina repo-ului** (`alfinRepo/`), nu din acest subfolder:
+
 ```bash
 claude plugin validate ./                 # marketplace.json + toate intrările
-claude plugin validate ./monitorizare-legislativa
-claude plugin validate ./incasari-saga
-claude --plugin-dir .                     # încarcă plugin-ul local, fără instalare
+claude plugin validate ./monitorizare-legislativa-plugin/monitorizare-legislativa
+claude plugin validate ./monitorizare-legislativa-plugin/incasari-saga
+claude --plugin-dir ./monitorizare-legislativa-plugin/monitorizare-legislativa   # local, fără instalare
 ```
 
 Nu există build, lint sau teste. `claude plugin validate` verifică doar `.claude-plugin/*.json`, niciodată conținutul instrucțiunilor.
@@ -37,7 +50,7 @@ Sursă frecventă de confuzie:
 | Ce | Unde e definit | Valoare |
 |---|---|---|
 | Nume marketplace | `marketplace.json` | `lacramioara-conta` |
-| Repo GitHub | remote `github` | `adrianbarna/contaLacramioara` |
+| Repo GitHub | remote `origin` | `adrianbarna/alfinRepo` |
 | Nume plugin 1 | `monitorizare-legislativa/.claude-plugin/plugin.json` | `monitorizare-legislativa` |
 | Skill rulare | folderul + frontmatter | `monitorizare-stiri-conta` |
 | Skill configurare | folderul + frontmatter | `initial-config-monitorizare-stiri-conta` |
@@ -61,7 +74,7 @@ Sursă frecventă de confuzie:
 
 Alternativa fără `version` (versiunea = SHA-ul commit-ului, push = release) e și ea validă oficial și a fost folosită temporar; dacă bump-ul devine o povară, e calea de simplificare.
 
-Push pe remote-ul care indică GitHub-ul (`github.com:adrianbarna/contaLacramioara`) — sursa de adevăr. **Verifică-i numele cu `git remote -v`**: în clona de pe Mac-ul lui Adrian (`clienti/pfa/lacramioaraConta/monitorizare-legislativa-plugin/`) se numește `github`, iar `origin` e încă GitLab-ul vechi, rămas în urmă și care respinge push-ul (constatat 03.09.2026; nota din 26.08 despre consolidarea remote-urilor nu se aplică acestei clone). Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase github main` înainte de push.
+Push pe `origin` (`github.com:adrianbarna/alfinRepo`) — sursa de adevăr, singurul remote rămas. **Din 05.09.2026 remote-urile sunt curățate**: vechiul GitHub `contaLacramioara` și GitLab-ul `abarna/contaScrapper` au fost scoase, iar rădăcina git s-a mutat cu un nivel mai sus, la `clienti/pfa/lacramioaraConta/alfinRepo/`. Notele mai vechi despre un remote numit `github` și despre un `origin` GitLab care respinge push-ul nu mai sunt valabile. Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase origin main` înainte de push.
 
 La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din oficiu, iar fără el plugin-ul rămâne blocat pe versiunea de la instalare, în tăcere.
 
@@ -69,7 +82,7 @@ La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din
 
 Documentate pe larg în README, secțiunea „Cum funcționează în spate". Pe scurt, ca să nu fie reintroduse din greșeală:
 
-- **Fiecare plugin stă în propriul subfolder** (`"source": "./monitorizare-legislativa"`, `"source": "./incasari-saga"`), iar rădăcina ține doar `marketplace.json`. Pluginul de monitorizare a stat inițial în rădăcină (`"source": "./"`) și a fost mutat: serverul Directory părea să lege artefactul cache-uit și de calea sursei, iar redenumirea singură nu l-a făcut să apară în catalog. Nu mai pune niciun plugin în rădăcină.
+- **Fiecare plugin stă în propriul subfolder** (azi `"source": "./monitorizare-legislativa-plugin/monitorizare-legislativa"` și `"source": "./monitorizare-legislativa-plugin/incasari-saga"`), iar rădăcina ține doar `marketplace.json`. Căile pe mai multe niveluri trec de `claude plugin validate ./` (verificat 05.09.2026). Pluginul de monitorizare a stat inițial în rădăcină (`"source": "./"`) și a fost mutat: serverul Directory părea să lege artefactul cache-uit și de calea sursei, iar redenumirea singură nu l-a făcut să apară în catalog. Nu mai pune niciun plugin în rădăcină.
 - **Sursele din `marketplace.json` trebuie să fie căi relative.** Tipul `archive` (zip peste HTTPS) e recunoscut de Claude Code CLI, dar validatorul server-side de la claude.ai îl respinge: găsește repo-ul, apoi sincronizarea eșuează fără explicație.
 - **GitLab nu funcționează** pentru instalarea din claude.ai. Validatorul rezolvă adresa ca repo GitHub și respinge orice formă GitLab — repo, `.git` sau raw.
 - Compromisul acceptat: cu cale relativă, instalarea din terminal clonează repo-ul, deci acolo e nevoie de git local. Instalarea din Settings nu are nevoie — clonarea se face pe serverele Anthropic.

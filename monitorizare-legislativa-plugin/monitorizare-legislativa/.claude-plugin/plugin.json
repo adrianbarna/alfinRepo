@@ -1,10 +1,10 @@
 {
   "name": "monitorizare-legislativa",
   "description": "Monitorizează săptămânal legislația contabilă și fiscală din România — ședințele de Guvern, Monitorul Oficial, portalul legislativ și presa de specialitate (avocatnet, ANAF, CECCAR, contzilla, legestart) — și trimite pe email un raport cu noutățile și interpretările specialiștilor.",
-  "version": "1.14.0",
+  "version": "1.15.0",
   "author": {
     "name": "Adrian Barna"
   },
-  "homepage": "https://github.com/adrianbarna/contaLacramioara",
-  "repository": "https://github.com/adrianbarna/contaLacramioara"
+  "homepage": "https://github.com/adrianbarna/alfinRepo",
+  "repository": "https://github.com/adrianbarna/alfinRepo"
 }

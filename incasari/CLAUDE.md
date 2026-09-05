@@ -10,8 +10,8 @@ Transformăm borderourile de ramburs (Excel) în fișiere XML de import pentru p
 de contabilitate **Saga** (Import documente → Încasări), la clientul Lăcrămioara (PFA).
 
 Nu e un proiect software clasic: nu există build, teste sau dependințe. E un folder de
-lucru contabil + două skill-uri cu un script Python care face conversia. **Git-ul nu e
-aici**, ci în repo-ul pluginului — vezi „Versionare și release".
+lucru contabil + două skill-uri cu un script Python care face conversia. Din 05.09.2026
+folderul **e versionat**, ca subfolder în repo-ul `alfinRepo` — vezi „Versionare și release".
 
 Există **două formate-sursă**, fără nicio coloană comună (formatul se recunoaște
 după coloane, nu după nume de fișier):
@@ -25,7 +25,7 @@ după coloane, nu după nume de fișier):
 poată fi versionat doar ce nu conține date de client:
 
 ```
-clienti/pfa/lacramioaraConta/incasari/     ← AICI. Versionabil, fără date de client.
+clienti/pfa/lacramioaraConta/alfinRepo/incasari/   ← AICI. În git, fără date de client.
   .claude/skills/incasari-cargus/          skill-ul de procesare
   .claude/skills/config-incasari-cargus/   skill-ul de configurare (prima rulare)
   CLAUDE.md   mappings.md
@@ -52,18 +52,19 @@ creează intrarea cu contul 5126. **HUF e ignorat deocamdată.**
 Codul de aici (**ambele skill-uri + scriptul**) e versionat **în alt folder**, ca plugin
 Claude Code în marketplace-ul `lacramioara-conta`:
 
-- **Repo local:** `clienti/pfa/lacramioaraConta/monitorizare-legislativa-plugin/`
-  (`../monitorizare-legislativa-plugin` față de acest folder), branch `main`.
-- **GitHub:** `adrianbarna/contaLacramioara` — de acolo instalează clientul (Settings →
-  Plugins, cu *Sync automatically* pornit). În clona de pe Mac-ul lui Adrian remote-ul
-  către GitHub se numește **`github`**; `origin` e un GitLab vechi, rămas în urmă, care
-  respinge push-ul — verifică întâi cu `git remote -v`.
-- **Pluginul:** `incasari-saga/` din repo; skill-urile stau în `incasari-saga/skills/`.
+- **Repo local:** `clienti/pfa/lacramioaraConta/alfinRepo/`, adică **părintele acestui
+  folder** (`..`), branch `main`. Folderul de față e versionat în același repo.
+- **GitHub:** `adrianbarna/alfinRepo`, remote **`origin`** — de acolo instalează clientul
+  (Settings → Plugins, cu *Sync automatically* pornit). Din 05.09.2026 e singurul remote:
+  vechiul `contaLacramioara` și GitLab-ul au fost scoase.
+- **Pluginul:** `../monitorizare-legislativa-plugin/incasari-saga/`; skill-urile stau în
+  `incasari-saga/skills/`.
   **Versiunea stă într-un singur loc:** `incasari-saga/.claude-plugin/plugin.json`
-  (1.4.0 din 03.09.2026). Fără bump, push-ul nu ajunge la client, în tăcere.
+  (1.5.0 din 05.09.2026). Fără bump, push-ul nu ajunge la client, în tăcere.
 - **Protocolul de release** (detaliat în CLAUDE.md-ul repo-ului): copiezi skill-urile de
-  aici peste `incasari-saga/skills/` → bump în `plugin.json` → `claude plugin validate ./`
-  → `git pull --rebase github main` → commit → `git push github main`. La client, în
+  aici peste `../monitorizare-legislativa-plugin/incasari-saga/skills/` → bump în
+  `plugin.json` → `claude plugin validate ./` **din rădăcina repo-ului**
+  → `git pull --rebase origin main` → commit → `git push origin main`. La client, în
   meniul `···` al marketplace-ului, *Check for updates* aduce versiunea imediat.
 - **Cele două copii trebuie să rămână identice** (`diff -r`): sursa de adevăr e
   plugin-ul, aici e copia de lucru, testată pe borderoul de referință. De aceea

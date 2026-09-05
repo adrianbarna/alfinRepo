@@ -29,14 +29,14 @@ Nu aveți nevoie de git și nu aveți nevoie de terminal.
 **Personal**, apăsați **+** și scrieți exact:
 
 ```
-adrianbarna/contaLacramioara
+adrianbarna/alfinRepo
 ```
 
 Apăsați **Sync**. Dacă aveți deja instalată *Monitorizarea legislativă*, sursa e
 aceeași — nu trebuie adăugată din nou.
 
 **Verificați că actualizările automate sunt pornite** — nu vin pornite din oficiu.
-Lângă eticheta `contaLacramioara`, în meniul **···**, trebuie să fie activ comutatorul
+Lângă eticheta `alfinRepo`, în meniul **···**, trebuie să fie activ comutatorul
 **Sync automatically**.
 
 **Pasul 2 — Activați plugin-ul.** După sincronizare apare cardul **Încasări Saga**.
@@ -72,7 +72,7 @@ o valută nouă se adaugă spunând asistentului unde stau borderourile ei.
 <summary>Instalare din terminal, pentru administratori</summary>
 
 ```
-/plugin marketplace add adrianbarna/contaLacramioara
+/plugin marketplace add adrianbarna/alfinRepo
 /plugin install incasari-saga@lacramioara-conta
 ```
 

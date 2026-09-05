@@ -7,12 +7,12 @@
   "plugins": [
     {
       "name": "monitorizare-legislativa",
-      "source": "./monitorizare-legislativa",
+      "source": "./monitorizare-legislativa-plugin/monitorizare-legislativa",
       "description": "Monitorizare săptămânală a legislației contabile românești cu raport detaliat pe email."
     },
     {
       "name": "incasari-saga",
-      "source": "./incasari-saga",
+      "source": "./monitorizare-legislativa-plugin/incasari-saga",
       "description": "Borderourile de ramburs Cargus / Packeta devin XML de import pentru Saga, cu factura legată de fiecare încasare."
     }
   ]
