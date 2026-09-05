@@ -66,6 +66,16 @@ setărilor, fără să pornească o sesiune — primul lucru de rulat când ceva
 
 Login-ul se face rulând `claude` și urmând promptul din browser.
 
+Dacă răspunsul e `The term 'claude' is not recognized`, cel mai probabil **nu lipsește
+instalarea, ci PATH-ul terminalului e vechi** — la fel ca la Python (pasul 2). Instalarea
+nativă pune executabilul în `%USERPROFILE%\.local\bin`, deci verifică întâi acolo:
+
+```powershell
+& "$env:USERPROFILE\.local\bin\claude.exe" --version
+```
+
+Dacă de acolo răspunde, deschide un terminal nou în loc să reinstalezi.
+
 ### Git for Windows
 
 Nu e obligatoriu pentru Claude Code, dar e **recomandat**: fără el, Claude Code
@@ -235,6 +245,15 @@ Din **fila Code** a aplicației Claude Desktop, sau din terminal:
 
 Dacă sumarul spune `Run /reload-plugins to activate.`, rulează și `/reload-plugins`.
 Calea asta clonează marketplace-ul local, deci are nevoie de `git` instalat (pasul 1).
+
+Dacă adăugarea marketplace-ului eșuează cu `EBUSY: resource busy or locked, rmdir
+'...\.claude\plugins\marketplaces\adrianbarna-alfinRepo'`, **rulează comanda din nou**.
+Clonarea reușise deja, iar eroarea vine de la curățarea folderului, ținut ocupat de un
+antivirus sau de o sesiune Claude care tocmai îl citea. A doua încercare trece. Nu șterge
+folderul de mână și nu reinstala nimic.
+
+Un skill nou instalat **nu apare în sesiunile deja deschise** — pluginurile se citesc la
+pornirea sesiunii. După instalare, deschide o sesiune nouă (sau `/reload-plugins`).
 
 Alternativ, din **Settings → Customize → Plugins**, fila **Personal**, butonul **+**,
 cu `adrianbarna/alfinRepo` și **Sync**. Acolo clonarea se face pe serverele Anthropic,
