@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ALFIN Consult — arhitectura agenților AI</title>
+<style>
+  :root{
+    --bg:#f4f4f1; --panel:#ffffff; --panel-2:#fbfbf9;
+    --ink:#1c1b19; --ink-2:#57534e; --ink-3:#8a857e;
+    --line:#ddd9d2; --line-2:#c8c3ba;
+    --trigger:#b45309; --trigger-bg:#fef3c7;
+    --agent:#3730a3;   --agent-bg:#e0e7ff;
+    --code:#0f766e;    --code-bg:#ccfbf1;
+    --data:#475569;    --data-bg:#e7ebf0;
+    --extern:#7e22ce;  --extern-bg:#f3e8ff;
+    --human:#be123c;   --human-bg:#ffe4e6;
+    --flow:#0f766e; --flow-human:#be123c;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#141412; --panel:#1e1e1b; --panel-2:#232320;
+      --ink:#f0ede8; --ink-2:#b6b0a7; --ink-3:#87817a;
+      --line:#34332f; --line-2:#4a4842;
+      --trigger:#fbbf24; --trigger-bg:#3b2f0e;
+      --agent:#a5b4fc;   --agent-bg:#26254d;
+      --code:#5eead4;    --code-bg:#0d3b37;
+      --data:#c3ccd8;    --data-bg:#2b3139;
+      --extern:#d8b4fe;  --extern-bg:#3a2350;
+      --human:#fda4af;   --human-bg:#4a1526;
+      --flow:#5eead4; --flow-human:#fda4af;
+    }
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1400px;margin:0 auto;padding:28px 24px 56px}
+  header{margin-bottom:22px}
+  h1{font-size:23px;font-weight:650;letter-spacing:-.01em;margin:0 0 6px}
+  .sub{color:var(--ink-2);font-size:14px;max-width:70ch;margin:0}
+
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 16px}
+  .tab{
+    border:1px solid var(--line-2); background:var(--panel); color:var(--ink-2);
+    padding:7px 14px;border-radius:999px;font:inherit;font-size:13.5px;cursor:pointer;
+    display:inline-flex;align-items:center;gap:7px;transition:.15s;
+  }
+  .tab:hover{border-color:var(--ink-3);color:var(--ink)}
+  .tab[aria-selected="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .tab[disabled]{opacity:.5;cursor:default}
+  .tab .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+
+  .layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+  @media (max-width:1080px){.layout{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px}
+  .stage{padding:8px;overflow-x:auto}
+  svg{display:block;width:100%;height:auto;min-width:900px}
+
+  .controls{
+    display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    padding:12px 14px;border-top:1px solid var(--line);
+  }
+  button.ctl{
+    border:1px solid var(--line-2);background:var(--panel-2);color:var(--ink);
+    border-radius:9px;padding:6px 12px;font:inherit;font-size:13.5px;cursor:pointer;
+  }
+  button.ctl:hover{border-color:var(--ink-3)}
+  button.ctl.primary{background:var(--ink);color:var(--bg);border-color:var(--ink);min-width:96px}
+  .spacer{flex:1}
+  .counter{color:var(--ink-3);font-size:13px;font-variant-numeric:tabular-nums}
+  label.speed{color:var(--ink-3);font-size:13px;display:flex;align-items:center;gap:6px}
+  input[type=range]{accent-color:var(--ink);width:96px}
+
+  .side h2{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:0;padding:14px 16px 8px;font-weight:600}
+  ol.steps{list-style:none;margin:0;padding:0 8px 10px}
+  ol.steps li{margin:0}
+  .step{
+    width:100%;text-align:left;border:0;background:none;color:var(--ink-2);font:inherit;
+    display:grid;grid-template-columns:24px 1fr;gap:10px;padding:8px 8px;border-radius:9px;cursor:pointer;
+  }
+  .step:hover{background:var(--panel-2);color:var(--ink)}
+  .step .n{
+    font-size:11px;font-variant-numeric:tabular-nums;color:var(--ink-3);
+    border:1px solid var(--line);border-radius:6px;height:20px;line-height:18px;text-align:center;margin-top:2px;
+  }
+  .step .t{font-size:13.5px}
+  .step[aria-current="true"]{background:var(--panel-2);color:var(--ink)}
+  .step[aria-current="true"] .n{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+  .step.who-om .t::after{content:" · om";color:var(--human);font-size:12px}
+
+  .detail{border-top:1px solid var(--line);padding:14px 16px 16px}
+  .detail .who{
+    display:inline-block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+    padding:2px 8px;border-radius:999px;margin-bottom:8px;font-weight:600;
+  }
+  .who.agent{background:var(--agent-bg);color:var(--agent)}
+  .who.om{background:var(--human-bg);color:var(--human)}
+  .detail p{margin:0 0 10px;font-size:13.5px;color:var(--ink-2)}
+  .detail .phase{font-size:12.5px;color:var(--ink-3)}
+  .detail .phase b{color:var(--ink);font-weight:600}
+
+  .legend{display:flex;gap:14px;flex-wrap:wrap;padding:12px 16px;font-size:12.5px;color:var(--ink-2);border-top:1px solid var(--line)}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+
+  .placeholder{padding:40px 28px;text-align:center;color:var(--ink-2)}
+  .placeholder h3{margin:0 0 8px;font-size:16px;color:var(--ink);font-weight:600}
+  .placeholder p{margin:0 auto;max-width:52ch;font-size:13.5px}
+
+  .node rect{transition:opacity .2s}
+  .node text{font-family:inherit;pointer-events:none}
+  .node .title{font-size:13px;font-weight:600}
+  .node .meta{font-size:11px}
+  .edge{fill:none;stroke:var(--line-2);stroke-width:1.6}
+  .edge.on{stroke:var(--flow);stroke-width:2.4}
+  .edge.on.human{stroke:var(--flow-human)}
+  .node.dim{opacity:.38}
+  .node.on rect{stroke-width:2.2}
+  .grp rect{fill:none;stroke:var(--line);stroke-width:1;stroke-dasharray:4 4}
+  .grp text{font-size:11px;fill:var(--ink-3);letter-spacing:.04em;text-transform:uppercase}
+  footer{margin-top:26px;color:var(--ink-3);font-size:12.5px}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ALFIN Consult — arhitectura agenților AI</h1>
+    <p class="sub">Cum curge informația printr-un agent, de la declanșare până la cardul închis în board. Apasă play, sau alege un pas din listă.</p>
+  </header>
+
+  <div class="tabs" id="tabs" role="tablist"></div>
+
+  <div class="layout">
+    <div>
+      <div class="card">
+        <div class="stage" id="stage"></div>
+        <div class="controls" id="controls">
+          <button class="ctl primary" id="play">▶ Pornește</button>
+          <button class="ctl" id="prev">‹</button>
+          <button class="ctl" id="next">›</button>
+          <button class="ctl" id="restart">↺</button>
+          <span class="counter" id="counter"></span>
+          <span class="spacer"></span>
+          <label class="speed">viteză <input type="range" id="speed" min="0.5" max="2.5" step="0.25" value="1"></label>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+    </div>
+
+    <div class="card side">
+      <h2>Pașii fluxului</h2>
+      <ol class="steps" id="steps"></ol>
+      <div class="detail" id="detail"></div>
+    </div>
+  </div>
+
+  <footer>
+    Fișier din <code>adrianbarna/alfinRepo</code>. Agenții sunt definiți în structura
+    <code>AGENTS</code> din acest fișier — un agent nou înseamnă o intrare nouă acolo, nu cod nou.
+  </footer>
+</div>
+
+<script>
+/* ────────────────────────────────────────────────────────────────────────────
+   CUM ADAUGI UN AGENT NOU
+
+   Adaugi o intrare în AGENTS, cu trei liste:
+
+     nodes  — cutiile. { id, x, y, w, h, kind, title, meta }
+              kind ∈ trigger | agent | code | data | extern | human
+     edges  — săgețile. { id, from:[nodeId, latură], to:[nodeId, latură] }
+              latură ∈ t | b | l | r  (sus, jos, stânga, dreapta), opțional
+              cu offset: ["script","t",-45] mută punctul cu 45px pe orizontală.
+     steps  — povestea, în ordine. { edges:[...], on:[nodeId,...], who, title,
+              desc, phase }  ·  who ∈ "agent" | "om"  ·  phase = faza din board
+
+   Nimic altceva nu se schimbă: tab-urile, animația și lista de pași se
+   generează din datele astea. status:"planificat" arată doar un anunț.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+const AGENTS = {
+  incasari: {
+    label: "Încasări Cargus/Packeta",
+    status: "activ",
+    plugin: "incasari-saga · skill incasari-cargus",
+    view: [0, 0, 1250, 700],
+    nodes: [
+      { id:"routine", x:40,   y:320, w:180, h:64, kind:"trigger", title:"Routine lunar",        meta:"Claude Desktop · fila Code" },
+      { id:"skill",   x:270,  y:316, w:190, h:72, kind:"agent",   title:"incasari-cargus",      meta:"skill · orchestrează" },
+      { id:"script",  x:520,  y:320, w:180, h:64, kind:"code",    title:"proceseaza.py",        meta:"determinist · fără AI" },
+      { id:"bord",    x:420,  y:100, w:175, h:56, kind:"data",    title:"borderouri/ron",       meta:"*.xlsx Cargus/Packeta" },
+      { id:"fact",    x:615,  y:100, w:175, h:56, kind:"data",    title:"facturi",              meta:"export XML din Saga" },
+      { id:"jurnal",  x:520,  y:450, w:180, h:56, kind:"data",    title:".procesate.json",      meta:"ce s-a procesat deja" },
+      { id:"xml",     x:850,  y:312, w:170, h:60, kind:"data",    title:"procesate/*.xml",      meta:"fișierul de import" },
+      { id:"gmail",   x:850,  y:200, w:170, h:56, kind:"extern",  title:"Gmail",                meta:"raportul rulării" },
+      { id:"saga",    x:1050, y:200, w:160, h:56, kind:"extern",  title:"Saga",                 meta:"Import → Încasări" },
+      { id:"om",      x:1040, y:312, w:170, h:64, kind:"human",   title:"Contabil",             meta:"verifică și aplică" },
+      { id:"notion",  x:700,  y:560, w:250, h:72, kind:"extern",  title:"Notion · AI Agent overview", meta:"un card = o rulare" }
+    ],
+    groups: [
+      { x:405, y:64, w:400, h:108, label:"Google Drive (Mirror) — fișiere reale pe disc" }
+    ],
+    edges: [
+      { id:"e1",  from:["routine","r"],     to:["skill","l"] },
+      { id:"e2",  from:["skill","r",-13],    to:["script","l",-13] },
+      { id:"e7",  from:["script","l",13],    to:["skill","r",13] },
+      { id:"e3",  from:["script","t",-45],   to:["bord","b",10] },
+      { id:"e4",  from:["script","t",45],    to:["fact","b",-10] },
+      { id:"e5",  from:["script","b"],       to:["jurnal","t"] },
+      { id:"e6",  from:["script","r"],       to:["xml","l"] },
+      { id:"e8",  from:["skill","t",45],     to:["gmail","l"] },
+      { id:"e9",  from:["skill","b",30],     to:["notion","l"] },
+      { id:"e10", from:["notion","r"],       to:["om","l"] },
+      { id:"e11", from:["xml","t"],          to:["saga","b",-40] },
+      { id:"e12", from:["om","b"],           to:["notion","r",-40] }
+    ],
+    steps: [
+      { edges:["e1"], on:["routine","skill"], who:"agent", phase:"Programat → În lucru",
+        title:"Routine-ul lunar pornește sesiunea",
+        desc:"Un task local din fila Code, legat de folderul din Drive. Nu cere nicio confirmare — o rulare care așteaptă un „da” la 8 dimineața e o rulare ratată." },
+      { edges:["e9"], on:["skill","notion"], who:"agent", phase:"În lucru",
+        title:"Se deschide cardul lunii în board",
+        desc:"Skill-ul caută un card pentru luna curentă; dacă nu există, îl creează în „În lucru”. Dacă Notion lipsește din sesiune, rularea merge mai departe fără el." },
+      { edges:["e2"], on:["skill","script"], who:"agent", phase:"În lucru",
+        title:"Skill-ul apelează scriptul",
+        desc:"Aici se termină partea de model. Conversia o face cod determinist — un borderou are sute de rânduri, iar XML-ul scris de un model nu e verificabil." },
+      { edges:["e5"], on:["script","jurnal"], who:"agent", phase:"În lucru",
+        title:"Citește jurnalul: ce s-a procesat deja",
+        desc:"<code>.procesate.json</code> ține evidența borderourilor duse la capăt. De aceea rularea e idempotentă: repornită, nu reface nimic." },
+      { edges:["e3"], on:["script","bord"], who:"agent", phase:"În lucru",
+        title:"Citește borderourile noi",
+        desc:"Fișiere reale pe disc, sincronizate prin Google Drive în modul Mirror. Valuta e dată de folder, nu de conținut; sursa (Cargus sau Packeta) se recunoaște după coloane." },
+      { edges:["e4"], on:["script","fact"], who:"agent", phase:"În lucru",
+        title:"Citește exportul de facturi din Saga",
+        desc:"Fără el nu se poate stinge nicio factură. Când lipsește un export, scriptul o spune explicit în raport, în loc să sară rândurile în tăcere." },
+      { edges:[], on:["script"], who:"agent", phase:"În lucru",
+        title:"Leagă fiecare rând de factura lui",
+        desc:"Cheia e <code>RefExp1 = inf_suplm</code>, confirmată de total (până la 0,01 lei trece tăcut). Numele e doar control secundar — pe colet e persoana, pe factură firma. Un rând care nu se leagă sigur nu intră în XML." },
+      { edges:["e6"], on:["script","xml"], who:"agent", phase:"În lucru",
+        title:"Scrie XML-ul de import",
+        desc:"Un fișier per borderou, în <code>procesate/</code>, cu numele borderoului fără spații. Suma vine de pe factură, ca factura să se stingă exact." },
+      { edges:["e5"], on:["script","jurnal"], who:"agent", phase:"În lucru",
+        title:"Marchează borderoul ca procesat",
+        desc:"Ce n-a mers nu se marchează — un format nerecunoscut se reia automat la rularea următoare, după ce se adaugă maparea." },
+      { edges:["e7"], on:["script","skill"], who:"agent", phase:"În lucru",
+        title:"Raportul se întoarce la skill",
+        desc:"Linii, total, defalcare pe zile, rânduri sărite, avertismente. Skill-ul nu recalculează nimic; doar rezumă și transmite mai departe." },
+      { edges:["e8"], on:["skill","gmail"], who:"agent", phase:"În lucru",
+        title:"Raportul pleacă pe e-mail",
+        desc:"Fără confirmare: adresele stabilite la configurare <i>sunt</i> autorizarea. Se trimite și când toate rândurile au fost sărite — atunci e cel mai mult de verificat." },
+      { edges:["e9"], on:["skill","notion"], who:"agent", phase:"→ De verificat",
+        title:"Cardul trece în „De verificat”",
+        desc:"În corpul cardului se scrie jurnalul rulării, în română: ce comandă a rulat, ce fișiere, ce a ieșit, ce e de verificat, unde a plecat raportul. Dacă ceva a crăpat, cardul merge în „Blocat / Necesită input”." },
+      { edges:["e10"], on:["notion","om"], who:"om", phase:"De verificat",
+        title:"Contabilul deschide cardul",
+        desc:"Aici se termină ce poate face agentul singur. Verifică totalurile, avertismentele și rândurile sărite — apoi mută cardul în „De aplicat”." },
+      { edges:["e11"], on:["xml","saga","om"], who:"om", phase:"De aplicat",
+        title:"Importul în Saga",
+        desc:"Import documente → Încasări, cu XML-ul din <code>procesate/</code>. Singurul pas care atinge contabilitatea e făcut de om, deliberat." },
+      { edges:["e12"], on:["om","notion"], who:"om", phase:"→ Done",
+        title:"Cardul se închide",
+        desc:"Rularea rămâne în board ca istoric: ce s-a procesat luna asta, cât a durat, ce a avut nevoie de intervenție. Un agent nu-și mută niciodată singur cardul în „Done”." }
+    ]
+  },
+
+  monitorizare: {
+    label: "Monitorizare fiscală",
+    status: "planificat",
+    note: "Fluxul veghii legislative săptămânale — surse oficiale → deduplicare pe fișierul de stare → raport pe e-mail → card în board — se adaugă aici, în aceeași structură ca încasările."
+  }
+};
+
+const KINDS = {
+  trigger:{ fill:"var(--trigger-bg)", stroke:"var(--trigger)", label:"declanșator" },
+  agent:  { fill:"var(--agent-bg)",   stroke:"var(--agent)",   label:"skill (model)" },
+  code:   { fill:"var(--code-bg)",    stroke:"var(--code)",    label:"cod determinist" },
+  data:   { fill:"var(--data-bg)",    stroke:"var(--data)",    label:"fișiere / date" },
+  extern: { fill:"var(--extern-bg)",  stroke:"var(--extern)",  label:"serviciu extern" },
+  human:  { fill:"var(--human-bg)",   stroke:"var(--human)",   label:"om" }
+};
+
+const NS = "http://www.w3.org/2000/svg";
+const el = (n, a={}) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+let current = null, stepIdx = 0, playing = false, raf = null, t0 = 0, speed = 1;
+const paths = {};
+
+function anchor(node, side, off = 0) {
+  const cx = node.x + node.w / 2, cy = node.y + node.h / 2;
+  if (side === "t") return { x: cx + off, y: node.y };
+  if (side === "b") return { x: cx + off, y: node.y + node.h };
+  if (side === "l") return { x: node.x, y: cy + off };
+  return { x: node.x + node.w, y: cy + off };
+}
+
+function edgePath(a, sa, b, sb, bow = 0) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const k = 0.4, clamp = v => Math.min(120, Math.max(34, v));
+  const push = (s, len) => s === "t" ? [0, -len] : s === "b" ? [0, len] : s === "l" ? [-len, 0] : [len, 0];
+  const la = clamp(Math.abs(/[lr]/.test(sa) ? dx : dy) * k) + Math.abs(bow);
+  const lb = clamp(Math.abs(/[lr]/.test(sb) ? dx : dy) * k) + Math.abs(bow);
+  const [ax, ay] = push(sa, la), [bx, by] = push(sb, lb);
+  return `M ${a.x} ${a.y} C ${a.x + ax} ${a.y + ay + bow}, ${b.x + bx} ${b.y + by + bow}, ${b.x} ${b.y}`;
+}
+
+function render(key) {
+  current = key; stepIdx = 0; stop();
+  document.querySelectorAll("#tabs .tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.k === key)));
+  const a = AGENTS[key];
+  const stage = document.getElementById("stage");
+  const controls = document.getElementById("controls");
+  const legend = document.getElementById("legend");
+  stage.innerHTML = "";
+
+  if (a.status === "planificat") {
+    stage.innerHTML = `<div class="placeholder"><h3>${a.label} — în lucru</h3><p>${a.note}</p></div>`;
+    controls.style.display = "none"; legend.style.display = "none";
+    document.getElementById("steps").innerHTML = "";
+    document.getElementById("detail").innerHTML = `<p>Nimic de animat încă.</p>`;
+    return;
+  }
+  controls.style.display = ""; legend.style.display = "";
+
+  const svg = el("svg", { viewBox: a.view.join(" "), role: "img", "aria-label": `Fluxul agentului ${a.label}` });
+  const defs = el("defs");
+  for (const [id, c] of [["ar", "var(--line-2)"], ["ar-on", "var(--flow)"], ["ar-hum", "var(--flow-human)"]]) {
+    const m = el("marker", { id, viewBox: "0 0 10 10", refX: "9", refY: "5", markerWidth: "6", markerHeight: "6", orient: "auto-start-reverse" });
+    m.appendChild(el("path", { d: "M 0 1 L 9 5 L 0 9 z", fill: c }));
+    defs.appendChild(m);
+  }
+  svg.appendChild(defs);
+
+  (a.groups || []).forEach(g => {
+    const gg = el("g", { class: "grp" });
+    gg.appendChild(el("rect", { x: g.x, y: g.y, width: g.w, height: g.h, rx: 12 }));
+    const t = el("text", { x: g.x + 12, y: g.y + 20 }); t.textContent = g.label;
+    gg.appendChild(t); svg.appendChild(gg);
+  });
+
+  const byId = Object.fromEntries(a.nodes.map(n => [n.id, n]));
+  const eLayer = el("g"), nLayer = el("g"), pLayer = el("g");
+  svg.append(eLayer, nLayer, pLayer);
+
+  a.edges.forEach(e => {
+    const [fi, fs, fo = 0] = e.from, [ti, ts, to = 0] = e.to;
+    const d = edgePath(anchor(byId[fi], fs, fo), fs, anchor(byId[ti], ts, to), ts, e.bow || 0);
+    const p = el("path", { d, class: "edge", id: `p-${e.id}`, "marker-end": "url(#ar)" });
+    eLayer.appendChild(p); paths[e.id] = p;
+  });
+
+  a.nodes.forEach(n => {
+    const k = KINDS[n.kind];
+    const g = el("g", { class: "node", "data-id": n.id });
+    g.appendChild(el("rect", { x: n.x, y: n.y, width: n.w, height: n.h, rx: 11, fill: k.fill, stroke: k.stroke, "stroke-width": 1.4 }));
+    const t1 = el("text", { x: n.x + n.w / 2, y: n.y + n.h / 2 - 3, "text-anchor": "middle", class: "title", fill: k.stroke });
+    t1.textContent = n.title;
+    const t2 = el("text", { x: n.x + n.w / 2, y: n.y + n.h / 2 + 14, "text-anchor": "middle", class: "meta", fill: "var(--ink-3)" });
+    t2.textContent = n.meta;
+    g.append(t1, t2); nLayer.appendChild(g);
+  });
+
+  const dot = el("circle", { r: 7, class: "packet", opacity: 0, fill: "var(--flow)" });
+  pLayer.appendChild(dot); svg.dataset.k = key;
+  stage.appendChild(svg);
+
+  legend.innerHTML = Object.values(KINDS).map(k =>
+    `<span><i style="background:${k.fill};outline:1px solid ${k.stroke}"></i>${k.label}</span>`).join("");
+
+  document.getElementById("steps").innerHTML = a.steps.map((s, i) =>
+    `<li><button class="step ${s.who === "om" ? "who-om" : ""}" data-i="${i}">
+       <span class="n">${i + 1}</span><span class="t">${s.title}</span></button></li>`).join("");
+  document.querySelectorAll(".step").forEach(b =>
+    b.addEventListener("click", () => { stop(); show(+b.dataset.i); }));
+
+  show(0);
+}
+
+function show(i) {
+  const a = AGENTS[current]; stepIdx = (i + a.steps.length) % a.steps.length;
+  const s = a.steps[stepIdx];
+  const svg = document.querySelector("#stage svg");
+
+  svg.querySelectorAll(".edge").forEach(p => { p.classList.remove("on", "human"); p.setAttribute("marker-end", "url(#ar)"); });
+  s.edges.forEach(id => {
+    const p = paths[id]; if (!p) return;
+    p.classList.add("on"); if (s.who === "om") p.classList.add("human");
+    p.setAttribute("marker-end", s.who === "om" ? "url(#ar-hum)" : "url(#ar-on)");
+  });
+  svg.querySelectorAll(".node").forEach(n =>
+    n.classList.toggle("dim", !s.on.includes(n.dataset.id)));
+  svg.querySelector(".packet").setAttribute("fill", s.who === "om" ? "var(--flow-human)" : "var(--flow)");
+
+  document.querySelectorAll(".step").forEach(b =>
+    b.setAttribute("aria-current", String(+b.dataset.i === stepIdx)));
+  const cur = document.querySelector('.step[aria-current="true"]');
+  if (cur) cur.scrollIntoView({ block: "nearest" });
+
+  document.getElementById("detail").innerHTML =
+    `<span class="who ${s.who}">${s.who === "om" ? "pas manual" : "agent"}</span>
+     <p><b>${s.title}.</b> ${s.desc}</p>
+     <p class="phase">Faza în board: <b>${s.phase}</b></p>`;
+  document.getElementById("counter").textContent = `pasul ${stepIdx + 1} / ${a.steps.length}`;
+
+  t0 = performance.now(); drawPacket(0);
+}
+
+function drawPacket(u) {
+  const s = AGENTS[current].steps[stepIdx];
+  const dot = document.querySelector(".packet");
+  const id = s.edges[0];
+  if (!id || !paths[id]) {
+    // pas fără săgeată: pulsează nodul activ
+    dot.setAttribute("opacity", 0);
+    const n = document.querySelector(`.node[data-id="${s.on[0]}"] rect`);
+    if (n) n.setAttribute("stroke-width", (1.4 + Math.abs(Math.sin(u * Math.PI)) * 2.4).toFixed(2));
+    return;
+  }
+  const p = paths[id], L = p.getTotalLength(), pt = p.getPointAtLength(L * u);
+  dot.setAttribute("opacity", u > 0.99 || u < 0.01 ? 0.25 : 1);
+  dot.setAttribute("cx", pt.x); dot.setAttribute("cy", pt.y);
+}
+
+function frame(now) {
+  const dur = 1600 / speed, u = Math.min(1, (now - t0) / dur);
+  drawPacket(u);
+  if (u >= 1) { show(stepIdx + 1); }
+  if (playing) raf = requestAnimationFrame(frame);
+}
+function play() { if (playing) return; playing = true; t0 = performance.now(); document.getElementById("play").textContent = "❚❚ Pauză"; raf = requestAnimationFrame(frame); }
+function stop() { playing = false; if (raf) cancelAnimationFrame(raf); const b = document.getElementById("play"); if (b) b.textContent = "▶ Pornește"; }
+
+document.getElementById("tabs").innerHTML = Object.entries(AGENTS).map(([k, a]) =>
+  `<button class="tab" role="tab" data-k="${k}" aria-selected="false">
+     <span class="dot" style="background:${a.status === "activ" ? "var(--code)" : "var(--ink-3)"}"></span>
+     ${a.label}${a.status === "activ" ? "" : " · în curând"}
+   </button>`).join("");
+document.querySelectorAll("#tabs .tab").forEach(b => b.addEventListener("click", () => render(b.dataset.k)));
+
+document.getElementById("play").addEventListener("click", () => playing ? stop() : play());
+document.getElementById("next").addEventListener("click", () => { stop(); show(stepIdx + 1); });
+document.getElementById("prev").addEventListener("click", () => { stop(); show(stepIdx - 1); });
+document.getElementById("restart").addEventListener("click", () => { stop(); show(0); });
+document.getElementById("speed").addEventListener("input", e => { speed = +e.target.value; });
+document.addEventListener("keydown", e => {
+  if (e.key === "ArrowRight") { stop(); show(stepIdx + 1); }
+  if (e.key === "ArrowLeft") { stop(); show(stepIdx - 1); }
+  if (e.key === " ") { e.preventDefault(); playing ? stop() : play(); }
+});
+
+render("incasari");
+</script>
+</body>
+</html>

@@ -101,7 +101,8 @@ Configul stă la `~/.claude/incasari-saga/config.json` — pe Windows
 sute de rânduri; scriptul e determinist, XML-ul scris de model nu e. La fel, **nu
 edita `.procesate.json`** direct — îl gestionează scriptul.
 
-Rolul tău: rulezi scriptul și rezumi raportul în chat, în română.
+Rolul tău: rulezi scriptul, rezumi raportul în chat (în română), îl trimiți pe email și
+ții la zi cardul rulării în board-ul Notion (pasul 3).
 
 ## Flux
 
@@ -140,7 +141,81 @@ se scrie niciun XML, dar lista rândurilor sărite e exact ce trebuie verificat.
 Dacă `email.neconfigurat` e `true`, sau uneltele Gmail lipsesc din sesiune, vezi
 `references/configurare.md`.
 
-### 3. Configurare lipsă sau de schimbat
+### 3. Ține la zi cardul din board-ul Notion
+
+Fiecare rulare are un card în board-ul **AI Agent overview** din Notion. Acolo se vede că
+rularea a avut loc și ce a mai rămas de făcut — mai ales când rularea e programată și nu
+o urmărește nimeni în direct.
+
+```
+Board:       https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f
+Data source: aa9a26d8-67fc-47d2-acf0-0460d8bc9abf
+```
+
+**Dacă uneltele Notion lipsesc din sesiune, nu te opri și nu cere activarea conectorului.**
+Procesarea, XML-ul și emailul sunt independente de board. Spui la final, într-o
+propoziție, în ce fază ar fi trebuit să ajungă cardul, și mergi mai departe.
+
+**La început**, imediat ce știi că ai borderouri noi de procesat, creează cardul:
+
+| Proprietate | Valoare |
+|---|---|
+| `Rulare` | `Încasări — <luna> <anul>` (ex. `Încasări — septembrie 2026`) |
+| `Agent` | `Încasări Cargus/Packeta` |
+| `Fază` | `În lucru` |
+| `Perioadă` | luna acoperită de borderouri |
+| `Declanșat` | data și ora de acum |
+| `Declanșare` | `Automat (programat)` dintr-un routine, altfel `Manual` |
+
+Caută întâi în data source după `Perioadă`: dacă există deja un card pentru aceeași lună,
+refolosește-l în loc să faci al doilea.
+
+**La final**, după ce raportul pe email a plecat, mută cardul într-una din trei faze:
+
+| Ce s-a întâmplat | `Fază` | `Pas manual rămas` |
+|---|---|---|
+| S-a scris XML, cu sau fără avertismente | `De verificat` | `Verifică totalurile și rândurile sărite, apoi importă XML-ul în Saga` |
+| Toate rândurile sărite, niciun XML | `Blocat / Necesită input` | ce lipsește concret (un export de facturi, un borderou corectat…) |
+| Cod de ieșire 1 sau 2 | `Blocat / Necesită input` | ce trebuie reparat sau configurat |
+
+`Rezultat` primește un rezumat de o linie: `219 linii, 26.570,21 RON, 0 rânduri sărite,
+15 avertismente`.
+
+**Nu muta niciodată cardul în `De aplicat` sau `Done`.** Cele două faze înseamnă „omul a
+verificat" și „omul a importat"; le mută utilizatorul. Un agent care își închide singur
+cardul face board-ul inutil.
+
+**În corpul cardului scrie jurnalul rulării, în română**, ca peste o lună să se înțeleagă
+ce s-a întâmplat fără să caute nimeni raportul de email:
+
+```markdown
+## Ce a rulat
+Rulat 05.09.2026 08:03, din routine-ul lunar „Încasări".
+Comandă: py -3 <skill-dir>/scripts/proceseaza.py
+
+## Fișiere procesate
+- Cargus Packeta August 2026.xlsx → Cargus_Packeta_August_2026.xml
+  219 linii, 26.570,21 RON
+
+## Ce a ieșit
+Total pe zile: 7.178,35 / 6.334,85 / 6.951,57 / 6.105,44 RON.
+87 de linii au luat suma de pe factură (+0,95 RON față de borderou).
+
+## De verificat
+- 15 avertismente: 8 de nume, 3 de storno, 2 de sumă, 2 de lungime RefExp1
+- rânduri sărite: niciunul
+
+## Raport
+Trimis la 08:04 către alfin.consult.ai@gmail.com.
+```
+
+Scrie doar ce s-a întâmplat efectiv: fără secțiuni goale, fără cifre inventate. Dacă
+rularea s-a oprit, jurnalul spune unde și de ce — asta e tot rostul lui.
+
+**Când nu e nimic nou de procesat, nu crea niciun card.** O lună fără borderouri noi nu
+e o rulare.
+
+### 4. Configurare lipsă sau de schimbat
 
 Scriptul iese cu **codul 2** când nu știe unde sunt borderourile sau facturile. Tot
 acolo ajungi când utilizatorul cere schimbarea unei căi, a valutei sau a adreselor de
@@ -150,7 +225,7 @@ raport.
 comenzi `--set-*` de aici și nu ghici nicio cale — fluxul complet, cu valorile implicite
 propuse, e acolo.
 
-### 4. Alte comenzi
+### 5. Alte comenzi
 
 | Comandă | Când |
 |---|---|
@@ -162,7 +237,7 @@ propuse, e acolo.
 | `--arata-config` | arată configurarea curentă |
 | `--json` | raport structurat, dacă ai nevoie să-l prelucrezi |
 
-Cod de ieșire: `0` = a mers, `2` = configurare lipsă (vezi pasul 3), `1` = eroare.
+Cod de ieșire: `0` = a mers, `2` = configurare lipsă (vezi pasul 4), `1` = eroare.
 
 ## Ce produce
 

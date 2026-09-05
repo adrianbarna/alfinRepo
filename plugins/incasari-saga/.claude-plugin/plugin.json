@@ -1,7 +1,7 @@
 {
   "name": "incasari-saga",
   "description": "Transformă borderourile de ramburs Cargus / Packeta (.xlsx) în fișiere XML de import pentru programul de contabilitate Saga (Import documente → Încasări). Leagă fiecare încasare de factura ei din exportul de facturi, verificând numărul de expediție, numele și totalul, și trimite pe email raportul cu rândurile care au nevoie de verificare manuală.",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "author": {
     "name": "Adrian Barna",
     "email": "alfin.consult.ai@gmail.com"

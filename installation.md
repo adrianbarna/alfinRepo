@@ -10,6 +10,7 @@ instalează:
 | 3 | **Python 3** | `proceseaza.py` — fără el, încasările nu merg deloc |
 | 4 | **Google Drive for Desktop** (Mirror) | borderourile și facturile, ca fișiere reale pe disc |
 | 5 | **Pluginurile din marketplace** | `alfin-consult` |
+| 6 | **Notion** (conector) | board-ul `AI Agent overview`, unde se vede fiecare rulare |
 
 Pașii 1–4 se fac o dată **per cont Windows** care are nevoie de acces. Contul Google
 folosit peste tot e cel partajat: `alfin.consult.ai@gmail.com`.
@@ -268,6 +269,61 @@ pe versiunea de la instalare, în tăcere.
 
 ---
 
+## 5. Notion — board-ul `AI Agent overview`
+
+Fiecare rulare a unui agent lasă o urmă într-un board Notion, ca să se vadă ce a rulat,
+ce a produs și ce a mai rămas de făcut. Fără el, o rulare programată care eșuează la 8
+dimineața nu e observată de nimeni până când lipsesc încasările din Saga.
+
+Licența Notion e pe contul partajat `alfin.consult.ai@gmail.com`, la fel ca restul.
+
+**Board:** <https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f>
+**Data source** (id-ul folosit de skill-uri când creează carduri):
+`aa9a26d8-67fc-47d2-acf0-0460d8bc9abf`
+
+### Cum e construit
+
+**Un card = o rulare**, nu un agent. Cardul se numește `Încasări — septembrie 2026`,
+`Monitorizare fiscală — săpt. 37`, rămâne după ce se închide și devine istoricul rulărilor.
+
+Cele șase faze, în ordine:
+
+| Fază | Ce înseamnă | Cine mută cardul |
+|---|---|---|
+| `Programat` | task-ul e activ, așteaptă ora de rulare | — |
+| `În lucru` | agentul procesează chiar acum | agentul |
+| `Blocat / Necesită input` | s-a oprit și așteaptă ceva de la om | agentul |
+| `De verificat` | agentul a terminat, rezultatul nu e validat | agentul |
+| `De aplicat` | validat, a rămas pasul manual (importul în Saga) | **omul** |
+| `Done` | închis complet, rămâne ca istoric | **omul** |
+
+Linia care separă lucrurile: **agentul poate muta cardul până în `De verificat`, nu mai
+departe.** `De aplicat` și `Done` înseamnă „omul a verificat" și „omul a aplicat"; dacă
+un agent și-ar închide singur cardul, board-ul n-ar mai spune nimic.
+
+Proprietățile cardului: `Agent`, `Perioadă`, `Declanșat` / `Finalizat`, `Declanșare`
+(automat sau manual), `Rezultat` (rezumat de o linie), `Pas manual rămas`, `Fișiere`,
+`Responsabil`, `ID` (`RUN-1`, `RUN-2`…). În **corpul cardului** agentul scrie jurnalul
+rulării în română — ce comandă a rulat, ce fișiere a procesat, ce a ieșit, ce e de
+verificat, unde a plecat raportul.
+
+Notion ascunde coloanele goale. Ca să rămână vizibile toate șase și când o fază n-are
+niciun card: pe board → iconul cu sliders (dreapta sus) → **Group** → oprești
+**„Hide empty groups"**. Cardurile ℹ️ de legendă din fiecare coloană există exact pentru
+asta și pot fi șterse după ce oprești setarea.
+
+### Conectorul, în sesiune
+
+Ca și la Gmail, conectorul Notion se activează **per sesiune sau routine**, din butonul
+**+** din caseta de mesaj → Connectors. Cazul tipic de eșec: Notion merge în chatul unde
+s-a făcut configurarea, dar routine-ul pornește o sesiune nouă, fără el.
+
+**Board-ul nu e o dependență critică.** Skill-urile sunt scrise să meargă mai departe
+fără el: dacă uneltele Notion lipsesc, procesarea și raportul pe email se fac oricum, iar
+agentul spune la final în ce fază ar fi trebuit să ajungă cardul.
+
+---
+
 ## Cum se rulează
 
 Skill-urile din acest repo rulează din **aplicația Claude Desktop, fila Code**, nu din
@@ -284,7 +340,7 @@ Rularea periodică: **Routines → New routine → Local**. La ALFIN Consult, ro
 | Câmp | Valoare |
 |---|---|
 | Folder | `C:\Users\Barna\My Drive\claude\incasari-saga` |
-| Frecvență | lunar |
+| Frecvență | lunar, pe **5 ale lunii** |
 | Prompt | `Procesează borderourile noi de încasări și trimite raportul pe e-mail.` |
 
 Folderul e cel din Drive, nu rădăcina repo-ului: acolo nu există niciun `CLAUDE.md` care
@@ -299,7 +355,16 @@ routine-ul respectiv — butonul **+** din caseta de mesaj → Connectors. Se ac
 **per sesiune**, nu global: cazul tipic de eșec e că Gmail merge în chatul unde s-a făcut
 configurarea, dar routine-ul pornește o sesiune nouă fără el.
 
+Activează pe același routine și conectorul **Notion**, ca rularea să-și scrie cardul în
+board (pasul 5). Dacă lipsește, rularea merge oricum — doar că board-ul rămâne în urmă.
+
 Laptopul trebuie să fie **logat**, nu doar pornit, la orele când rulează routine-ul.
+
+> **Fereastra de recuperare: 5 → 12 ale lunii.** Routine-ul pleacă pe **5 ale lunii**. Dacă
+> laptopul pe care e configurat nu are Claude pornit în acea zi, rularea se recuperează mai
+> târziu — dar numai până în **12 ale lunii**. După 12, luna respectivă se pierde: routine-ul
+> nu mai rulează deloc pentru ea, iar borderourile ei trebuie procesate manual, dintr-un chat.
+> Deci: între 5 și 12 ale fiecărei luni, laptopul trebuie logat, cu Claude pornit, măcar o dată.
 
 ## Ce urmează
 
