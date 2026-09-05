@@ -278,9 +278,21 @@ nu pot fi legate de un folder local.
 
 Fila Code rulează nativ și citește `CLAUDE.md` + `.claude/skills/` din folderul de lucru.
 
-Rularea periodică: **Routines → New routine → Local**, folder = folderul de lucru,
-frecvența dorită. La prima rulare apasă **Run now** și alege **„always allow"** la
-promptul de Python, altfel rulările următoare se blochează așteptând o aprobare.
+Rularea periodică: **Routines → New routine → Local**. La ALFIN Consult, routine-ul de
+încasări e configurat astfel (05.09.2026):
+
+| Câmp | Valoare |
+|---|---|
+| Folder | `C:\Users\Barna\My Drive\claude\incasari-saga` |
+| Frecvență | lunar |
+| Prompt | `Procesează borderourile noi de încasări și trimite raportul pe e-mail.` |
+
+Folderul e cel din Drive, nu rădăcina repo-ului: acolo nu există niciun `CLAUDE.md` care
+să încarce context de dezvoltare la fiecare rulare. **Nu folosi `incasari/`** — vezi
+avertismentul de la pasul 4.
+
+La prima rulare apasă **Run now** și alege **„always allow"** la promptul de Python,
+altfel rulările următoare se blochează așteptând o aprobare pe care nu o vede nimeni.
 
 Pentru raportul pe e-mail trebuie activat conectorul **Gmail** pentru chatul sau
 routine-ul respectiv — butonul **+** din caseta de mesaj → Connectors. Se activează
