@@ -9,18 +9,25 @@ folderul ăsta nu mai e rădăcina repo-ului: e un subfolder în **`alfinRepo`**
 de `incasari/` (folderul de lucru cu borderourile). `marketplace.json` a urcat la
 rădăcina repo-ului, ca marketplace-ul să rămână instalabil.
 
+Tot la 05.09.2026, la personalizarea pentru **ALFIN Consult**: marketplace-ul s-a
+redenumit `lacramioara-conta` → **`alfin-consult`**, folderul care ține pluginurile
+`monitorizare-legislativa-plugin/` → **`plugins/`** (numele vechi sugera un singur
+plugin, deși ține două), iar brandul cabinetului anterior a ieșit din toate fișierele.
+Ambele pluginuri au trecut la **2.0.0** — redenumirea folderului schimbă calea sursei
+din `marketplace.json`, deci fără bump intrarea nouă nu ajunge nicăieri.
+
 ```
 alfinRepo/                                ← rădăcina git, remote `origin` → adrianbarna/alfinRepo
   .claude-plugin/marketplace.json         cele două intrări, cu căi spre subfoldere
-  monitorizare-legislativa-plugin/        ← AICI
+  plugins/        ← AICI
     monitorizare-legislativa/  incasari-saga/
   incasari/                               copia de lucru a skill-urilor de încasări
 ```
 
 | Plugin | Unde (față de rădăcina repo-ului) | Ce e „sursa" |
 |---|---|---|
-| `monitorizare-legislativa` | `monitorizare-legislativa-plugin/monitorizare-legislativa/` | cinci fișiere Markdown, două skill-uri |
-| `incasari-saga` | `monitorizare-legislativa-plugin/incasari-saga/` | Markdown **plus** un script Python |
+| `monitorizare-legislativa` | `plugins/monitorizare-legislativa/` | cinci fișiere Markdown, două skill-uri |
+| `incasari-saga` | `plugins/incasari-saga/` | Markdown **plus** un script Python |
 
 Pentru **monitorizare-legislativa** nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt fișierele Markdown care descriu comportamentul unui agent de veghe legislativă. Consecința practică: **a edita acea parte înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
 
@@ -34,9 +41,9 @@ Din **rădăcina repo-ului** (`alfinRepo/`), nu din acest subfolder:
 
 ```bash
 claude plugin validate ./                 # marketplace.json + toate intrările
-claude plugin validate ./monitorizare-legislativa-plugin/monitorizare-legislativa
-claude plugin validate ./monitorizare-legislativa-plugin/incasari-saga
-claude --plugin-dir ./monitorizare-legislativa-plugin/monitorizare-legislativa   # local, fără instalare
+claude plugin validate ./plugins/monitorizare-legislativa
+claude plugin validate ./plugins/incasari-saga
+claude --plugin-dir ./plugins/monitorizare-legislativa   # local, fără instalare
 ```
 
 Nu există build, lint sau teste. `claude plugin validate` verifică doar `.claude-plugin/*.json`, niciodată conținutul instrucțiunilor.
@@ -49,17 +56,17 @@ Sursă frecventă de confuzie:
 
 | Ce | Unde e definit | Valoare |
 |---|---|---|
-| Nume marketplace | `marketplace.json` | `lacramioara-conta` |
+| Nume marketplace | `marketplace.json` | `alfin-consult` |
 | Repo GitHub | remote `origin` | `adrianbarna/alfinRepo` |
 | Nume plugin 1 | `monitorizare-legislativa/.claude-plugin/plugin.json` | `monitorizare-legislativa` |
 | Skill rulare | folderul + frontmatter | `monitorizare-stiri-conta` |
 | Skill configurare | folderul + frontmatter | `initial-config-monitorizare-stiri-conta` |
-| Instalare 1 | — | `monitorizare-legislativa@lacramioara-conta` |
+| Instalare 1 | — | `monitorizare-legislativa@alfin-consult` |
 | Invocare rulare | — | `/monitorizare-legislativa:monitorizare-stiri-conta` |
 | Invocare configurare | — | `/monitorizare-legislativa:initial-config-monitorizare-stiri-conta` |
 | Nume plugin 2 | `incasari-saga/.claude-plugin/plugin.json` | `incasari-saga` |
 | Nume skill 2 | folderul + frontmatter | `incasari-cargus` |
-| Instalare 2 | — | `incasari-saga@lacramioara-conta` |
+| Instalare 2 | — | `incasari-saga@alfin-consult` |
 | Invocare 2 | — | `/incasari-saga:incasari-cargus` |
 | Skill 2b (configurare) | folderul + frontmatter | `config-incasari-cargus` |
 | Invocare 2b | — | `/incasari-saga:config-incasari-cargus` |
@@ -74,7 +81,7 @@ Sursă frecventă de confuzie:
 
 Alternativa fără `version` (versiunea = SHA-ul commit-ului, push = release) e și ea validă oficial și a fost folosită temporar; dacă bump-ul devine o povară, e calea de simplificare.
 
-Push pe `origin` (`github.com:adrianbarna/alfinRepo`) — sursa de adevăr, singurul remote rămas. **Din 05.09.2026 remote-urile sunt curățate**: vechiul GitHub `contaLacramioara` și GitLab-ul `abarna/contaScrapper` au fost scoase, iar rădăcina git s-a mutat cu un nivel mai sus, la `clienti/pfa/lacramioaraConta/alfinRepo/`. Notele mai vechi despre un remote numit `github` și despre un `origin` GitLab care respinge push-ul nu mai sunt valabile. Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase origin main` înainte de push.
+Push pe `origin` (`github.com:adrianbarna/alfinRepo`) — sursa de adevăr, singurul remote rămas. **Din 05.09.2026 remote-urile sunt curățate**: vechiul GitHub și GitLab-ul au fost scoase, iar rădăcina git s-a mutat cu un nivel mai sus, la `alfinRepo/`. Notele mai vechi despre un remote numit `github` și despre un `origin` GitLab care respinge push-ul nu mai sunt valabile. Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase origin main` înainte de push.
 
 La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din oficiu, iar fără el plugin-ul rămâne blocat pe versiunea de la instalare, în tăcere.
 
@@ -82,11 +89,11 @@ La client mai e nevoie și de `Sync automatically` pornit — nu vine pornit din
 
 Documentate pe larg în README, secțiunea „Cum funcționează în spate". Pe scurt, ca să nu fie reintroduse din greșeală:
 
-- **Fiecare plugin stă în propriul subfolder** (azi `"source": "./monitorizare-legislativa-plugin/monitorizare-legislativa"` și `"source": "./monitorizare-legislativa-plugin/incasari-saga"`), iar rădăcina ține doar `marketplace.json`. Căile pe mai multe niveluri trec de `claude plugin validate ./` (verificat 05.09.2026). Pluginul de monitorizare a stat inițial în rădăcină (`"source": "./"`) și a fost mutat: serverul Directory părea să lege artefactul cache-uit și de calea sursei, iar redenumirea singură nu l-a făcut să apară în catalog. Nu mai pune niciun plugin în rădăcină.
+- **Fiecare plugin stă în propriul subfolder** (azi `"source": "./plugins/monitorizare-legislativa"` și `"source": "./plugins/incasari-saga"`), iar rădăcina ține doar `marketplace.json`. Căile pe mai multe niveluri trec de `claude plugin validate ./` (verificat 05.09.2026). Pluginul de monitorizare a stat inițial în rădăcină (`"source": "./"`) și a fost mutat: serverul Directory părea să lege artefactul cache-uit și de calea sursei, iar redenumirea singură nu l-a făcut să apară în catalog. Nu mai pune niciun plugin în rădăcină.
 - **Sursele din `marketplace.json` trebuie să fie căi relative.** Tipul `archive` (zip peste HTTPS) e recunoscut de Claude Code CLI, dar validatorul server-side de la claude.ai îl respinge: găsește repo-ul, apoi sincronizarea eșuează fără explicație.
 - **GitLab nu funcționează** pentru instalarea din claude.ai. Validatorul rezolvă adresa ca repo GitHub și respinge orice formă GitLab — repo, `.git` sau raw.
 - Compromisul acceptat: cu cale relativă, instalarea din terminal clonează repo-ul, deci acolo e nevoie de git local. Instalarea din Settings nu are nevoie — clonarea se face pe serverele Anthropic.
-- **Cache-ul Directory: nu refolosi sursa `./` și nu muta niciun plugin în rădăcină.** Înregistrarea inițială (nume `monitorizare-legislativa`, sursă `./`) a rămas înghețată pe o versiune depășită, imună la sync, la dezinstalare și la reinstalare; abia o intrare cu **nume și cale noi** a apărut curată. Numele a fost apoi restaurat pe o cale nouă și cardul a apărut curat, cu versiunea corectă — deci **cheia otrăvită era calea `./`, nu numele**. Orice subfolder numit e în regulă (azi: `monitorizare-legislativa/`); doar rădăcina `./` e interzisă. O redenumire de folder schimbă calea sursei, deci cere bump de versiune ca clientul să primească intrarea nouă. Fișierul de stare (`monitorizare-legislativa-state.json`) nu se redenumește niciodată.
+- **Cache-ul Directory: nu refolosi sursa `./` și nu muta niciun plugin în rădăcină.** Înregistrarea inițială (nume `monitorizare-legislativa`, sursă `./`) a rămas înghețată pe o versiune depășită, imună la sync, la dezinstalare și la reinstalare; abia o intrare cu **nume și cale noi** a apărut curată. Numele a fost apoi restaurat pe o cale nouă și cardul a apărut curat, cu versiunea corectă — deci **cheia otrăvită era calea `./`, nu numele**. Orice subfolder numit e în regulă (azi: `plugins/monitorizare-legislativa/`); doar rădăcina `./` e interzisă. O redenumire de folder schimbă calea sursei, deci cere bump de versiune ca intrarea nouă să ajungă la instalare — exact motivul bump-ului la 2.0.0 din 05.09.2026. Fișierul de stare (`monitorizare-legislativa-state.json`) nu se redenumește niciodată.
 
 ## Arhitectura celor trei documente
 
@@ -137,7 +144,7 @@ Fiecare vine dintr-un eșec real. Nu le slăbi fără motiv explicit.
 
 ### `incasari-saga`
 
-Rulare de probă pe borderoul de referință din proiectul clientului:
+Rulare de probă pe borderoul de referință din folderul de lucru `incasari/`:
 
 ```bash
 python3 incasari-saga/skills/incasari-cargus/scripts/proceseaza.py \

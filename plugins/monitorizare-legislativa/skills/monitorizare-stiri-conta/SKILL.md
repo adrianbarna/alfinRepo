@@ -17,14 +17,14 @@ Toată memoria skill-ului stă într-un singur fișier, numit **întotdeauna** `
 
 Sesiunea rulează în cloud, dar fișierul de stare **nu** stă în cloud — sandbox-ul se pierde între rulări. Stă **pe calculatorul utilizatorului**, într-un folder pe care el l-a conectat în aplicația Claude (Cowork). Ajungi la el prin puntea către dispozitiv: uneltele `mcp__remote-devices__*` (`get_device_info`, `device_list_dir`, `device_bash`, `device_stage_files`, `device_commit_files`).
 
-Asta e premisa de la care pleci: **poți citi și scrie fișiere în folderul conectat, iar ele rămân acolo între rulări.** Fișierul de stare e mecanismul prin care raportul de săptămâna viitoare știe ce a trimis raportul de săptămâna asta — fără el, aceleași acte ajung la client de mai multe ori.
+Asta e premisa de la care pleci: **poți citi și scrie fișiere în folderul conectat, iar ele rămân acolo între rulări.** Fișierul de stare e mecanismul prin care raportul de săptămâna viitoare știe ce a trimis raportul de săptămâna asta — fără el, aceleași acte ajung la destinatar de mai multe ori.
 
 **Calea nu e fixă și nu e implicită.** Folderul diferă de la un utilizator la altul; a fost stabilit o singură dată, la configurare, și se **refolosește mereu**, din două locuri:
 
 1. din **promptul task-ului programat**, care conține calea absolută a fișierului;
-2. din **fișierul însuși**, care își notează locația în `locatie_stare` (calea absolută de pe calculatorul utilizatorului, ex. `/Users/nume/Documents/clienti/test/`).
+2. din **fișierul însuși**, care își notează locația în `locatie_stare` (calea absolută de pe calculatorul utilizatorului, ex. `/Users/adrian/Documents/alfin/conta/`).
 
-Un folder conectat `/Users/nume/Documents/clienti/test` apare în `device_bash` la `$HOME/mnt/test/` (ultimul segment al căii devine numele montării). Deci fișierul se citește/scrie cu `device_bash` la `$HOME/mnt/<nume-folder>/monitorizare-legislativa-state.json`, iar în `locatie_stare` e notată **calea reală de pe calculator**, nu cea de montare.
+Un folder conectat `/Users/adrian/Documents/alfin/conta` apare în `device_bash` la `$HOME/mnt/conta/` (ultimul segment al căii devine numele montării). Deci fișierul se citește/scrie cu `device_bash` la `$HOME/mnt/<nume-folder>/monitorizare-legislativa-state.json`, iar în `locatie_stare` e notată **calea reală de pe calculator**, nu cea de montare.
 
 **Cum găsești fișierul la fiecare rulare**, în ordinea asta:
 
@@ -41,14 +41,14 @@ Dacă `connectedFolders` e gol, nu e lipsă de configurare — e **lipsă de acc
 
 ### Confirmă scrierea, nu o presupune
 
-După fiecare salvare, **recitește fișierul** și verifică prezența ultimelor acte adăugate. O scriere eșuată în tăcere e cea mai costisitoare defecțiune posibilă aici: raportul pleacă, starea nu se salvează, iar săptămâna viitoare clientul primește din nou aceleași acte. Dacă recitirea nu confirmă, spune-i utilizatorului în conversație, la rularea curentă.
+După fiecare salvare, **recitește fișierul** și verifică prezența ultimelor acte adăugate. O scriere eșuată în tăcere e cea mai costisitoare defecțiune posibilă aici: raportul pleacă, starea nu se salvează, iar săptămâna viitoare destinatarul primește din nou aceleași acte. Dacă recitirea nu confirmă, spune-i utilizatorului în conversație, la rularea curentă.
 
 ### Structura
 
 ```json
 {
   "email_destinatar": "client@exemplu.ro",
-  "locatie_stare": "/Users/nume/Documents/clienti/test/",
+  "locatie_stare": "/Users/adrian/Documents/alfin/conta/",
   "interval_rulare": "saptamanal",
   "zi_si_ora": "luni 08:00",
   "ultima_rulare": "2026-07-31",
@@ -130,7 +130,7 @@ Dacă după filtrare **nu rămâne nimic nou** (nici acte publicate, nici adopta
 
 Pentru **fiecare** act nou, fă căutări web suplimentare ca să găsești ce spun specialiștii: articole de analiză, discuții pe forumuri (avocatnet.ro are forum activ), comentarii ale contabililor, materiale explicative. Țintește **minimum 2–3 surse de interpretare per act**.
 
-Scopul nu e doar să anunți actul, ci să-i dai clientului înțelegerea practică: ce se schimbă concret, de când, pentru cine, ce controverse sau neclarități semnalează practicienii. Notează sursa fiecărei interpretări — raportul citează tot.
+Scopul nu e doar să anunți actul, ci să-i dai destinatarului înțelegerea practică: ce se schimbă concret, de când, pentru cine, ce controverse sau neclarități semnalează practicienii. Notează sursa fiecărei interpretări — raportul citează tot.
 
 Dacă un act e foarte recent și încă nu există analize, spune asta explicit în raport („act publicat recent, interpretările specialiștilor încă nu au apărut — revenim în raportul următor") și **nu** îl adăuga încă în `acte_vazute`, ca să fie reluat săptămâna viitoare cu interpretări.
 
@@ -176,4 +176,4 @@ Raportul îl citește un contabil, nu un administrator. Nu are cum să acționez
 - „Configurează / reconfigurează monitorizarea" → skill-ul `initial-config-monitorizare-stiri-conta`.
 - „Schimbă ziua/ora rulării" → task-ul programat e creat și deținut de utilizator; ghidează-l să-l editeze el: **Scheduled** → task-ul de monitorizare → editare → **Frequency**, ziua și ora noi. Apoi actualizează tu `zi_si_ora` în fișierul de stare, ca cele două să rămână în sincron.
 - „Mută fișierul de stare în alt folder" → singurul caz în care `locatie_stare` se schimbă: folderul nou trebuie să fie **conectat**; copiază fișierul acolo cu `device_bash`, actualizează `locatie_stare`, apoi spune-i utilizatorului să editeze **Instructions** din task-ul programat cu noua cale. Nu șterge vechiul fișier (device_bash nu poate șterge implicit) — mută-l în `_to_delete/` și spune-i utilizatorului.
-- „Adaugă/scoate o sursă" → nu edita fișierele skill-ului (pot fi read-only la client); salvează sursele suplimentare într-un câmp `surse_extra` în fișierul de stare (listă de URL-uri) și consultă-le la fiecare rulare alături de cele standard. Pentru eliminarea unei surse standard, folosește un câmp `surse_dezactivate`.
+- „Adaugă/scoate o sursă" → nu edita fișierele skill-ului (folderul plugin-ului e rescris la fiecare actualizare); salvează sursele suplimentare într-un câmp `surse_extra` în fișierul de stare (listă de URL-uri) și consultă-le la fiecare rulare alături de cele standard. Pentru eliminarea unei surse standard, folosește un câmp `surse_dezactivate`.

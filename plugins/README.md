@@ -69,7 +69,7 @@ Primul raport vi-l poate genera pe loc, în aceeași conversație: „Rulează m
 
 ```
 /plugin marketplace add adrianbarna/alfinRepo
-/plugin install monitorizare-legislativa@lacramioara-conta
+/plugin install monitorizare-legislativa@alfin-consult
 ```
 
 Dacă sumarul spune `Run /reload-plugins to activate.`, rulați și `/reload-plugins`.
@@ -92,7 +92,7 @@ Din acel moment totul e automat: raportul sosește săptămânal pe email.
 ## Cum funcționează în spate (pentru administrator)
 
 - Monitorizarea are **două skill-uri**: `initial-config-monitorizare-stiri-conta` (configurarea, o singură dată) și `monitorizare-stiri-conta` (rularea). Configurația și istoricul stau într-un fișier numit `monitorizare-legislativa-state.json` (adresa destinatar, ritmul, data ultimei rulări, lista actelor deja raportate — pentru a nu trimite același act de două ori), salvat **pe calculatorul utilizatorului, într-un folder conectat** — sesiunile cloud nu păstrează fișiere între rulări. Numele fișierului e fix, ca să poată fi regăsit prin căutare oriunde ar fi salvat.
-- **Distribuție**: repo public pe GitHub, `adrianbarna/alfinRepo`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar fiecare plugin stă în subfolderul lui și e livrat prin cale relativă: `"source": "./monitorizare-legislativa-plugin/monitorizare-legislativa"`, respectiv `"source": "./monitorizare-legislativa-plugin/incasari-saga"`.
+- **Distribuție**: repo public pe GitHub, `adrianbarna/alfinRepo`. Marketplace-ul se adaugă cu scurtătura `owner/repo`, iar fiecare plugin stă în subfolderul lui și e livrat prin cale relativă: `"source": "./plugins/monitorizare-legislativa"`, respectiv `"source": "./plugins/incasari-saga"`.
 - **De ce cale relativă și nu arhivă zip**: validatorul din Settings → Plugins nu acceptă tipul de sursă `archive` — recunoaște repo-ul, dar sincronizarea eșuează. Cu marketplace-ul clonat, calea relativă se rezolvă corect. Compromisul: instalarea din terminal cere git local.
 - **GitLab nu funcționează pentru această cale.** Dialogul de adăugare validează adresa server-side ca repo GitHub și respinge orice adresă GitLab, indiferent de formă — repo, `.git` sau raw.
 - **Actualizări**: `version` stă **doar** în `plugin.json`-ul fiecărui plugin (niciodată în `marketplace.json` — documentația interzice dublarea) și se incrementează la fiecare release; fără bump, push-ul nu ajunge la client. La client mai trebuie o singură condiție: `Sync automatically` pornit, în meniul `···` al marketplace-ului — **nu vine pornit din oficiu**, iar fără el plugin-ul rămâne pe versiunea de la instalare la nesfârșit, fără avertisment. Meniul afișează `Synced commit`, util pentru diagnostic: comparați-l cu ultimul commit de pe GitHub.

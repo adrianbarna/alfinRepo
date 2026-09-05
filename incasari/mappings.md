@@ -44,7 +44,7 @@ află borderoul (`borderouri/ron` / `borderouri/eur` / `borderouri/huf`), nu din
 | Format dată | `dd.mm.yyyy` (ex. `30.03.2026`) |
 | Separator zecimal | punct (`.`), 2 zecimale (ex. `60.90`) |
 | Rădăcină | `<Incasari>` … `</Incasari>` |
-| Nume fișier (Cargus) | **numele borderoului**, ex. `Cargus Packeta Iulie 2026.xml` — decizie a clientului, deși nota de mai sus susține că prefixul `I_` ar fi obligatoriu. Dacă importul e refuzat, asta e prima cauză de verificat. |
+| Nume fișier (Cargus) | **numele borderoului**, ex. `Cargus Packeta Iulie 2026.xml` — decizie internă, deși nota de mai sus susține că prefixul `I_` ar fi obligatoriu. Dacă importul e refuzat, asta e prima cauză de verificat. |
 
 ---
 
@@ -188,7 +188,7 @@ XML de test HUF: se generează când primim un borderou HUF real.
 
 ---
 
-## De confirmat cu clientul
+## De confirmat la primul import
 
 1. **Ce rânduri intră în XML** — borderoul RON conține și `Fraction type` = `Refund CO` /
    `Refund COD` (sume negative) și `Voucher`. Deocamdată maparea e definită pentru

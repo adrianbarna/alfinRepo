@@ -70,8 +70,18 @@ lipsește sau ce cale nu mai există pe disc.
 
 3. **Cui se trimite raportul pe e-mail?** (pot fi mai multe adrese)
 
+   Aici — spre deosebire de căi — ai o variantă implicită de propus:
+   **`alfin.consult.ai@gmail.com`**, adresa cabinetului. Propune-o, iar dacă
+   utilizatorul confirmă sau adaugă altele, salvează lista întreagă:
+
    ```
-   python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --set-email "adresa1@exemplu.ro,adresa2@exemplu.ro"
+   python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --set-email "alfin.consult.ai@gmail.com"
+   ```
+
+   Cu mai mulți destinatari, separați prin virgulă, fără spații:
+
+   ```
+   python3 <skills-dir>/incasari-cargus/scripts/proceseaza.py --set-email "alfin.consult.ai@gmail.com,adresa2@exemplu.ro"
    ```
 
 Dacă scriptul răspunde „Calea nu exista sau nu e un folder", spune-i utilizatorului

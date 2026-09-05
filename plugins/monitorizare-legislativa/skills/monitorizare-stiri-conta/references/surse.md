@@ -103,7 +103,7 @@ Pe lângă sursele de mai sus, fă la final o căutare web generală de tip:
 `modificări legislație contabilitate fiscalitate România <săptămâna/perioada>` —
 prinde acte semnalate de alte publicații (profit.ro, economica.net, startupcafe.ro etc.) pe care sursele standard le-ar fi putut rata.
 
-## Surse suplimentare ale clientului
+## Surse suplimentare proprii
 
 Dacă `state.json` conține `surse_extra` (listă de URL-uri), consultă-le la fiecare rulare cu WebFetch, iar dacă dau eroare, încearcă `site:<domeniu>` prin căutare web. Sari peste sursele listate în `surse_dezactivate`.
 

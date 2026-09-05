@@ -59,7 +59,7 @@ Raport generat automat de asistentul de monitorizare legislativă.
 
 - **Emailul e client-facing. Nimic tehnic în el.** Nu menționa surse care au blocat accesul, metode de acces, acoperire „mai subțire decât ideal", fișierul de stare, task-uri programate, permisiuni sau limitări ale mediului. Destinatarul e contabil, nu administrator: nu poate acționa pe baza lor, iar prezența lor face raportul să pară nesigur. Dacă o sursă n-a răspuns, ai lucrat prin căutare web și ai obținut informația — deci nu s-a întâmplat nimic demn de raportat. Notele de funcționare se spun în conversație, la prima rulare, niciodată în email.
 - **Ordinea actelor**: cel mai mare impact practic primul (o modificare de TVA înaintea unei proceduri de nișă).
-- **Interpretările se citează întotdeauna** cu sursa și linkul — clientul trebuie să poată verifica și aprofunda.
+- **Interpretările se citează întotdeauna** cu sursa și linkul — destinatarul trebuie să poată verifica și aprofunda.
 - **Nu inventa date lipsă**: dacă data intrării în vigoare sau numărul MO nu reies din surse, scrie „neprecizat în sursele consultate" în loc să estimezi.
 - **Concizie cu substanță**: un act = maximum o jumătate de ecran. Raportul întreg trebuie citit în 5-10 minute.
 - Dacă un act e semnalat dar interpretările încă lipsesc, spune explicit: „act publicat recent — analizele specialiștilor vor fi incluse în raportul următor".

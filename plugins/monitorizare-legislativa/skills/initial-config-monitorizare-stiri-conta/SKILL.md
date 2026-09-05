@@ -11,7 +11,7 @@ Acest skill rulează **o singură dată, cu utilizatorul prezent**. Stabilește 
 
 ## Mediul în care lucrezi
 
-Sesiunea rulează în cloud; sandbox-ul se pierde între rulări. Fișierul de stare trebuie deci să stea **pe calculatorul utilizatorului**, într-un folder conectat în aplicația Claude, accesat prin puntea către dispozitiv: uneltele `mcp__remote-devices__*` (`get_device_info`, `device_bash` etc.). Un folder conectat `/Users/nume/Documents/clienti/test` apare în `device_bash` la `$HOME/mnt/test/` — ultimul segment al căii devine numele montării. În fișier și în fișa task-ului se notează **calea reală de pe calculator**, nu cea de montare.
+Sesiunea rulează în cloud; sandbox-ul se pierde între rulări. Fișierul de stare trebuie deci să stea **pe calculatorul utilizatorului**, într-un folder conectat în aplicația Claude, accesat prin puntea către dispozitiv: uneltele `mcp__remote-devices__*` (`get_device_info`, `device_bash` etc.). Un folder conectat `/Users/adrian/Documents/alfin/conta` apare în `device_bash` la `$HOME/mnt/conta/` — ultimul segment al căii devine numele montării. În fișier și în fișa task-ului se notează **calea reală de pe calculator**, nu cea de montare.
 
 ## Întrebările
 
@@ -22,11 +22,13 @@ Sesiunea rulează în cloud; sandbox-ul se pierde între rulări. Fișierul de s
    - dacă conține **mai multe**, cere-i să aleagă unul dintre ele;
    - dacă e **gol**, cere-i să conecteze un folder (butonul de folder din panoul **Context** sau „Add folder" în aplicația Claude) și așteaptă să apară în `connectedFolders` înainte de a merge mai departe. Nu accepta o cale tastată care nu e conectată — nu ai cum să scrii acolo.
 
-   Răspunsul (calea absolută, ex. `/Users/nume/Documents/clienti/test`) devine `locatie_stare` și intră în fișa task-ului. **De aici încolo nu se mai întreabă niciodată.**
+   Răspunsul (calea absolută, ex. `/Users/adrian/Documents/alfin/conta`) devine `locatie_stare` și intră în fișa task-ului. **De aici încolo nu se mai întreabă niciodată.**
 
-1. **Adresa de email** către care se trimit rapoartele. Întreabă întotdeauna și salveaz-o în `email_destinatar`.
+1. **Adresa de email** către care se trimit rapoartele. Întreab-o întotdeauna și salveaz-o în `email_destinatar`.
 
-   **Adresa contului Gmail conectat nu este destinatarul.** Contul conectat e doar mijlocul de trimitere; destinatarul e o decizie separată, pe care numai utilizatorul o poate lua. Nu o deduce, nu o completa singur, nu o folosi „provizoriu". Nu există adresă de rezervă.
+   **Propune ca variantă implicită `alfin.consult.ai@gmail.com`** — adresa cabinetului. E o propunere, nu o presupunere: utilizatorul o confirmă („da", „lasă așa") sau dă alta, iar răspunsul lui e cel care intră în fișier. Fără un răspuns explicit nu scrii nicio adresă.
+
+   **Adresa contului Gmail conectat nu este destinatarul.** Contul conectat e doar mijlocul de trimitere; destinatarul e o decizie separată. Nu-l deduce din contul conectat, din contextul conversației sau din vreun cont vizibil în sesiune — singurele surse valide sunt propunerea de mai sus, confirmată, sau adresa dată de utilizator.
 
 2. **Perioada acoperită de primul raport** — cât în urmă să se uite prima rulare. Propune **ultimele 7 zile**; unii vor o lună, ca să prindă tot ce au ratat.
 3. **Cât de des rulează** — propune **săptămânal**. Alternative rezonabile: la două săptămâni, lunar.

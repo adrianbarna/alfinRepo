@@ -73,7 +73,7 @@ o valută nouă se adaugă spunând asistentului unde stau borderourile ei.
 
 ```
 /plugin marketplace add adrianbarna/alfinRepo
-/plugin install incasari-saga@lacramioara-conta
+/plugin install incasari-saga@alfin-consult
 ```
 
 Dacă sumarul spune `Run /reload-plugins to activate.`, rulați și `/reload-plugins`.

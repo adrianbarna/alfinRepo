@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Scop
 
 Transformăm borderourile de ramburs (Excel) în fișiere XML de import pentru programul
-de contabilitate **Saga** (Import documente → Încasări), la clientul Lăcrămioara (PFA).
+de contabilitate **Saga** (Import documente → Încasări), la cabinetul ALFIN Consult.
 
 Nu e un proiect software clasic: nu există build, teste sau dependințe. E un folder de
 lucru contabil + două skill-uri cu un script Python care face conversia. Din 05.09.2026
@@ -21,11 +21,11 @@ după coloane, nu după nume de fișier):
 | **Cargus / Packeta** | `Awb`, `Destinatar`, `Data OP`, `RefExp1` | **automatizat** — skill-ul `incasari-cargus` |
 | **eMAG** | `Order ID`, `Fraction value`, `Client name` | mapat în `mappings.md`, **neimplementat** |
 
-**Codul și datele stau în foldere separate** (decizia clientului, 25.08.2026), ca să
+**Codul și datele stau în foldere separate** (decizie din 25.08.2026), ca să
 poată fi versionat doar ce nu conține date de client:
 
 ```
-clienti/pfa/lacramioaraConta/alfinRepo/incasari/   ← AICI. În git, fără date de client.
+alfinRepo/incasari/   ← AICI. În git, fără date de client.
   .claude/skills/incasari-cargus/          skill-ul de procesare
   .claude/skills/config-incasari-cargus/   skill-ul de configurare (prima rulare)
   CLAUDE.md   mappings.md
@@ -39,30 +39,30 @@ clienti/test-incasari/                     ← Datele. Niciodată în git.
 
 Structura datelor — **valuta e dată de folder, sursa nu are folder**. Calea către ele
 e absolută în `config.json`; se schimbă cu `--set-folder` / `--set-facturi`, niciodată
-editând configul de mână. **Skill-ul se livrează fără căi setate** (decizia clientului,
+editând configul de mână. **Skill-ul se livrează fără căi setate** (decizie din
 26.08.2026): pe o mașină nouă, prima configurare o face skill-ul
 `config-incasari-cargus`, care întreabă utilizatorul căile și le salvează prin script.
 
-**Azi skill-ul e doar pe RON** (decizia clientului, 25.08.2026). EUR se adaugă cu o
+**Azi skill-ul e doar pe RON** (decizie din 25.08.2026). EUR se adaugă cu o
 singură comandă când apare primul borderou — `--set-folder borderouri/eur --moneda EUR`
 creează intrarea cu contul 5126. **HUF e ignorat deocamdată.**
 
 ## Versionare și release
 
 Codul de aici (**ambele skill-uri + scriptul**) e versionat **în alt folder**, ca plugin
-Claude Code în marketplace-ul `lacramioara-conta`:
+Claude Code în marketplace-ul `alfin-consult`:
 
-- **Repo local:** `clienti/pfa/lacramioaraConta/alfinRepo/`, adică **părintele acestui
+- **Repo local:** `alfinRepo/`, adică **părintele acestui
   folder** (`..`), branch `main`. Folderul de față e versionat în același repo.
-- **GitHub:** `adrianbarna/alfinRepo`, remote **`origin`** — de acolo instalează clientul
+- **GitHub:** `adrianbarna/alfinRepo`, remote **`origin`** — de acolo se instalează pluginul
   (Settings → Plugins, cu *Sync automatically* pornit). Din 05.09.2026 e singurul remote:
-  vechiul `contaLacramioara` și GitLab-ul au fost scoase.
-- **Pluginul:** `../monitorizare-legislativa-plugin/incasari-saga/`; skill-urile stau în
+  vechiul GitHub și GitLab-ul au fost scoase.
+- **Pluginul:** `../plugins/incasari-saga/`; skill-urile stau în
   `incasari-saga/skills/`.
   **Versiunea stă într-un singur loc:** `incasari-saga/.claude-plugin/plugin.json`
-  (1.5.0 din 05.09.2026). Fără bump, push-ul nu ajunge la client, în tăcere.
+  (2.0.0 din 05.09.2026). Fără bump, push-ul nu ajunge la instalare, în tăcere.
 - **Protocolul de release** (detaliat în CLAUDE.md-ul repo-ului): copiezi skill-urile de
-  aici peste `../monitorizare-legislativa-plugin/incasari-saga/skills/` → bump în
+  aici peste `../plugins/incasari-saga/skills/` → bump în
   `plugin.json` → `claude plugin validate ./` **din rădăcina repo-ului**
   → `git pull --rebase origin main` → commit → `git push origin main`. La client, în
   meniul `···` al marketplace-ului, *Check for updates* aduce versiunea imediat.
@@ -133,7 +133,7 @@ Valuta se determină din **folderul** în care se află borderoul, nu din conți
 Detalii greu de dedus din citirea unui singur fișier:
 
 - **`config.json`** stă la **`~/.claude/incasari-saga/config.json`** — per mașină,
-  **nu** în folderul skill-ului (decizia clientului, 26.08.2026), ca skill-ul să se
+  **nu** în folderul skill-ului (decizie din 26.08.2026), ca skill-ul să se
   poată copia la client fără căile lui Adrian. Un `config.json` rămas lângă skill din
   instalări vechi are încă prioritate; `INCASARI_CONFIG` poate indica alt fișier.
   Ține lista de foldere, calea către `facturi` și lista de adrese de e-mail (`email`);
@@ -146,7 +146,7 @@ Detalii greu de dedus din citirea unui singur fișier:
   fișierului xlsx**. Redenumirea unui borderou îl face „nou" și se reprocesează.
   Mutarea unui folder de valută nu strică nimic: jurnalul călătorește cu el.
 - **Ieșirea**: `<folder>/procesate/<numele borderoului, cu spațiile înlocuite de _>.xml`
-  (cerința clientului, 31.08.2026), un singur XML per borderou, chiar dacă borderoul
+  (cerință din 31.08.2026), un singur XML per borderou, chiar dacă borderoul
   conține mai multe date de plată.
 - **Formate nesuportate** (eMAG, header nerecunoscut) sunt raportate explicit și **nu**
   se marchează ca procesate — se reiau automat când se adaugă maparea.
@@ -194,7 +194,7 @@ declarația înainte de parsare. Câmpuri folosite: `nr_iesire`, `denumire`, `to
 
 Exportul nu spune în ce valută e o factură (singurul indiciu ar fi `curs_ref`, `0` la
 1787 din 1788). **Nu contează, fiindcă `total` e exprimat în valuta facturii**
-(confirmat de client, 25.08.2026), iar factura găsită prin `RefExp1` e implicit în
+(confirmat pe 25.08.2026), iar factura găsită prin `RefExp1` e implicit în
 aceeași valută ca borderoul. Deci comparația e directă, în orice valută.
 
 A existat aici o încercare de a converti prin `curs_ref` — **greșită**, ștearsă. Dacă
@@ -213,9 +213,9 @@ reapare tentația: `total` **nu** e în lei pentru o factură în valută.
 - **Căutarea după nume e strict rezervă**, doar când `RefExp1` nu duce la o factură
   confirmată de total. Dacă e folosită în paralel cu `RefExp1`, un omonim cu aceeași
   sumă face ambiguă o potrivire deja sigură (3 rânduri pierdute în iulie).
-- **Rândurile fără factură sigură nu intră în XML** (decizia clientului, 25.08.2026) și
+- **Rândurile fără factură sigură nu intră în XML** (decizie din 25.08.2026) și
   ajung în raportul de e-mail, cu motiv, sumă și numărul rândului.
-- **`<Suma>` ia valoarea de pe factură, nu din borderou** (decizia clientului,
+- **`<Suma>` ia valoarea de pe factură, nu din borderou** (decizie din
   25.08.2026), ca factura să se stingă exact, fără sold rămas pe 4111. Compromisul
   asumat: încasarea nu mai e identică cu ce a virat curierul — pe borderoul din iulie,
   87 de linii diferă, în total **+0,95 RON** (26569,26 în borderou → 26570,21 în XML).
@@ -248,8 +248,7 @@ Structura corectă (manualul Saga, confirmată de client) e `<Incasari><Linie>�
 
 **Numele fișierului:** notele vechi susțin că prefixul `I_` e obligatoriu ca Saga să
 trateze fișierul ca import de încasări (ex. `I_30.03.2026.xml`). Pentru Cargus s-a ales
-totuși numele borderoului (din 31.08.2026 cu spațiile înlocuite de `_`), la cererea
-clientului — **dacă importul e refuzat, ăsta e primul lucru de verificat.**
+totuși numele borderoului (din 31.08.2026 cu spațiile înlocuite de `_`), la cerere — **dacă importul e refuzat, ăsta e primul lucru de verificat.**
 
 ## Maparea Excel → XML
 
@@ -288,7 +287,7 @@ Tabele complete în `mappings.md`. Pe scurt: `Data` ← `Order finalization date
 de utilizator pe 15.08.2026, înlocuiește notele contradictorii anterioare).
 
 Câmpurile vechi `DEN_PARTENER`, `CURS`, `SUMA_VALUTA` nu au tag în formatul nou: numele
-clientului intră în `Explicatie`, iar cursul/suma în valută sunt acoperite de `Suma`
+cumpărătorului intră în `Explicatie`, iar cursul/suma în valută sunt acoperite de `Suma`
 (în valuta folderului) + `Moneda`.
 
 ## Stare curentă / next steps
@@ -298,11 +297,11 @@ clientului intră în `Explicatie`, iar cursul/suma în valută sunt acoperite d
    toate legate de factură. **De testat importul în Saga.**
 2. **eMAG — neimplementat.** `I_30.03.2026.xml` (o linie, formatul corect `<Linie>`)
    rămâne exemplul de testat la import.
-3. **De confirmat cu clientul** (detaliat în `mappings.md`, secțiunea
-   „De confirmat cu clientul", și în `SKILL.md`):
+3. **De confirmat la primul import** (detaliat în `mappings.md`, secțiunea
+   „De confirmat la primul import", și în `SKILL.md`):
    - numele fișierului fără prefixul `I_` — **prima cauză de verificat dacă importul e refuzat**;
    - `Data` = `Data OP` (ales, se potrivește cu extrasul) vs `Livrata` (indicat de harta
-     clientului din rândul 1 al borderoului);
+     din rândul 1 al borderoului);
    - `FacturaID` = `RefExp1` — util doar dacă facturile sunt importate cu același ID;
    - diacriticele în Saga după import UTF-8;
    - **totalul XML e cu 0,95 RON mai mare decât borderoul** (suma vine de pe factură);
@@ -313,14 +312,14 @@ clientului intră în `Explicatie`, iar cursul/suma în valută sunt acoperite d
    - **cele 3 `RefExp1` cu factură de storno** (47356, 47364, 47170): banii au fost
      încasați, dar factura e stornată — se importă încasarea pe factura inițială?
    - **diferențele de 0,08 și 0,02** (rândurile 12 și 123) — restul sunt de 0,01.
-4. **EUR** — skill-ul e azi doar pe RON, la cererea clientului. Când apare primul
+4. **EUR** — skill-ul e azi doar pe RON, la cerere. Când apare primul
    borderou EUR: `--set-folder borderouri/eur --moneda EUR` și atât — maparea nu are
    nevoie de cod nou, fiindcă `total` e deja în valuta facturii. **HUF: ignorat
    deocamdată** (factorul de 100 rămâne documentat doar pentru eMAG, în `mappings.md`).
 5. **Facturile eMAG nu au `inf_suplm`** — 58 din 1788 (`V-MKTP-*`, `H-MKTP-*` de la
    DANTE INTERNATIONAL SA, plus 38 `MCSCOD*` de B2B). Când se implementează eMAG, cheia
    va trebui să fie alta decât `RefExp1`; de stabilit ce leagă `Order ID` de `nr_iesire`.
-6. **Windows la client (03.09.2026) — de testat pe PC-ul clientului**, din fila Code:
+6. **Windows (03.09.2026) — de testat pe PC-ul de lucru**, din fila Code:
    `py -3 … --arata-config` (prima linie arată versiunea de Python și sistemul),
    configurarea prin `config-incasari-cargus`, `--dry-run`, o rulare reală (XML UTF-8 cu
    LF), apoi task-ul local săptămânal cu **Run now**. De rezolvat **trimiterea e-mailului

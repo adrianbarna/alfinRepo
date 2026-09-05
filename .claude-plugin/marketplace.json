@@ -1,18 +1,19 @@
 {
-  "name": "lacramioara-conta",
-  "description": "Plugin-uri pentru cabinetul de contabilitate — monitorizare legislativă și import de încasări în Saga.",
+  "name": "alfin-consult",
+  "description": "Plugin-urile de contabilitate ALFIN Consult — monitorizare legislativă și import de încasări în Saga.",
   "owner": {
-    "name": "Adrian Barna"
+    "name": "Adrian Barna",
+    "email": "alfin.consult.ai@gmail.com"
   },
   "plugins": [
     {
       "name": "monitorizare-legislativa",
-      "source": "./monitorizare-legislativa-plugin/monitorizare-legislativa",
+      "source": "./plugins/monitorizare-legislativa",
       "description": "Monitorizare săptămânală a legislației contabile românești cu raport detaliat pe email."
     },
     {
       "name": "incasari-saga",
-      "source": "./monitorizare-legislativa-plugin/incasari-saga",
+      "source": "./plugins/incasari-saga",
       "description": "Borderourile de ramburs Cargus / Packeta devin XML de import pentru Saga, cu factura legată de fiecare încasare."
     }
   ]

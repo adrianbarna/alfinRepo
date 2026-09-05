@@ -2,8 +2,8 @@
 name: incasari-cargus
 description: >
   Transformă borderourile de ramburs Cargus / Packeta (.xlsx) în fișiere XML de
-  import pentru programul de contabilitate Saga (Import documente → Încasări),
-  la clientul Lăcrămioara (PFA). Procesează doar borderourile noi și ține minte
+  import pentru programul de contabilitate Saga (Import documente → Încasări).
+  Procesează doar borderourile noi și ține minte
   ce a procesat deja. Folosește acest skill când apare „borderou", „borderouri",
   „încasări", „ramburs", „Cargus", „Packeta", „xml pentru Saga", „procesează
   borderourile", „mai sunt borderouri noi", „generează încasările".
@@ -108,10 +108,11 @@ python3 <skill-dir>/scripts/proceseaza.py --set-facturi "<calea dată de utiliza
 ```
 
 Dacă raportul spune **„E-MAIL: nicio adresă configurată"**, întreabă utilizatorul
-**cui se trimite raportul** — pot fi mai multe adrese — și salvează-le:
+**cui se trimite raportul** — pot fi mai multe adrese — propunându-i ca variantă
+implicită adresa cabinetului, `alfin.consult.ai@gmail.com`, și salvează ce confirmă:
 
 ```
-python3 <skill-dir>/scripts/proceseaza.py --set-email "adresa1@exemplu.ro,adresa2@exemplu.ro"
+python3 <skill-dir>/scripts/proceseaza.py --set-email "alfin.consult.ai@gmail.com"
 ```
 
 ### 2. Rulare normală (cazul obișnuit)
@@ -254,12 +255,12 @@ e documentat doar pentru eMAG, nu pentru Cargus.
 
 Avertismentele nu opresc generarea: XML-ul se scrie oricum, cu rândurile bune.
 
-## Neconfirmate cu clientul — spune-i dacă apare problema
+## Neconfirmate la import — spune-i utilizatorului dacă apare problema
 
 1. **Numele fișierului fără prefix `I_`** — `mappings.md` susține că prefixul e
    obligatoriu ca Saga să trateze fișierul ca import de încasări. S-a ales numele
    borderoului. **Dacă importul în Saga e refuzat, asta e prima cauză de verificat.**
 2. **`Data` = `Data OP`** (data virării banilor). Rândul 1 din borderou, pus de
-   client, indica `Livrata` (data livrării). De confirmat ce dată vrea în contabilitate.
+   contabil, indica `Livrata` (data livrării). De confirmat ce dată vrea în contabilitate.
 3. **`FacturaID` = `RefExp1`** — util doar dacă facturile sunt importate cu același ID.
 4. **Diacriticele** din nume — de verificat cum le afișează Saga după import.
