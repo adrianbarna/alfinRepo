@@ -1,3 +1,6 @@
 .DS_Store
 __pycache__/
 *.pyc
+
+# patch-uri livrate in conversatie, nu intra in istoric
+*.patch
