@@ -39,12 +39,16 @@ acces la G:\:
 3. Sign-in cu contul Google partajat: **alfin.consult.ai@gmail.com**.
 4. Click pe iconița **⚙️ (Settings)** din colțul dreapta-sus al ferestrei Drive →
    **Preferences** → **Google Drive** (în panoul din stânga, sub numele contului).
-5. La **„My Drive syncing options"** alege **Mirror files**.
+5. La **„My Drive syncing options"** alege **Mirror files** (nu Stream files) — ține o
+   copie fizică locală a fișierelor, nu doar acces la cerere din cloud.
 6. Setează litera driverului la **G** (opțiunea de „Drive letter" e în același ecran de
    Preferences, lângă setările de sincronizare, sau sub rotița ⚙️ de lângă „My Drive").
 
 După acest setup, **G:** apare ca un drive normal în Explorer, cu conținutul Drive-ului
-partajat, de fiecare dată când acel cont Windows e logat.
+partajat, de fiecare dată când acel cont Windows e logat. În modul Mirror, copia fizică
+locală stă și într-un folder normal, per cont Windows — de exemplu
+`C:\Users\Barna\My Drive` — pe lângă litera G:. Ambele căi arată același conținut; G:
+e doar litera de drive atribuită acelui folder.
 
 ## Atenție la spațiu pe disc
 
