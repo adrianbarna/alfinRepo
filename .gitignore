@@ -4,3 +4,7 @@ __pycache__/
 
 # patch-uri livrate in conversatie, nu intra in istoric
 *.patch
+
+# configurarea incasarilor (cai + adrese de raport): sta in Drive sau per masina,
+# niciodata in git — vezi installation.md
+config.json

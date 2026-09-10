@@ -1,16 +1,21 @@
 # Instalarea calculatorului de lucru (Windows)
 
-Ce trebuie pe un PC nou ca să meargă skill-urile din acest repo, în ordinea în care se
-instalează:
+**Încasările rulează într-un task programat în cloud** — vezi „Cum se rulează". Scriptul se
+execută pe serverele Anthropic, nu pe calculator; de pe calculator se citesc și se scriu doar
+fișierele din Drive. De aceea lista de mai jos are două categorii: ce trebuie neapărat ca să
+meargă încasările și ce trebuie doar dacă lucrezi la repo sau rulezi alte skill-uri local.
 
-| # | Ce | De ce |
-|---|---|---|
-| 1 | **Claude Code** | rulează skill-urile |
-| 2 | **Git for Windows** | `git` pentru repo + shell-ul Bash pentru Claude Code |
-| 3 | **Python 3** | `proceseaza.py` — fără el, încasările nu merg deloc |
-| 4 | **Google Drive for Desktop** (Mirror) | borderourile și facturile, ca fișiere reale pe disc |
-| 5 | **Pluginurile din marketplace** | `alfin-consult` |
-| 6 | **Notion** (conector) | board-ul `AI Agent overview`, unde se vede fiecare rulare |
+| # | Ce | De ce | Pentru încasări |
+|---|---|---|---|
+| 1 | **Claude Code** | aplicația desktop ține legătura cu folderul din Drive | **obligatoriu** |
+| 2 | **Git for Windows** | `git` pentru repo + shell-ul Bash pentru Claude Code | doar dezvoltare |
+| 3 | **Python 3** | `proceseaza.py`, dacă vrei să rulezi manual pe calculator | doar dezvoltare |
+| 4 | **Google Drive for Desktop** (Mirror) | borderourile și facturile, ca fișiere reale pe disc | **obligatoriu** |
+| 5 | **Pluginurile din marketplace** | `alfin-consult` | doar dezvoltare |
+| 6 | **Notion** (conector) | board-ul `AI Agent overview`, unde se vede fiecare rulare | recomandat |
+
+Task-ul din cloud **nu** folosește pluginul instalat local și **nu** are nevoie de Python pe
+calculator: își aduce singur skill-ul și scriptul din repo, iar Python rulează în container.
 
 Pașii 1–4 se fac o dată **per cont Windows** care are nevoie de acces. Contul Google
 folosit peste tot e cel partajat: `alfin.consult.ai@gmail.com`.
@@ -326,45 +331,153 @@ agentul spune la final în ce fază ar fi trebuit să ajungă cardul.
 
 ## Cum se rulează
 
-Skill-urile din acest repo rulează din **aplicația Claude Desktop, fila Code**, nu din
-Cowork: Cowork execută comenzile într-o mașină virtuală Linux (Hyper-V) care pe Windows
-are un bug cunoscut de pornire („Workspace unavailable… isolated Linux environment
-failed to start"), nu citește `.claude/skills/` din folder, iar task-urile lui programate
-nu pot fi legate de un folder local.
-
-Fila Code rulează nativ și citește `CLAUDE.md` + `.claude/skills/` din folderul de lucru.
-
-Rularea periodică: **Routines → New routine → Local**. La ALFIN Consult, routine-ul de
-încasări e configurat astfel (05.09.2026):
+Un **task programat în cloud**, din Cowork, cu folderul din Drive conectat. Rularea se face în containerul
+din cloud, pe copii ale fișierelor urcate din Drive, iar rezultatele se scriu înapoi în Drive.
 
 | Câmp | Valoare |
 |---|---|
-| Folder | `C:\Users\Barna\My Drive\claude\incasari-saga` |
-| Frecvență | lunar, pe **5 ale lunii** |
-| Prompt | `Procesează borderourile noi de încasări și trimite raportul pe e-mail.` |
+| Nume | `Încasări lunare - Saga` |
+| Folder conectat | `C:\Users\Barna\My Drive\claude\incasari-saga` |
+| Frecvență | lunar, pe **5 ale lunii**, 07:00 UTC (10:00 ora României, vara) |
+| Conectori | Gmail, Notion (+ Google Drive, Google Calendar) |
+| Aprobări | **automat** — altfel rularea se oprește așteptând un „da" pe care nu-l vede nimeni |
 
-Folderul e cel din Drive, nu rădăcina repo-ului: acolo nu există niciun `CLAUDE.md` care
-să încarce context de dezvoltare la fiecare rulare. **Nu folosi `incasari/`** — vezi
-avertismentul de la pasul 4.
+**De ce cloud și nu local:** conectorii Gmail și Notion sunt deja legați de task, iar mașina
+virtuală Linux de pe `ldtd01` nu pornește (vezi mai jos). Prețul e că fișierele fac un drum
+dus-întors — urcate din Drive, procesate în cloud, scrise înapoi — câteva secunde pentru un
+borderou de câteva sute de rânduri.
 
-La prima rulare apasă **Run now** și alege **„always allow"** la promptul de Python,
-altfel rulările următoare se blochează așteptând o aprobare pe care nu o vede nimeni.
+**Calculatorul trebuie să fie pornit și Claude Desktop conectat** la ora rulării: fără el,
+sesiunea din cloud nu ajunge la folderul din Drive. Varianta din cloud nu scapă de asta.
 
-Pentru raportul pe e-mail trebuie activat conectorul **Gmail** pentru chatul sau
-routine-ul respectiv — butonul **+** din caseta de mesaj → Connectors. Se activează
-**per sesiune**, nu global: cazul tipic de eșec e că Gmail merge în chatul unde s-a făcut
-configurarea, dar routine-ul pornește o sesiune nouă fără el.
+**Prompt-ul trebuie să fie autonom**, din două motive care nu se văd până nu eșuează:
 
-Activează pe același routine și conectorul **Notion**, ca rularea să-și scrie cardul în
-board (pasul 5). Dacă lipsește, rularea merge oricum — doar că board-ul rămâne în urmă.
+- pluginul **nu** e activat pentru rulările task-ului (`enabled_plugins` e gol), deci sesiunea
+  nu are nici skill-ul, nici `proceseaza.py`;
+- sesiunea din cloud **nu** vede `~/.claude/incasari-saga/config.json` de pe PC, deci nu știe
+  singură cui trimite raportul.
 
-Laptopul trebuie să fie **logat**, nu doar pornit, la orele când rulează routine-ul.
+Prompt-ul de mai jos le rezolvă pe amândouă — clonează repo-ul public și citește configurarea
+dintr-un `config.json` ținut în Drive:
 
-> **Fereastra de recuperare: 5 → 12 ale lunii.** Routine-ul pleacă pe **5 ale lunii**. Dacă
-> laptopul pe care e configurat nu are Claude pornit în acea zi, rularea se recuperează mai
-> târziu — dar numai până în **12 ale lunii**. După 12, luna respectivă se pierde: routine-ul
-> nu mai rulează deloc pentru ea, iar borderourile ei trebuie procesate manual, dintr-un chat.
-> Deci: între 5 și 12 ale fiecărei luni, laptopul trebuie logat, cu Claude pornit, măcar o dată.
+```
+Procesează borderourile noi de încasări Cargus/Packeta și trimite raportul pe e-mail.
+
+CONTEXT
+Rulezi în cloud. Folderul `C:\Users\Barna\My Drive\claude\incasari-saga` de pe calculatorul
+„ldtd01" e conectat la sesiune. Mașina virtuală Linux locală de pe acel calculator NU pornește
+(device_bash răspunde „Workspace unavailable"), deci nu încerca să rulezi acolo — folosește
+device_list_dir / device_stage_files / device_commit_files și rulează scriptul aici, în
+containerul din cloud.
+
+PAȘII
+
+1. Ia skill-ul și scriptul (pluginul nu e activat pentru acest task):
+   `git clone --depth 1 https://github.com/adrianbarna/alfinRepo.git`
+   Skill-ul e la `alfinRepo/plugins/incasari-saga/skills/incasari-cargus/`. CITEȘTE `SKILL.md`
+   și urmează-l — el e sursa de adevăr pentru tot fluxul. Scriptul e `scripts/proceseaza.py`
+   (Python 3, fără pachete externe).
+   REGULA DE AUR: nu genera XML de mână, nu citi borderourile cu alte unelte, nu edita
+   `.procesate.json`.
+
+2. Vezi ce e în Drive: device_list_dir recursiv pe `C:\Users\Barna\My Drive\claude\incasari-saga`.
+   Jurnalul `borderouri\ron\procesate\.procesate.json` spune ce s-a procesat deja. Dacă nu e
+   niciun borderou nou, OPREȘTE-TE: fără email, fără card în Notion, fără notificare.
+
+3. Stage-uiește în sesiune: `config.json` din rădăcina folderului, borderourile din
+   `borderouri\ron`, tot ce e în `facturi`, și `borderouri\ron\procesate\.procesate.json` dacă
+   există. Pune jurnalul stage-uit lângă borderouri, în `procesate/`, ca scriptul să-l găsească.
+
+4. Copiază `config.json` stage-uit peste
+   `alfinRepo/plugins/incasari-saga/skills/incasari-cargus/config.json` (scriptul îl citește de
+   acolo cu prioritate). De acolo vin adresele de raport — NU le inventa și nu le lua din altă
+   parte.
+   Rulează:
+   `python3 <skill>/scripts/proceseaza.py --folder <cale staged borderouri/ron> --facturi <cale staged facturi> --json`
+   Cod de ieșire: 0 = a mers, 1 = eroare, 2 = configurare lipsă.
+
+5. Scrie rezultatele înapoi în Drive, în
+   `C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron\procesate\`: XML-ul generat,
+   `ultimul-raport.txt` ȘI `.procesate.json`. Fără jurnal, rularea următoare reprocesează tot.
+
+6. Trimite raportul cu Gmail: subiectul în `email.subiect`, corpul în `email.corp`, destinatarii
+   în `email.catre` (din JSON). Adaugă la final calea completă a XML-ului în Drive. NU cere
+   confirmare înainte de trimitere — adresele sunt stabilite la configurare, iar asta e
+   autorizarea. Raportul pleacă și când toate rândurile au fost sărite.
+
+7. Actualizează cardul rulării în board-ul Notion „AI Agent overview" (data source
+   aa9a26d8-67fc-47d2-acf0-0460d8bc9abf), conform pasului 3 din SKILL.md: caută întâi un card
+   existent pentru aceeași lună și refolosește-l, scrie jurnalul rulării în corp, în română, și
+   mută-l în „De verificat" sau „Blocat / Necesită input". Niciodată în „De aplicat" sau „Done".
+   Dacă uneltele Notion lipsesc, nu te opri — spui la final în ce fază ar fi trebuit să ajungă.
+
+8. La final trimite PushNotification cu: câte linii și ce total, câte rânduri sărite, câte
+   avertismente, unde e XML-ul și cui a plecat raportul. Dacă rularea s-a blocat, notifică ce
+   lipsește concret.
+```
+
+O rulare pierdută se recuperează declanșând task-ul manual, din lista de task-uri programate.
+
+### `config.json` — unul singur, în Drive
+
+```
+C:\Users\Barna\My Drive\claude\incasari-saga\config.json
+```
+
+```json
+{
+  "foldere": [
+    { "cale": "borderouri/ron", "moneda": "RON", "cont": "5125" }
+  ],
+  "facturi": "facturi",
+  "email": ["alfin.consult.ai@gmail.com"]
+}
+```
+
+Căile sunt **relative**, ca să meargă și pe Windows, și în container. Rularea din cloud le
+suprascrie oricum cu `--folder` și `--facturi`; din fișier vine, în practică, adresa de raport.
+Fișierul stă în Drive, lângă date, nu pe vreun calculator anume — asta e tot rostul lui.
+
+> **Ăsta e singurul `config.json`.** Scriptul mai știe să citească și
+> `~/.claude/incasari-saga/config.json` (calea implicită, per mașină), rămasă de la
+> configurările vechi de pe calculator — dar task-ul din cloud nu o vede și nimic nu o mai
+> citește. **Șterge-o**: două fișiere care spun același lucru diverg mai devreme sau mai
+> târziu, iar cel de pe PC ar diverge în tăcere.
+
+Datele contabile nu intră în git — `config.json` stă în Drive, nu în repo.
+
+### De ce NU avem nevoie de virtualizare
+
+Întrebarea apare inevitabil, pentru că orice comandă locală din Cowork răspunde:
+
+```
+Workspace unavailable. The isolated Linux environment on this device failed to start.
+```
+
+Cowork execută comenzile locale într-o mașină virtuală Linux de pe calculator, iar aceea are
+nevoie de virtualizare activată. Pe `ldtd01` e dezactivată — Task Manager → Performanță → CPU
+arată `Suport Hyper-V: Da` (procesorul poate) și `Virtualizare: Dezactivat` (e oprită din BIOS;
+pe un i7-8550U asta e Intel VT-x, nebifat din fabrică).
+
+**Fluxul de încasări nu trece prin acea mașină virtuală.** Varianta A rulează scriptul în
+containerul din cloud și atinge calculatorul doar ca să citească și să scrie fișiere — operații
+care merg fără virtualizare. Deci: nu umbla în BIOS pentru încasări.
+
+Virtualizarea îți trebuie doar dacă vrei ca o sesiune din cloud să poată **executa comenzi
+direct pe calculator** (util în alte scenarii: rulat programe locale, lucrat cu fișiere mari
+fără drumul dus-întors). Dacă ajungi acolo:
+
+1. Restart și intră în BIOS/UEFI — de regulă `F2` la pornire (uneori `F10`, `Del` sau `F1`).
+2. **Intel Virtualization Technology** / **Intel VT-x** → `Enabled`, de obicei în *Advanced*,
+   *Configuration*, *System Configuration* sau *Security*. *Save & Exit* (`F10`).
+3. Verifică în Task Manager că linia **Virtualizare** arată `Activat`.
+4. Dacă tot nu pornește: `wsl --update` în PowerShell ca administrator, iar în
+   `optionalfeatures.exe` bifate **Virtual Machine Platform** și **Windows Hypervisor
+   Platform**. Restart la Windows după orice modificare.
+
+> Ai la îndemână cheia de recuperare BitLocker înainte de a intra în BIOS: pe unele laptopuri,
+> o modificare de acolo o cere la următoarea pornire (contul Microsoft → Devices → BitLocker
+> keys).
 
 ## Ce urmează
 
