@@ -185,7 +185,7 @@
 
 const AGENTS = {
   incasari: {
-    label: "Încasări Cargus/Packeta",
+    label: "Agent Borderou Cargus",
     status: "activ",
     plugin: "incasari-saga · skill incasari-cargus",
     view: [0, 0, 1250, 700],
@@ -199,8 +199,9 @@ const AGENTS = {
       { id:"xml",     x:850,  y:312, w:170, h:60, kind:"data",    title:"procesate/*.xml",      meta:"fișierul de import" },
       { id:"gmail",   x:850,  y:200, w:170, h:56, kind:"extern",  title:"Gmail",                meta:"raportul rulării" },
       { id:"saga",    x:1050, y:200, w:160, h:56, kind:"extern",  title:"Saga",                 meta:"Import → Încasări" },
-      { id:"om",      x:1040, y:312, w:170, h:64, kind:"human",   title:"Contabil",             meta:"verifică și aplică" },
-      { id:"notion",  x:700,  y:560, w:250, h:72, kind:"extern",  title:"Notion · AI Agent overview", meta:"un card = o rulare" }
+      { id:"om",      x:1040, y:312, w:170, h:64, kind:"human",   title:"Paula",                meta:"verifică și importă" },
+      { id:"notion",  x:640,  y:560, w:250, h:72, kind:"extern",  title:"Notion · AI Agent overview", meta:"un card = o rulare" },
+      { id:"echipa",  x:990,  y:560, w:230, h:72, kind:"extern",  title:"Notion · Board Echipă",      meta:"coloana Paulei" }
     ],
     groups: [
       { x:405, y:64, w:400, h:108, label:"Google Drive (Mirror) — fișiere reale pe disc" }
@@ -215,9 +216,10 @@ const AGENTS = {
       { id:"e6",  from:["script","r"],       to:["xml","l"] },
       { id:"e8",  from:["skill","t",45],     to:["gmail","l"] },
       { id:"e9",  from:["skill","b",30],     to:["notion","l"] },
-      { id:"e10", from:["notion","r"],       to:["om","l"] },
+      { id:"e13", from:["notion","r"],       to:["echipa","l"] },
+      { id:"e10", from:["echipa","t",-45],   to:["om","b",-45] },
       { id:"e11", from:["xml","t"],          to:["saga","b",-40] },
-      { id:"e12", from:["om","b"],           to:["notion","r",-40] }
+      { id:"e12", from:["om","b",45],        to:["echipa","t",45] }
     ],
     steps: [
       { edges:["e1"], on:["routine","skill"], who:"agent", phase:"Programat → În lucru",
@@ -253,18 +255,21 @@ const AGENTS = {
       { edges:["e8"], on:["skill","gmail"], who:"agent", phase:"În lucru",
         title:"Raportul pleacă pe e-mail",
         desc:"Fără confirmare: adresele stabilite la configurare <i>sunt</i> autorizarea. Se trimite și când toate rândurile au fost sărite — atunci e cel mai mult de verificat." },
-      { edges:["e9"], on:["skill","notion"], who:"agent", phase:"→ De verificat",
-        title:"Cardul trece în „De verificat”",
-        desc:"În corpul cardului se scrie jurnalul rulării, în română: ce comandă a rulat, ce fișiere, ce a ieșit, ce e de verificat, unde a plecat raportul. Dacă ceva a crăpat, cardul merge în „Blocat / Necesită input”." },
-      { edges:["e10"], on:["notion","om"], who:"om", phase:"De verificat",
-        title:"Contabilul deschide cardul",
-        desc:"Aici se termină ce poate face agentul singur. Verifică totalurile, avertismentele și rândurile sărite — apoi mută cardul în „De aplicat”." },
-      { edges:["e11"], on:["xml","saga","om"], who:"om", phase:"De aplicat",
+      { edges:["e9"], on:["skill","notion"], who:"agent", phase:"→ Done",
+        title:"Cardul rulării se închide în „Done”",
+        desc:"În corpul cardului se scrie jurnalul rulării, în română: ce comandă a rulat, ce fișiere, ce a ieșit, ce e de verificat, unde a plecat raportul. „Done” înseamnă aici „agentul a terminat”, nu „încasările sunt în Saga”. Dacă ceva a crăpat, cardul rămâne în „Blocat / Necesită input” și nu se predă nimic mai departe." },
+      { edges:["e13"], on:["notion","echipa"], who:"agent", phase:"→ Done",
+        title:"Verificarea se predă pe Board Echipă",
+        desc:"Un card nou în coloana Paulei, purtând același ID de rulare (<code>INC-2026-07</code>) ca al cardului din „Done” — ID-ul e singurul lucru care leagă cele două boarduri. În corp: cifrele, avertismentele, calea XML-ului și cei trei pași de făcut." },
+      { edges:["e10"], on:["echipa","om"], who:"om", phase:"Paula",
+        title:"Paula deschide sarcina",
+        desc:"Aici se termină ce poate face agentul singur. Verifică totalurile, avertismentele și rândurile sărite, cu raportul de pe e-mail alături." },
+      { edges:["e11"], on:["xml","saga","om"], who:"om", phase:"Paula",
         title:"Importul în Saga",
         desc:"Import documente → Încasări, cu XML-ul din <code>procesate/</code>. Singurul pas care atinge contabilitatea e făcut de om, deliberat." },
-      { edges:["e12"], on:["om","notion"], who:"om", phase:"→ Done",
-        title:"Cardul se închide",
-        desc:"Rularea rămâne în board ca istoric: ce s-a procesat luna asta, cât a durat, ce a avut nevoie de intervenție. Un agent nu-și mută niciodată singur cardul în „Done”." }
+      { edges:["e12"], on:["om","echipa"], who:"om", phase:"→ Done (echipă)",
+        title:"Sarcina se mută în „Done”",
+        desc:"Pe Board Echipă, „Done” înseamnă „încasările sunt în Saga”. Coloana o mută omul: un agent nu închide niciodată singur sarcina pe care tocmai a dat-o cuiva." }
     ]
   },
 

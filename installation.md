@@ -13,7 +13,7 @@ meargă încasările și ce trebuie doar dacă lucrezi la repo sau rulezi alte s
 | 4 | **Python 3** | `proceseaza.py`, dacă vrei să rulezi manual pe calculator | doar dezvoltare |
 | 5 | **Google Drive for Desktop** (Mirror) | borderourile și facturile, ca fișiere reale pe disc | **obligatoriu** |
 | 6 | **Pluginurile din marketplace** | `alfin-consult` | doar dezvoltare |
-| 7 | **Notion** (conector) | board-ul `AI Agent overview`, unde se vede fiecare rulare | recomandat |
+| 7 | **Notion** (conector) | boardurile `AI Agent overview` și `Board Echipă` | recomandat |
 
 Task-ul din cloud **nu** folosește pluginul instalat local și **nu** are nevoie de Python pe
 calculator: își aduce singur skill-ul și scriptul din repo, iar Python rulează în container.
@@ -338,19 +338,29 @@ pe versiunea de la instalare, în tăcere.
 
 ---
 
-## 5. Notion — board-ul `AI Agent overview`
+## 5. Notion — boardurile `AI Agent overview` și `Board Echipă`
 
-Fiecare rulare a unui agent lasă o urmă într-un board Notion, ca să se vadă ce a rulat,
-ce a produs și ce a mai rămas de făcut. Fără el, o rulare programată care eșuează la 8
-dimineața nu e observată de nimeni până când lipsesc încasările din Saga.
+Fiecare rulare a unui agent lasă o urmă în Notion, ca să se vadă ce a rulat, ce a produs
+și ce a mai rămas de făcut. Fără asta, o rulare programată care eșuează la 8 dimineața nu
+e observată de nimeni până când lipsesc încasările din Saga.
+
+Sunt **două** boarduri, cu roluri diferite:
+
+| Board | Ce ține | Cine se uită la el |
+|---|---|---|
+| `AI Agent overview` | istoricul rulărilor: ce agent, când, cu ce rezultat | tu, când vrei să știi ce a făcut un agent |
+| `Board Echipă` | sarcinile oamenilor, pe coloane per persoană | Paula și Lacramioara, zilnic |
 
 Licența Notion e pe contul partajat `alfin.consult.ai@gmail.com`, la fel ca restul.
 
-**Board:** <https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f>
+**AI Agent overview:** <https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f>
 **Data source** (id-ul folosit de skill-uri când creează carduri):
 `aa9a26d8-67fc-47d2-acf0-0460d8bc9abf`
 
-### Cum e construit
+**Board Echipă:** <https://app.notion.com/p/257459732c16428cb19a6f6b880dfa44>
+**Data source:** `6ac9dfdd-5891-4194-a5f5-a2cebd9ff908`
+
+### Cum e construit `AI Agent overview`
 
 **Un card = o rulare**, nu un agent. Cardul se numește `Încasări — septembrie 2026`,
 `Monitorizare fiscală — săpt. 37`, rămâne după ce se închide și devine istoricul rulărilor.
@@ -363,23 +373,63 @@ Cele șase faze, în ordine:
 | `În lucru` | agentul procesează chiar acum | agentul |
 | `Blocat / Necesită input` | s-a oprit și așteaptă ceva de la om | agentul |
 | `De verificat` | agentul a terminat, rezultatul nu e validat | agentul |
-| `De aplicat` | validat, a rămas pasul manual (importul în Saga) | **omul** |
-| `Done` | închis complet, rămâne ca istoric | **omul** |
+| `De aplicat` | validat, a rămas pasul manual | **omul** |
+| `Done` | agentul a terminat treaba lui | agentul |
 
-Linia care separă lucrurile: **agentul poate muta cardul până în `De verificat`, nu mai
-departe.** `De aplicat` și `Done` înseamnă „omul a verificat" și „omul a aplicat"; dacă
-un agent și-ar închide singur cardul, board-ul n-ar mai spune nimic.
+**Agentul de încasări sare peste `De verificat` și `De aplicat`** (schimbat pe 10.09.2026).
+Își închide singur cardul în `Done` — pentru el rularea chiar s-a terminat — și deschide în
+schimb o sarcină pe `Board Echipă`, în coloana Paulei. Motivul: boardul de agenți nu se mai
+umple de carduri care așteaptă un om, iar omul nu trebuie să se uite în două locuri ca să
+știe ce are de făcut. `Done` aici înseamnă „agentul a terminat", nu „încasările sunt în
+Saga" — asta se vede pe `Board Echipă`. Cele două faze din mijloc rămân definite pentru
+agenții care nu predau nimic unui om.
 
-Proprietățile cardului: `Agent`, `Perioadă`, `Declanșat` / `Finalizat`, `Declanșare`
+O rulare care s-a blocat **rămâne** în `Blocat / Necesită input` și nu produce niciun card
+de verificare: n-are ce verifica nimeni încă.
+
+**Cele două carduri sunt legate prin `ID rulare`**, de forma `INC-<an>-<lună>`, de exemplu
+`INC-2026-07` pentru borderourile din iulie 2026. Același ID apare pe cardul din `Done` și
+în titlul cardului de pe `Board Echipă`, deci de la oricare din ele ajungi la celălalt.
+
+Proprietățile cardului de rulare: `ID rulare`, `Agent` (etichetă colorată — pentru încasări
+`Agent Borderou Cargus`, albastru), `Perioadă`, `Declanșat` / `Finalizat`, `Declanșare`
 (automat sau manual), `Rezultat` (rezumat de o linie), `Pas manual rămas`, `Fișiere`,
 `Responsabil`, `ID` (`RUN-1`, `RUN-2`…). În **corpul cardului** agentul scrie jurnalul
 rulării în română — ce comandă a rulat, ce fișiere a procesat, ce a ieșit, ce e de
-verificat, unde a plecat raportul.
+verificat, unde a plecat raportul și cui a predat verificarea.
+
+**`Responsabil` rămâne gol pe cardurile de rulare** și nu mai apare pe cardurile din vederea
+Board. Responsabilul se vede acolo unde contează: pe `Board Echipă`, unde coloana *este*
+persoana. Coloana a rămas în schemă (select cu `Paula` albastru și `Lacramioara` verde)
+pentru agenți care n-au board de echipă.
+
+Proprietățile afișate pe cardurile din vederea **Board**, în ordine: `Agent`, `ID rulare`,
+`Perioadă`, `Declanșat`, `Rezultat`, `Pas manual rămas`, `Declanșare`. Se schimbă din
+iconul cu sliders (dreapta sus) → **Properties**, aprinzi ce vrei și tragi în ordine.
 
 Notion ascunde coloanele goale. Ca să rămână vizibile toate șase și când o fază n-are
 niciun card: pe board → iconul cu sliders (dreapta sus) → **Group** → oprești
 **„Hide empty groups"**. Cardurile ℹ️ de legendă din fiecare coloană există exact pentru
 asta și pot fi șterse după ce oprești setarea.
+
+### Cum e construit `Board Echipă`
+
+Board grupat după `Responsabil`, deci **o coloană = un om**: `Paula` (albastru),
+`Lacramioara` (verde), `Done` (gri). Proprietăți: `Task` (titlul), `Responsabil`, `Termen`,
+`Note`.
+
+Cardul pe care îl deschide agentul de încasări arată așa:
+
+| Proprietate | Valoare |
+|---|---|
+| `Task` | `INC-2026-07 · Verifică încasările iulie 2026 și importă-le în Saga` |
+| `Responsabil` | `Paula` |
+| `Termen` | peste 5 zile de la rulare |
+| `Note` | `219 linii, 26.570,21 RON, 0 rânduri sărite, 15 avertismente. XML gata în Drive.` |
+
+În corp: link către cardul rulării, calea completă a XML-ului, cifrele, lista
+avertismentelor și cei trei pași — verifică, importă în Saga, mută cardul în `Done`.
+**Mutarea în `Done` o face omul**, niciodată agentul.
 
 ### Conectorul, în sesiune
 
@@ -469,13 +519,26 @@ PAȘII
    confirmare înainte de trimitere — adresele sunt stabilite la configurare, iar asta e
    autorizarea. Raportul pleacă și când toate rândurile au fost sărite.
 
-7. Actualizează cardul rulării în board-ul Notion „AI Agent overview" (data source
+7. Închide cardul rulării în board-ul Notion „AI Agent overview" (data source
    aa9a26d8-67fc-47d2-acf0-0460d8bc9abf), conform pasului 3 din SKILL.md: caută întâi un card
-   existent pentru aceeași lună și refolosește-l, scrie jurnalul rulării în corp, în română, și
-   mută-l în „De verificat" sau „Blocat / Necesită input". Niciodată în „De aplicat" sau „Done".
-   Dacă uneltele Notion lipsesc, nu te opri — spui la final în ce fază ar fi trebuit să ajungă.
+   existent pentru aceeași lună (după `Perioadă`) și refolosește-l, altfel creează unul.
+   `Agent` = `Agent Borderou Cargus`; `ID rulare` = `INC-<an>-<lună>` (ex. `INC-2026-07`);
+   `Rezultat` = rezumatul de o linie; `Responsabil` rămâne gol. Scrie jurnalul rulării în
+   corp, în română. Dacă s-a scris XML: `Fază` = `Done` și `Finalizat` = ora de acum. Dacă
+   rularea s-a blocat (toate rândurile sărite, sau cod de ieșire 1 sau 2):
+   `Fază` = `Blocat / Necesită input`, iar `Pas manual rămas` spune ce lipsește concret.
+   Dacă uneltele Notion lipsesc, nu te opri — spui la final ce carduri ar fi trebuit create.
 
-8. La final trimite PushNotification cu: câte linii și ce total, câte rânduri sărite, câte
+8. Doar dacă s-a scris XML, deschide sarcina de verificare pentru Paula în board-ul Notion
+   „Board Echipă" (data source 6ac9dfdd-5891-4194-a5f5-a2cebd9ff908):
+   `Task` = `<ID rulare> · Verifică încasările <luna> <anul> și importă-le în Saga`,
+   `Responsabil` = `Paula`, `Termen` = peste 5 zile, `Note` = același rezumat de o linie.
+   În corp: link către cardul rulării, calea completă a XML-ului în Drive, cifrele,
+   avertismentele și rândurile sărite, apoi cei trei pași — verifică, importă în Saga,
+   mută cardul în `Done`. Nu muta tu cardul în `Done`. Dacă există deja un card cu același
+   ID în titlu, actualizează-l în loc să faci al doilea.
+
+9. La final trimite PushNotification cu: câte linii și ce total, câte rânduri sărite, câte
    avertismente, unde e XML-ul și cui a plecat raportul. Dacă rularea s-a blocat, notifică ce
    lipsește concret.
 ```

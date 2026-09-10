@@ -101,8 +101,9 @@ Configul stă la `~/.claude/incasari-saga/config.json` — pe Windows
 sute de rânduri; scriptul e determinist, XML-ul scris de model nu e. La fel, **nu
 edita `.procesate.json`** direct — îl gestionează scriptul.
 
-Rolul tău: rulezi scriptul, rezumi raportul în chat (în română), îl trimiți pe email și
-ții la zi cardul rulării în board-ul Notion (pasul 3).
+Rolul tău: rulezi scriptul, rezumi raportul în chat (în română), îl trimiți pe email,
+închizi cardul rulării în board-ul Notion și predai verificarea Paulei, pe Board Echipă
+(pasul 3).
 
 ## Flux
 
@@ -141,49 +142,57 @@ se scrie niciun XML, dar lista rândurilor sărite e exact ce trebuie verificat.
 Dacă `email.neconfigurat` e `true`, sau uneltele Gmail lipsesc din sesiune, vezi
 `references/configurare.md`.
 
-### 3. Ține la zi cardul din board-ul Notion
+### 3. Închide cardul rulării și predă verificarea
 
-Fiecare rulare are un card în board-ul **AI Agent overview** din Notion. Acolo se vede că
-rularea a avut loc și ce a mai rămas de făcut — mai ales când rularea e programată și nu
-o urmărește nimeni în direct.
+Fiecare rulare lasă urmă în două boarduri Notion, legate între ele prin **ID-ul rulării**:
 
 ```
-Board:       https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f
-Data source: aa9a26d8-67fc-47d2-acf0-0460d8bc9abf
+AI Agent overview   https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f
+                    data source aa9a26d8-67fc-47d2-acf0-0460d8bc9abf
+Board Echipă        https://app.notion.com/p/257459732c16428cb19a6f6b880dfa44
+                    data source 6ac9dfdd-5891-4194-a5f5-a2cebd9ff908
 ```
+
+**AI Agent overview** e istoricul agenților: ce a rulat, când, cu ce rezultat. **Board
+Echipă** e lista de lucru a oamenilor. Împărțirea e simplă: agentul își închide singur
+cardul de rulare, pentru că el chiar a terminat, și deschide în schimb o sarcină pe Board
+Echipă pentru omul care verifică. Așa boardul de agenți nu se umple de carduri care
+așteaptă un om, iar omul nu trebuie să se uite în două locuri.
+
+**ID-ul rulării** e `INC-<an>-<luna, două cifre>` — `INC-2026-07` pentru borderourile din
+iulie 2026. Apare pe ambele carduri și e singurul lucru care le leagă; nu-l inventa altfel.
 
 **Dacă uneltele Notion lipsesc din sesiune, nu te opri și nu cere activarea conectorului.**
-Procesarea, XML-ul și emailul sunt independente de board. Spui la final, într-o
-propoziție, în ce fază ar fi trebuit să ajungă cardul, și mergi mai departe.
+Procesarea, XML-ul și emailul sunt independente de boarduri. Spui la final, într-o
+propoziție, ce carduri ar fi trebuit create, și mergi mai departe.
 
-**La început**, imediat ce știi că ai borderouri noi de procesat, creează cardul:
-
-| Proprietate | Valoare |
-|---|---|
-| `Rulare` | `Încasări — <luna> <anul>` (ex. `Încasări — septembrie 2026`) |
-| `Agent` | `Încasări Cargus/Packeta` |
-| `Fază` | `În lucru` |
-| `Perioadă` | luna acoperită de borderouri |
-| `Declanșat` | data și ora de acum |
-| `Declanșare` | `Automat (programat)` dintr-un routine, altfel `Manual` |
+#### Cardul rulării, pe AI Agent overview
 
 Caută întâi în data source după `Perioadă`: dacă există deja un card pentru aceeași lună,
 refolosește-l în loc să faci al doilea.
 
-**La final**, după ce raportul pe email a plecat, mută cardul într-una din trei faze:
+| Proprietate | Valoare |
+|---|---|
+| `Rulare` | `Încasări — <luna> <anul>` (ex. `Încasări — septembrie 2026`) |
+| `ID rulare` | `INC-<an>-<lună>` (ex. `INC-2026-07`) |
+| `Agent` | `Agent Borderou Cargus` — etichetă albastră |
+| `Perioadă` | luna acoperită de borderouri |
+| `Declanșat` | ora la care a pornit rularea |
+| `Declanșare` | `Automat (programat)` dintr-un routine, altfel `Manual` |
+| `Rezultat` | rezumat de o linie: `219 linii, 26.570,21 RON, 0 rânduri sărite, 15 avertismente` |
+| `Responsabil` | **gol** — verificarea stă pe cardul de pe Board Echipă |
 
-| Ce s-a întâmplat | `Fază` | `Pas manual rămas` |
-|---|---|---|
-| S-a scris XML, cu sau fără avertismente | `De verificat` | `Verifică totalurile și rândurile sărite, apoi importă XML-ul în Saga` |
-| Toate rândurile sărite, niciun XML | `Blocat / Necesită input` | ce lipsește concret (un export de facturi, un borderou corectat…) |
-| Cod de ieșire 1 sau 2 | `Blocat / Necesită input` | ce trebuie reparat sau configurat |
+`Fază` se pune la final, după ce a plecat raportul pe email:
 
-`Rezultat` primește un rezumat de o linie: `219 linii, 26.570,21 RON, 0 rânduri sărite,
-15 avertismente`.
+| Ce s-a întâmplat | `Fază` | `Finalizat` | `Pas manual rămas` |
+|---|---|---|---|
+| S-a scris XML, cu sau fără avertismente | `Done` | ora de acum | `Verificarea e la Paula, pe Board Echipă (card <ID>)` |
+| Toate rândurile sărite, niciun XML | `Blocat / Necesită input` | gol | ce lipsește concret (un export de facturi, un borderou corectat…) |
+| Cod de ieșire 1 sau 2 | `Blocat / Necesită input` | gol | ce trebuie reparat sau configurat |
 
-**Nu muta niciodată cardul în `De aplicat` sau `Done`.** Cele două faze înseamnă „omul a
-verificat" și „omul a importat"; le mută utilizatorul. Un agent care își închide singur
-cardul face board-ul inutil.
+`Done` aici înseamnă „agentul a terminat", nu „încasările sunt în Saga" — aia se vede pe
+Board Echipă. O rulare blocată **rămâne** în `Blocat / Necesită input` și nu primește card
+de verificare: n-are ce verifica nimeni încă.
 
 **În corpul cardului scrie jurnalul rulării, în română**, ca peste o lună să se înțeleagă
 ce s-a întâmplat fără să caute nimeni raportul de email:
@@ -207,13 +216,38 @@ Total pe zile: 7.178,35 / 6.334,85 / 6.951,57 / 6.105,44 RON.
 
 ## Raport
 Trimis la 08:04 către alfin.consult.ai@gmail.com.
+
+## Predare
+Verificarea și importul sunt la Paula: <link către cardul de pe Board Echipă>, termen 10.09.2026.
 ```
 
 Scrie doar ce s-a întâmplat efectiv: fără secțiuni goale, fără cifre inventate. Dacă
-rularea s-a oprit, jurnalul spune unde și de ce — asta e tot rostul lui.
+rularea s-a oprit, jurnalul spune unde și de ce — asta e tot rostul lui, iar secțiunea
+„Predare" lipsește, pentru că n-ai ce preda.
 
-**Când nu e nimic nou de procesat, nu crea niciun card.** O lună fără borderouri noi nu
-e o rulare.
+#### Sarcina de verificare, pe Board Echipă
+
+Se creează **doar când s-a scris XML**. Dacă există deja un card cu același ID în titlu,
+actualizează-l în loc să faci al doilea.
+
+| Proprietate | Valoare |
+|---|---|
+| `Task` | `<ID> · Verifică încasările <luna> <anul> și importă-le în Saga` |
+| `Responsabil` | `Paula` — etichetă albastră; ea dă și coloana în care apare cardul |
+| `Termen` | peste 5 zile |
+| `Note` | același rezumat de o linie ca `Rezultat` |
+
+În corpul cardului: link către cardul rulării, calea completă a XML-ului în Drive, cifrele
+(total, pe zile, câte linii au luat suma de pe factură), lista avertismentelor și a
+rândurilor sărite, și cei trei pași — verifică, importă în Saga (`Import documente →
+Încasări`), mută cardul în coloana `Done`.
+
+**Nu muta niciodată cardul Paulei în `Done`.** Coloana aia înseamnă „omul a importat"; o
+mută ea. Un agent care închide singur sarcina pe care tocmai a dat-o unui om face boardul
+inutil.
+
+**Când nu e nimic nou de procesat, nu crea niciun card** — nici pe un board, nici pe
+celălalt. O lună fără borderouri noi nu e o rulare.
 
 ### 4. Configurare lipsă sau de schimbat
 
