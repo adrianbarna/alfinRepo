@@ -1,0 +1,9 @@
+# Terminatii de linie: LF peste tot, si in repo si pe disc.
+# Fara asta, sincronizarile de pe Windows au transformat toate fisierele in CRLF
+# si diff-ul a aratat 5287 de linii schimbate fara nicio schimbare de continut.
+* text=auto eol=lf
+
+# Fisiere care trebuie sa ramana CRLF ca sa fie citite corect pe Windows.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
