@@ -42,5 +42,8 @@ calculator la altul și nu se pot presupune.
 
 ## Date contabile
 
-**Nu intră niciodată în acest repo.** Borderourile, exporturile de facturi și
-`config.json`-ul (per mașină, în `~/.claude/incasari-saga/`) stau în afara git-ului.
+**Nu intră niciodată în acest repo.** Borderourile, exporturile de facturi și `config.json`-ul
+stau în afara git-ului. `config.json` e **unul singur**, în Drive, lângă date
+(`...\My Drive\claude\incasari-saga\config.json`) — nu per mașină în `~/.claude/incasari-saga/`.
+Calea aceea e o rămășiță din configurările vechi de pe calculator și nu o mai citește nimic;
+detaliile sunt în [`installation.md`](installation.md).

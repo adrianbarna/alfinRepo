@@ -8,16 +8,18 @@ meargă încasările și ce trebuie doar dacă lucrezi la repo sau rulezi alte s
 | # | Ce | De ce | Pentru încasări |
 |---|---|---|---|
 | 1 | **Claude Code** | aplicația desktop ține legătura cu folderul din Drive | **obligatoriu** |
-| 2 | **Git for Windows** | `git` pentru repo + shell-ul Bash pentru Claude Code | doar dezvoltare |
-| 3 | **Python 3** | `proceseaza.py`, dacă vrei să rulezi manual pe calculator | doar dezvoltare |
-| 4 | **Google Drive for Desktop** (Mirror) | borderourile și facturile, ca fișiere reale pe disc | **obligatoriu** |
-| 5 | **Pluginurile din marketplace** | `alfin-consult` | doar dezvoltare |
-| 6 | **Notion** (conector) | board-ul `AI Agent overview`, unde se vede fiecare rulare | recomandat |
+| 2 | **Virtualizare activată în BIOS** | mașina virtuală Linux în care rulează comenzile locale | doar dezvoltare |
+| 3 | **Git for Windows** | `git` pentru repo + shell-ul Bash pentru Claude Code | doar dezvoltare |
+| 4 | **Python 3** | `proceseaza.py`, dacă vrei să rulezi manual pe calculator | doar dezvoltare |
+| 5 | **Google Drive for Desktop** (Mirror) | borderourile și facturile, ca fișiere reale pe disc | **obligatoriu** |
+| 6 | **Pluginurile din marketplace** | `alfin-consult` | doar dezvoltare |
+| 7 | **Notion** (conector) | board-ul `AI Agent overview`, unde se vede fiecare rulare | recomandat |
 
 Task-ul din cloud **nu** folosește pluginul instalat local și **nu** are nevoie de Python pe
 calculator: își aduce singur skill-ul și scriptul din repo, iar Python rulează în container.
 
-Pașii 1–4 se fac o dată **per cont Windows** care are nevoie de acces. Contul Google
+Pașii 1–5 se fac o dată **per cont Windows** care are nevoie de acces — cu excepția
+virtualizării, care se activează o singură dată, în BIOS, pentru tot calculatorul. Contul Google
 folosit peste tot e cel partajat: `alfin.consult.ai@gmail.com`.
 
 ---
@@ -82,6 +84,49 @@ nativă pune executabilul în `%USERPROFILE%\.local\bin`, deci verifică întâi
 
 Dacă de acolo răspunde, deschide un terminal nou în loc să reinstalezi.
 
+### Virtualizare — cerință pentru comenzile locale
+
+Cowork execută comenzile locale (`device_bash`) într-o mașină virtuală Linux de pe calculator.
+**Virtualizarea hardware trebuie activată în BIOS/UEFI**, altfel mașina nu pornește și orice
+comandă locală răspunde:
+
+```
+Workspace unavailable. The isolated Linux environment on this device failed to start.
+```
+
+Verifică întâi, înainte de a umbla în BIOS: Task Manager → Performanță → CPU. `Suport Hyper-V: Da`
+înseamnă că procesorul poate; linia **Virtualizare** trebuie să arate `Activat`. Pe multe
+laptopuri vine nebifată din fabrică.
+
+Activare:
+
+1. Restart și intră în BIOS/UEFI — de regulă `F2` la pornire (uneori `F10`, `Del` sau `F1`).
+2. **Intel Virtualization Technology** / **Intel VT-x** (pe AMD: **SVM Mode**) → `Enabled`, de
+   obicei în *Advanced*, *Configuration*, *System Configuration* sau *Security*. *Save & Exit*
+   (`F10`).
+3. Verifică în Task Manager că linia **Virtualizare** arată `Activat`.
+4. Dacă tot nu pornește: `wsl --update` în PowerShell ca administrator, iar în
+   `optionalfeatures.exe` bifate **Virtual Machine Platform** și **Windows Hypervisor Platform**.
+   Restart la Windows după orice modificare.
+
+**Exemplu concret, pe `ldtd01` (10.09.2026):** restart → `F1` la pornire → **Security** →
+**Virtualization** → `Enable` → *Save & Exit*. După repornire, mașina virtuală locală a pornit și
+`device_bash` a răspuns normal. Meniul diferă de la un producător la altul — dacă `F1` nu intră în
+BIOS, încearcă `F2`, `F10` sau `Del`, iar dacă nu găsești opțiunea sub *Security*, caut-o în
+*Advanced*, *Configuration* sau *System Configuration*.
+
+> Ai la îndemână cheia de recuperare BitLocker înainte de a intra în BIOS: pe unele laptopuri, o
+> modificare de acolo o cere la următoarea pornire (contul Microsoft → Devices → BitLocker keys).
+
+**Ce merge și fără virtualizare:** citirea și scrierea fișierelor din folderele conectate
+(`device_list_dir`, `device_stage_files`, `device_commit_files`) nu trec prin mașina virtuală.
+De aceea încasările pot rula și pe o mașină fără ea — vezi „De ce procesarea rămâne în cloud".
+
+**Ce nu deblochează, chiar activată:** mașina virtuală **nu are acces la rețea**. `git clone` nu
+poate rula acolo, iar conectorii Gmail și Notion există doar în sesiunea din cloud. Local rămân
+citirile, căutările, editările și scripturile care nu cer rețea. Ștergerea de fișiere e blocată
+din oficiu — `rm` răspunde `Operation not permitted`.
+
 ### Git for Windows
 
 Nu e obligatoriu pentru Claude Code, dar e **recomandat**: fără el, Claude Code
@@ -105,6 +150,18 @@ Dacă Claude Code nu găsește Git Bash după instalare, îi spui calea în `set
 **Independent de asta, instrucțiunile skill-urilor din acest repo rămân neutre față de
 shell** — o comandă pe linie, fără `&&`, `||` sau redirecționări — ca să meargă la fel
 și pe PowerShell, și pe Bash. Nu le „optimiza" presupunând că Git Bash există.
+
+### Terminații de linie: LF, prin `.gitattributes`
+
+Pe 10.09.2026 sincronizarea repo-ului de pe Windows a rescris toate fișierele în CRLF, iar
+`git diff` a arătat 5287 de linii schimbate fără nicio schimbare de conținut. Rezolvarea e
+`.gitattributes` din rădăcina repo-ului: `* text=auto eol=lf`, cu excepția `.bat`, `.cmd` și
+`.ps1`, care rămân CRLF ca să fie citite corect pe Windows.
+
+**Nu seta `core.autocrlf`** — nici local, nici global. Pe mașina curentă e nesetat, iar
+`.gitattributes` e singurul mecanism; două mecanisme care spun același lucru diverg mai devreme
+sau mai târziu. Dacă un `git status` arată brusc tot repo-ul modificat fără să fi atins nimic,
+asta e prima cauză de verificat.
 
 ---
 
@@ -342,10 +399,10 @@ din cloud, pe copii ale fișierelor urcate din Drive, iar rezultatele se scriu �
 | Conectori | Gmail, Notion (+ Google Drive, Google Calendar) |
 | Aprobări | **automat** — altfel rularea se oprește așteptând un „da" pe care nu-l vede nimeni |
 
-**De ce cloud și nu local:** conectorii Gmail și Notion sunt deja legați de task, iar mașina
-virtuală Linux de pe `ldtd01` nu pornește (vezi mai jos). Prețul e că fișierele fac un drum
-dus-întors — urcate din Drive, procesate în cloud, scrise înapoi — câteva secunde pentru un
-borderou de câteva sute de rânduri.
+**De ce cloud și nu local:** conectorii Gmail și Notion sunt legați de task și există doar în
+sesiunea din cloud, iar mașina virtuală Linux locală nu are acces la rețea, deci nu poate clona
+repo-ul (vezi „De ce procesarea rămâne în cloud"). Prețul e că fișierele fac un drum dus-întors — urcate din Drive,
+procesate în cloud, scrise înapoi — câteva secunde pentru un borderou de câteva sute de rânduri.
 
 **Calculatorul trebuie să fie pornit și Claude Desktop conectat** la ora rulării: fără el,
 sesiunea din cloud nu ajunge la folderul din Drive. Varianta din cloud nu scapă de asta.
@@ -416,6 +473,11 @@ PAȘII
    lipsește concret.
 ```
 
+> **Notă, 10.09.2026:** linia din CONTEXT spune că mașina virtuală locală nu pornește — adevărat
+> doar pe o mașină fără virtualizare activată. Acolo unde e activată, mașina pornește, dar tot nu
+> are rețea, deci concluzia prompt-ului rămâne corectă: rularea se face în cloud. Dacă rescrii
+> prompt-ul cândva, asta e propoziția de actualizat.
+
 O rulare pierdută se recuperează declanșând task-ul manual, din lista de task-uri programate.
 
 ### `config.json` — unul singur, în Drive
@@ -446,38 +508,16 @@ Fișierul stă în Drive, lângă date, nu pe vreun calculator anume — asta e 
 
 Datele contabile nu intră în git — `config.json` stă în Drive, nu în repo.
 
-### De ce NU avem nevoie de virtualizare
+### De ce procesarea rămâne în cloud
 
-Întrebarea apare inevitabil, pentru că orice comandă locală din Cowork răspunde:
+Chiar pe o mașină cu virtualizarea activată, unde mașina virtuală locală pornește, procesarea tot
+în cloud se face. Două motive, niciunul ocolibil: mașina virtuală locală **nu are rețea**, deci
+pasul 1 al task-ului (`git clone`) nu poate rula acolo; iar conectorii **Gmail și Notion** sunt
+legați de sesiunea din cloud, nu de calculator. Calculatorul rămâne necesar doar ca sursă și
+destinație a fișierelor din Drive.
 
-```
-Workspace unavailable. The isolated Linux environment on this device failed to start.
-```
-
-Cowork execută comenzile locale într-o mașină virtuală Linux de pe calculator, iar aceea are
-nevoie de virtualizare activată. Pe `ldtd01` e dezactivată — Task Manager → Performanță → CPU
-arată `Suport Hyper-V: Da` (procesorul poate) și `Virtualizare: Dezactivat` (e oprită din BIOS;
-pe un i7-8550U asta e Intel VT-x, nebifat din fabrică).
-
-**Fluxul de încasări nu trece prin acea mașină virtuală.** Varianta A rulează scriptul în
-containerul din cloud și atinge calculatorul doar ca să citească și să scrie fișiere — operații
-care merg fără virtualizare. Deci: nu umbla în BIOS pentru încasări.
-
-Virtualizarea îți trebuie doar dacă vrei ca o sesiune din cloud să poată **executa comenzi
-direct pe calculator** (util în alte scenarii: rulat programe locale, lucrat cu fișiere mari
-fără drumul dus-întors). Dacă ajungi acolo:
-
-1. Restart și intră în BIOS/UEFI — de regulă `F2` la pornire (uneori `F10`, `Del` sau `F1`).
-2. **Intel Virtualization Technology** / **Intel VT-x** → `Enabled`, de obicei în *Advanced*,
-   *Configuration*, *System Configuration* sau *Security*. *Save & Exit* (`F10`).
-3. Verifică în Task Manager că linia **Virtualizare** arată `Activat`.
-4. Dacă tot nu pornește: `wsl --update` în PowerShell ca administrator, iar în
-   `optionalfeatures.exe` bifate **Virtual Machine Platform** și **Windows Hypervisor
-   Platform**. Restart la Windows după orice modificare.
-
-> Ai la îndemână cheia de recuperare BitLocker înainte de a intra în BIOS: pe unele laptopuri,
-> o modificare de acolo o cere la următoarea pornire (contul Microsoft → Devices → BitLocker
-> keys).
+Detaliile despre cerința de virtualizare și ce se poate face local sunt la
+„Virtualizare — cerință pentru comenzile locale", în secțiunea 1.
 
 ## Ce urmează
 
