@@ -127,6 +127,13 @@ poate rula acolo, iar conectorii Gmail și Notion există doar în sesiunea din 
 citirile, căutările, editările și scripturile care nu cer rețea. Ștergerea de fișiere e blocată
 din oficiu — `rm` răspunde `Operation not permitted`.
 
+**Nu rula git în mașina virtuală locală.** Git are nevoie să șteargă fișiere temporare, iar în
+folderele conectate ștergerea e blocată: fiecare comandă lasă în urmă `.git/index.lock`,
+`.git/HEAD.lock` și obiecte `tmp_obj_*` pe care nu le poate curăța singură. Un `index.lock` rămas
+blochează apoi următoarea comandă git de pe Windows, cu „Another git process seems to be running",
+și pare o sesiune git blocată deși nu rulează nimic. **Commit, push, pull, rebase — din PowerShell,
+pe Windows.** În mașina virtuală rămân cititul, căutarea și editarea fișierelor.
+
 ### Git for Windows
 
 Nu e obligatoriu pentru Claude Code, dar e **recomandat**: fără el, Claude Code
