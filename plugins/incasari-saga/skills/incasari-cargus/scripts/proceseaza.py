@@ -387,10 +387,60 @@ def fara_diacritice(s):
     return "".join(c for c in s if not unicodedata.combining(c))
 
 
+# Grecesc -> latin, dupa conventia pe care o au deja facturile din Saga ("greeklish",
+# litera cu litera): Μιχάλης -> MIXALIS (χ -> x, η -> i), Θανάσης -> THANASIS, ου -> oy.
+_GRECESC = {
+    "α": "a", "β": "v", "γ": "g", "δ": "d", "ε": "e", "ζ": "z", "η": "i", "θ": "th",
+    "ι": "i", "κ": "k", "λ": "l", "μ": "m", "ν": "n", "ξ": "ks", "ο": "o", "π": "p",
+    "ρ": "r", "σ": "s", "ς": "s", "τ": "t", "υ": "y", "φ": "f", "χ": "x", "ψ": "ps",
+    "ω": "o",
+}
+# Chirilic bulgaresc -> latin (sistemul oficial bulgaresc), pentru clientii eMAG BG.
+_CHIRILIC = {
+    "а": "a", "б": "b", "в": "v", "г": "g", "д": "d", "е": "e", "ж": "zh", "з": "z",
+    "и": "i", "й": "y", "к": "k", "л": "l", "м": "m", "н": "n", "о": "o", "п": "p",
+    "р": "r", "с": "s", "т": "t", "у": "u", "ф": "f", "х": "h", "ц": "ts", "ч": "ch",
+    "ш": "sh", "щ": "sht", "ъ": "a", "ь": "y", "ю": "yu", "я": "ya",
+}
+_NELATIN = re.compile("[Ͱ-Ͽἀ-῿Ѐ-ӿ]+")
+
+
+def _litera_latina(c):
+    mic = c.lower()
+    if mic in _GRECESC or mic in _CHIRILIC:          # й inainte sa-si piarda semnul
+        return _GRECESC.get(mic) or _CHIRILIC.get(mic)
+    baza = unicodedata.normalize("NFD", mic)[0]       # fara accent (tonos)
+    return _GRECESC.get(baza) or _CHIRILIC.get(baza) or baza
+
+
+def translitereaza(s):
+    """Cuvintele grecesti si chirilice -> litere latine; restul ramane neatins.
+
+    Exporturile Saga sunt Windows-1252, deci numele grecesti stau pe facturi deja
+    transliterate. Aceeasi transliterare serveste si la Explicatie, si la comparatia de
+    nume. Un text fara litere grecesti sau chirilice iese identic.
+    """
+    def cuvant(m):
+        w = m.group(0)
+        lat = "".join(_litera_latina(c) for c in w)
+        if w.isupper():
+            return lat.upper()
+        return lat[:1].upper() + lat[1:] if w[:1].isupper() else lat
+    return _NELATIN.sub(cuvant, s)
+
+
+def _pliaza(t):
+    """Conventiile de transliterare difera intre surse: pe facturile Trendyol χ -> x si
+    ου -> oy (MIXALIS KOYMLELLIS), pe cele Skroutz χ -> ch, ξ -> x, ου -> ou, γκ -> g
+    (CHRISTOS, XIOURAS, GIOSIS). Cheia de nume le aduce pe toate la aceeasi forma, pe
+    ambele parti ale comparatiei."""
+    return t.replace("ch", "x").replace("ks", "x").replace("oy", "ou").replace("gk", "g")
+
+
 def cheie_nume(s):
     """'Marian Ghita SRL' -> frozenset{'marian','ghita'} (ordinea nu conteaza)."""
-    curat = re.sub(r"[^a-z0-9]+", " ", fara_diacritice(ca_text(s)).lower())
-    return frozenset(t for t in curat.split() if t and t not in _CUVINTE_IGNORATE)
+    curat = re.sub(r"[^a-z0-9]+", " ", fara_diacritice(translitereaza(ca_text(s))).lower())
+    return frozenset(_pliaza(t) for t in curat.split() if t and t not in _CUVINTE_IGNORATE)
 
 
 def nume_se_potrivesc(a, b):
@@ -428,13 +478,22 @@ def _factura(nr, camp, sursa):
         if baza is not None:
             total = baza + (normalizeaza_suma(camp("tva_val")) or Decimal("0.00"))
     data = camp("data")
+    valuta = ca_text(camp("cod_valuta")).upper() or "RON"
+    # Valoarea in lei a facturii: la valuta, baza + TVA in lei (`baza_tva` + `tva`).
+    # Trebuie la clientii greci Trendyol: facturati in EUR, dar platiti in lei.
+    total_lei = total
+    if valuta != "RON":
+        baza_lei = normalizeaza_suma(camp("baza_tva"))
+        total_lei = (baza_lei + (normalizeaza_suma(camp("tva")) or Decimal("0.00"))
+                     if baza_lei is not None else None)
     return {
         "nr_iesire": nr,
         "denumire": ca_text(camp("denumire")),
         "total": total,
+        "total_lei": total_lei,
         "inf_suplm": ca_text(camp("inf_suplm")),
         "data": data.strftime("%Y-%m-%d") if isinstance(data, _dt.datetime) else ca_text(data),
-        "valuta": ca_text(camp("cod_valuta")).upper() or "RON",
+        "valuta": valuta,
         "sursa": sursa,
     }
 
@@ -579,7 +638,18 @@ def _dupa_nume(dest, idx):
     return [f for kf, lst in idx["dupa_nume"].items() if k < kf for f in lst]
 
 
-def alege_factura(ref, dest, suma, idx):
+def _dupa_cheie(ref, idx, sufix=False):
+    """Facturile cu inf_suplm = ref. Cu `sufix`, si a doua factura pe aceeasi comanda,
+    marcata de Saga cu sufix (Skroutz: 260624-0224606 -> 260624-0224606-2)."""
+    gasite = list(idx["dupa_inf"].get(ref, []))
+    if sufix and ref:
+        prefix = ref + "-"
+        gasite += [f for k, lst in idx["dupa_inf"].items()
+                   if k.startswith(prefix) and k[len(prefix):].isdigit() for f in lst]
+    return gasite
+
+
+def alege_factura(ref, dest, suma, idx, eticheta="RefExp1", sufix=False):
     """-> (factura | None, suma_de_scris, avertismente, motiv_esec | None).
 
     Cheia e RefExp1 = inf_suplm; numele si totalul doar confirma. Cautarea dupa nume
@@ -589,6 +659,7 @@ def alege_factura(ref, dest, suma, idx):
 
     `total` de pe factura e in valuta facturii, deci comparatia cu suma din borderou
     e directa, oricare ar fi valuta folderului (confirmat de client, 25.08.2026).
+    `eticheta` = numele cheii in mesaje (RefExp1 la Cargus, Order ID la eMAG...).
     """
     av = []
 
@@ -603,8 +674,8 @@ def alege_factura(ref, dest, suma, idx):
                 return exacte
         return buni
 
-    dupa_ref = idx["dupa_inf"].get(ref, [])
-    buni, sursa = filtreaza(dupa_ref), "RefExp1"
+    dupa_ref = _dupa_cheie(ref, idx, sufix)
+    buni, sursa = filtreaza(dupa_ref), "cheie"
     if len(buni) != 1:
         dupa_nume = [f for f in _dupa_nume(dest, idx) if not any(f is x for x in dupa_ref)]
         alternativ = filtreaza(dupa_nume)
@@ -617,22 +688,23 @@ def alege_factura(ref, dest, suma, idx):
     if not buni:
         if dupa_ref:
             detaliu = ", ".join("%s = %s" % (f["nr_iesire"], f["total"]) for f in dupa_ref[:4])
-            return None, suma, av, ("totalul nu confirma factura de pe RefExp1 %s "
-                                    "(borderou %s; gasite: %s)" % (ref, suma, detaliu))
-        return None, suma, av, "nicio factura pe RefExp1 %s si niciuna pe numele '%s'" % (ref, dest)
+            return None, suma, av, ("totalul nu confirma factura de pe %s %s "
+                                    "(borderou %s; gasite: %s)" % (eticheta, ref, suma, detaliu))
+        return None, suma, av, "nicio factura pe %s %s si niciuna pe numele '%s'" % (
+            eticheta, ref, dest)
     if len(buni) > 1:
         return None, suma, av, "mai multe facturi se potrivesc: %s" % ", ".join(
             f["nr_iesire"] for f in buni)
 
     f = buni[0]
     if sursa == "nume":
-        av.append("factura %s gasita doar dupa nume: RefExp1 %s nu duce la o factura "
-                  "confirmata de total" % (f["nr_iesire"], ref))
+        av.append("factura %s gasita doar dupa nume: %s %s nu duce la o factura "
+                  "confirmata de total" % (f["nr_iesire"], eticheta, ref))
     stornuri = [x["nr_iesire"] for x in dupa_ref
                 if x is not f and x["total"] is not None and x["total"] < 0]
     if stornuri:
-        av.append("RefExp1 %s are si factura de storno (%s) - de verificat"
-                  % (ref, ", ".join(stornuri)))
+        av.append("%s %s are si factura de storno (%s) - de verificat"
+                  % (eticheta, ref, ", ".join(stornuri)))
     if not nume_se_potrivesc(dest, f["denumire"]):
         av.append("numele difera: borderou '%s' vs factura %s '%s'"
                   % (dest, f["nr_iesire"], f["denumire"]))
@@ -723,11 +795,13 @@ def rezultat_gol(cale):
         "pe_data": {},
         "corectate": 0,
         "corectie": Decimal("0.00"),
+        "ignorate": [],        # randuri care nu sunt incasari (suma 0, platit si returnat)
+        "cheie": "RefExp1",    # numele cheii in raport
         "eroare": None,
     }
 
 
-def proceseaza_cargus(cale, info, moneda, cont, facturi=None, folosite=None):
+def proceseaza_cargus(cale, info, moneda, cont, facturi=None, folosite=None, partiale=None):
     """Profilul Cargus / Packeta -> dict cu linii, avertismente, randuri sarite, totaluri.
 
     `info` = rezultatul lui identifica(). `facturi` = indexul din incarca_facturi();
@@ -845,10 +919,512 @@ def proceseaza_cargus(cale, info, moneda, cont, facturi=None, folosite=None):
     return rez
 
 
+# --------------------------------------------------------------------------
+# Profilurile noi (11.09.2026): eMAG, PlatiOnline, Skroutz, Sameday, Trendyol.
+# Regulile sunt in mappings.md; aici doar cum se aplica.
+# --------------------------------------------------------------------------
+
+FEREASTRA_ZILE = 15   # legare dupa nume: factura la cel mult atatea zile de borderou
+FEREASTRA_STORNO = 60  # stornarea vine de obicei la cateva saptamani dupa livrare
+FRACTIUNI_EMAG = {"co cashing", "cod cashing", "refund co", "refund cod", "voucher"}
+
+
+def _celula(rand, idx):
+    return rand[idx] if idx is not None and idx < len(rand) else None
+
+
+def _coloana(nume, *variante, prefix=False):
+    """Indexul coloanei cu unul din numele date (sau care incepe cu el, cu prefix)."""
+    for v in variante:
+        if v in nume:
+            return nume[v]
+    if prefix:
+        for v in variante:
+            for k, j in nume.items():
+                if k.startswith(v):
+                    return j
+    return None
+
+
+def _randuri_date(info):
+    """(numarul randului in fisier, rand) sub header, fara randurile goale."""
+    idx = info["idx_header"]
+    for i, rand in enumerate(info["randuri"][idx + 1:], start=idx + 2):
+        if rand and not all(v is None or ca_text(v) == "" for v in rand):
+            yield i, rand
+
+
+def _zi(v):
+    """'2026-07-02' / '02.07.2026' / datetime -> date, sau None."""
+    if isinstance(v, _dt.datetime):
+        return v.date()
+    s = ca_text(v)[:10]
+    for fmt in ("%Y-%m-%d", "%d.%m.%Y"):
+        try:
+            return _dt.datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def data_americana(v):
+    """'6/27/2026 7:27:54 AM' -> '27.06.2026'. PlatiOnline scrie luna inaintea zilei."""
+    s = ca_text(v).split(" ")[0]
+    m = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", s)
+    if m:
+        return "%02d.%02d.%s" % (int(m.group(2)), int(m.group(1)), m.group(3))
+    return normalizeaza_data(v)
+
+
+def _nume_explicatie(nume):
+    return re.sub(r"\s+", " ", translitereaza(ca_text(nume))).strip()
+
+
+def _adauga_linie(rez, rand, data, numar, suma, cont, nume, factura, moneda, partial=False):
+    rez["linii"].append({
+        "rand": rand, "Data": data, "Numar": numar, "Suma": suma, "Cont": cont,
+        "Explicatie": "%s - %s" % (PREFIX_EXPLICATIE, _nume_explicatie(nume)),
+        "FacturaID": numar, "FacturaNumar": factura["nr_iesire"] if factura else "",
+        "Moneda": moneda, "partial": partial})
+    rez["total"] += suma
+    rez["pe_data"][data] = rez["pe_data"].get(data, Decimal("0.00")) + suma
+
+
+def _scrie_potrivire(rez, rand, data, numar, nume, suma, f, suma_xml, av, cont, moneda,
+                     partial=False):
+    for a in av:
+        rez["avertismente"].append("randul %s: %s" % (rand, a))
+    if suma_xml != suma:
+        rez["corectate"] += 1
+        rez["corectie"] += suma_xml - suma
+    _adauga_linie(rez, rand, data, numar, suma_xml, cont, nume, f, moneda, partial)
+
+
+def _sari(rez, rand, motiv, nume, ref, suma, data):
+    rez["sarite"].append({"rand": rand, "motiv": motiv, "destinatar": ca_text(nume),
+                          "refexp1": ref, "suma": str(suma) if suma is not None else "",
+                          "data": data or ""})
+    if suma is not None:
+        rez["total_sarit"] += suma
+
+
+def _ignora(rez, rand, motiv, nume, ref, suma):
+    rez["ignorate"].append({"rand": rand, "motiv": motiv, "destinatar": ca_text(nume),
+                            "refexp1": ref, "suma": str(suma) if suma is not None else ""})
+
+
+def _lipsuri(**campuri):
+    return [n.replace("_", " ") for n, v in campuri.items() if v is None or v == ""]
+
+
+def _semnaleaza_export_lipsa(rez, facturi):
+    """Ca la Cargus: multe randuri fara nicio factura = probabil lipseste un export."""
+    negasite = [x for x in rez["sarite"] if x["motiv"].startswith("nicio factura")]
+    if facturi is not None and negasite and len(negasite) >= max(
+            5, (len(rez["linii"]) + len(negasite)) // 5):
+        rez["avertismente"].insert(0, (
+            "%d randuri nu au nicio factura, iar exporturile acopera %s: "
+            "probabil lipseste un export de facturi"
+            % (len(negasite), perioada_facturi(facturi) or "o perioada necunoscuta")))
+
+
+def _deja_stinsa(f, ocupate):
+    nr = f["nr_iesire"]
+    return "factura %s e deja stinsa prin %s" % (nr, ocupate[nr]) if nr in ocupate else None
+
+
+def alege_factura_nume(nume, suma, data, idx, ocupate, camp="total"):
+    """Borderourile fara cheie comuna cu factura (Sameday, Trendyol): nume + suma + data.
+
+    Candidatii: facturile pe acelasi nume (ca la rezerva Cargus), nestinse inca, cu
+    totalul la cel mult TOL_MAX de suma si data la cel mult FEREASTRA_ZILE zile. Intre
+    mai multi castiga suma exacta, apoi data cea mai apropiata; o egalitate ramane
+    ambigua. `camp` = "total_lei" compara cu valoarea in lei a unei facturi in valuta.
+    -> (factura | None, suma_de_scris, avertismente, motiv)
+    """
+    av = []
+    toate = _dupa_nume(nume, idx)
+    if not toate:
+        return None, suma, av, "nicio factura pe numele '%s'" % nume
+    libere = [f for f in toate if f["nr_iesire"] not in ocupate]
+    if not libere:
+        return None, suma, av, "facturile pe numele '%s' sunt deja stinse (%s)" % (
+            nume, ", ".join(f["nr_iesire"] for f in toate[:4]))
+    d0 = _zi(data)
+
+    def dist(f):
+        z = _zi(f["data"])
+        return abs((z - d0).days) if z and d0 else None
+
+    buni = [f for f in libere if f.get(camp) is not None and abs(f[camp] - suma) <= TOL_MAX]
+    if not buni:
+        return None, suma, av, "nicio factura pe numele '%s' cu totalul %s (gasite: %s)" % (
+            nume, suma, ", ".join("%s = %s" % (f["nr_iesire"], f.get(camp)) for f in libere[:4]))
+    fereastra = FEREASTRA_ZILE if suma > 0 else FEREASTRA_STORNO
+    aproape = [f for f in buni if dist(f) is not None and dist(f) <= fereastra]
+    if not aproape:
+        return None, suma, av, ("facturile pe numele '%s' cu totalul %s sunt la peste %d zile "
+                                "de %s: %s" % (nume, suma, fereastra, data,
+                                               ", ".join(f["nr_iesire"] for f in buni[:4])))
+    if len(aproape) > 1:
+        exacte = [f for f in aproape if f[camp] == suma]
+        aproape = exacte or aproape
+    if len(aproape) > 1:
+        cea_mai_mica = min(dist(f) for f in aproape)
+        aproape = [f for f in aproape if dist(f) == cea_mai_mica]
+    if len(aproape) > 1:
+        return None, suma, av, "mai multe facturi se potrivesc: %s" % ", ".join(
+            f["nr_iesire"] for f in aproape)
+    f = aproape[0]
+    if dist(f) > 3:
+        av.append("factura %s e la %d zile de data din borderou (%s)"
+                  % (f["nr_iesire"], dist(f), data))
+    d = abs(f[camp] - suma)
+    if d > TOL_TACITA:
+        av.append("suma luata din factura %s: borderou %s -> factura %s (diferenta %s)"
+                  % (f["nr_iesire"], suma, f[camp], d))
+    return f, f[camp], av, None
+
+
+def alege_factura_emag(ref, nume, suma, idx, ocupate, partiale):
+    """Ca alege_factura pe Order ID, plus platile partiale (decizia din 11.09.2026).
+
+    O comanda cu o singura factura, din care borderoul aduce doar o parte (voucherul
+    intr-o virare, rambursul in alta), intra cu suma din borderou si avertisment; a doua
+    virare stinge restul. `partiale` = cat s-a incasat deja pe fiecare factura.
+    -> (factura | None, suma_de_scris, avertismente, motiv, e_partiala)
+    """
+    f, suma_xml, av, motiv = alege_factura(ref, nume, suma, idx, "Order ID")
+    if f is not None:
+        nr = f["nr_iesire"]
+        if nr in ocupate:
+            return None, suma, [], _deja_stinsa(f, ocupate), False
+        if nr in partiale:
+            return None, suma, [], ("factura %s are deja incasat %s din %s; inca o data suma "
+                                    "intreaga ar dubla incasarea" % (nr, partiale[nr], f["total"])), False
+        return f, suma_xml, av, None, False
+    pozitive = [x for x in _dupa_cheie(ref, idx) if x["total"] is not None and x["total"] > 0]
+    if suma > 0 and len(pozitive) == 1:
+        x = pozitive[0]
+        nr = x["nr_iesire"]
+        if nr in ocupate:
+            return None, suma, [], _deja_stinsa(x, ocupate), False
+        platit = partiale.get(nr, Decimal("0.00"))
+        rest = x["total"] - platit
+        if platit and abs(suma - rest) <= TOL_MAX:
+            return x, rest, ["completeaza factura %s: %s incasat anterior + %s acum = %s"
+                             % (nr, platit, rest, x["total"])], None, False
+        if suma < rest:
+            av = ["plata partiala: %s din factura %s de %s (raman de incasat %s)"
+                  % (suma, nr, x["total"], rest - suma)]
+            if not nume_se_potrivesc(nume, x["denumire"]):
+                av.append("numele difera: borderou '%s' vs factura %s '%s'"
+                          % (nume, nr, x["denumire"]))
+            return x, suma, av, None, True
+    return None, suma, [], motiv, False
+
+
+def proceseaza_emag(cale, info, moneda, cont, facturi=None, folosite=None, partiale=None):
+    """eMAG RO/BG/HU: o linie pe comanda (fractiunile adunate), Data = Payout date."""
+    rez = rezultat_gol(cale)
+    rez["cheie"] = "Order ID"
+    ocupate = dict(folosite or {})
+    partiale = partiale if partiale is not None else {}
+    nume = info["nume"]
+    c_plata, c_id = _coloana(nume, "payout date"), _coloana(nume, "order id")
+    c_tip, c_client = _coloana(nume, "fraction type"), _coloana(nume, "client name")
+    c_val = _coloana(nume, "fraction value", prefix=True)
+    if c_plata is None or c_val is None:
+        rez["eroare"] = "lipsesc coloanele: %s" % ", ".join(
+            n for n, c in (("Payout date", c_plata), ("Fraction value", c_val)) if c is None)
+        return rez
+    antet = next(k for k, j in nume.items() if j == c_val)
+    m = re.search(r"\[([a-z]{3})\]", antet)
+    if m and m.group(1).upper() != moneda:
+        rez["avertismente"].append("coloana '%s' e in %s, dar folderul e %s"
+                                   % (antet, m.group(1).upper(), moneda))
+
+    comenzi = {}
+    for i, rand in _randuri_date(info):
+        oid, tip = ca_text(_celula(rand, c_id)), ca_text(_celula(rand, c_tip))
+        client = ca_text(_celula(rand, c_client))
+        data = normalizeaza_data(_celula(rand, c_plata))
+        val = normalizeaza_suma(_celula(rand, c_val))
+        lipsuri = _lipsuri(Payout_date=data, Order_ID=oid, Fraction_value=val)
+        if lipsuri:
+            _sari(rez, i, "lipseste " + ", ".join(lipsuri), client, oid, val, data)
+            continue
+        if tip.lower() not in FRACTIUNI_EMAG:
+            _sari(rez, i, "tip de fractiune necunoscut: '%s'" % tip, client, oid, val, data)
+            continue
+        if moneda == "HUF":   # Saga tine HUF la suta de forinti, ca in cursul BNR
+            val = (val / 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        c = comenzi.setdefault(oid, {"randuri": [], "suma": Decimal("0.00"), "nume": "",
+                                     "date": set(), "tipuri": []})
+        c["randuri"].append(i)
+        c["suma"] += val
+        c["date"].add(data)
+        c["tipuri"].append(tip)
+        c["nume"] = c["nume"] or client
+
+    vedere = facturi_in(facturi, moneda) if facturi is not None else None
+    for oid, c in comenzi.items():
+        rand = ", ".join(str(x) for x in c["randuri"])
+        data = max(c["date"], key=lambda d: (d[6:], d[3:5], d[:2]))
+        if len(c["date"]) > 1:
+            rez["avertismente"].append("randurile %s: comanda %s are mai multe date de virare "
+                                       "(%s), s-a luat %s" % (rand, oid, ", ".join(sorted(c["date"])), data))
+        suma = c["suma"]
+        if suma == 0:
+            _ignora(rez, rand, "suma neta 0: %s" % " + ".join(c["tipuri"]), c["nume"], oid, suma)
+            continue
+        if vedere is None:
+            _adauga_linie(rez, rand, data, oid, suma, cont, c["nume"], None, moneda)
+            continue
+        f, suma_xml, av, motiv, partial = alege_factura_emag(oid, c["nume"], suma, vedere,
+                                                             ocupate, partiale)
+        if f is None:
+            _sari(rez, rand, motiv, c["nume"], oid, suma, data)
+            continue
+        if not partial:
+            ocupate[f["nr_iesire"]] = cale.name
+        _scrie_potrivire(rez, rand, data, oid, c["nume"], suma, f, suma_xml, av, cont, moneda,
+                         partial)
+    _semnaleaza_export_lipsa(rez, facturi)
+    return rez
+
+
+def _facturi_b2b(suma, data, idx, ocupate, zile=3):
+    """Comenzile B2B (seria MCSCOD) se platesc cu cardul de o persoana, dar se factureaza
+    pe firma, fara inf_suplm: singurele repere sunt suma si ziua (factura in 0-3 zile)."""
+    d0 = _zi(data)
+    if d0 is None or suma <= 0:
+        return []
+    gasite = []
+    for lst in idx["dupa_nume"].values():
+        for f in lst:
+            if f["inf_suplm"] or f["nr_iesire"] in ocupate or f["total"] is None:
+                continue
+            z = _zi(f["data"])
+            if z and 0 <= (z - d0).days <= zile and abs(f["total"] - suma) <= TOL_TACITA:
+                gasite.append(f)
+    return gasite
+
+
+def proceseaza_plationline(cale, info, moneda, cont, facturi=None, folosite=None,
+                           partiale=None):
+    """PlatiOnline (.csv): cheia Order Number = inf_suplm; B2B dupa suma + zi."""
+    rez = rezultat_gol(cale)
+    rez["cheie"] = "Order Number"
+    ocupate = dict(folosite or {})
+    nume = info["nume"]
+    c_client, c_ord = _coloana(nume, "client"), _coloana(nume, "order number")
+    c_tip, c_val = _coloana(nume, "settle/credit"), _coloana(nume, "amount")
+    c_val_mon, c_data = _coloana(nume, "currency"), _coloana(nume, "date")
+    vedere = facturi_in(facturi, moneda) if facturi is not None else None
+    vazute = {}
+    for i, rand in _randuri_date(info):
+        client, ref = ca_text(_celula(rand, c_client)), ca_text(_celula(rand, c_ord))
+        suma = normalizeaza_suma(_celula(rand, c_val))
+        data = data_americana(_celula(rand, c_data))
+        lipsuri = _lipsuri(Date=data, Order_Number=ref, Amount=suma)
+        if lipsuri:
+            _sari(rez, i, "lipseste " + ", ".join(lipsuri), client, ref, suma, data)
+            continue
+        if ca_text(_celula(rand, c_tip)).lower().startswith("credit"):
+            suma = -abs(suma)   # banii intorsi clientului
+        mon = ca_text(_celula(rand, c_val_mon)).upper()
+        if mon and mon != moneda:
+            rez["avertismente"].append("randul %d: plata e in %s, dar folderul e %s"
+                                       % (i, mon, moneda))
+        if suma == 0:
+            _ignora(rez, i, "suma 0", client, ref, suma)
+            continue
+        if ref in vazute:
+            rez["avertismente"].append("randul %d: Order Number %s apare si pe randul %d"
+                                       % (i, ref, vazute[ref]))
+        else:
+            vazute[ref] = i
+        if vedere is None:
+            _adauga_linie(rez, i, data, ref, suma, cont, client, None, moneda)
+            continue
+        f, suma_xml, av, motiv = alege_factura(ref, client, suma, vedere, "Order Number")
+        if f is not None and f["nr_iesire"] in ocupate:
+            f, av, motiv = None, [], _deja_stinsa(f, ocupate)
+        if f is None and motiv and motiv.startswith("nicio factura"):
+            b2b = _facturi_b2b(suma, data, vedere, ocupate)
+            if len(b2b) == 1:
+                f, suma_xml = b2b[0], b2b[0]["total"]
+                av = ["factura B2B %s (%s) gasita dupa suma si zi: pe factura nu e Order Number"
+                      % (f["nr_iesire"], f["denumire"])]
+            elif b2b:
+                motiv = "mai multe facturi B2B cu aceeasi suma si zi: %s" % ", ".join(
+                    x["nr_iesire"] for x in b2b)
+        if f is None:
+            _sari(rez, i, motiv, client, ref, suma, data)
+            continue
+        ocupate[f["nr_iesire"]] = cale.name
+        _scrie_potrivire(rez, i, data, ref, client, suma, f, suma_xml, av, cont, moneda)
+    _semnaleaza_export_lipsa(rez, facturi)
+    return rez
+
+
+def proceseaza_skroutz(cale, info, moneda, cont, facturi=None, folosite=None, partiale=None):
+    """Skroutz: cheia Waybill = inf_suplm (codul comenzii), inclusiv cu sufix (-2)."""
+    rez = rezultat_gol(cale)
+    rez["cheie"] = "Waybill"
+    ocupate = dict(folosite or {})
+    nume = info["nume"]
+    c_wb, c_data = _coloana(nume, "waybill"), _coloana(nume, "pickup date")
+    c_nume, c_val = _coloana(nume, "recipient"), _coloana(nume, "amount")
+    vedere = facturi_in(facturi, moneda) if facturi is not None else None
+    vazute = {}
+    for i, rand in _randuri_date(info):
+        ref, client = ca_text(_celula(rand, c_wb)), ca_text(_celula(rand, c_nume))
+        suma, data = normalizeaza_suma(_celula(rand, c_val)), normalizeaza_data(_celula(rand, c_data))
+        lipsuri = _lipsuri(Pickup_date=data, Waybill=ref, Amount=suma)
+        if lipsuri:
+            _sari(rez, i, "lipseste " + ", ".join(lipsuri), client, ref, suma, data)
+            continue
+        if suma == 0:
+            _ignora(rez, i, "suma 0", client, ref, suma)
+            continue
+        if ref in vazute:
+            rez["avertismente"].append("randul %d: Waybill %s apare si pe randul %d"
+                                       % (i, ref, vazute[ref]))
+        else:
+            vazute[ref] = i
+        if vedere is None:
+            _adauga_linie(rez, i, data, ref, suma, cont, client, None, moneda)
+            continue
+        f, suma_xml, av, motiv = alege_factura(ref, client, suma, vedere, "Waybill", sufix=True)
+        if f is not None and f["nr_iesire"] in ocupate:
+            f, av, motiv = None, [], _deja_stinsa(f, ocupate)
+        if f is None:
+            _sari(rez, i, motiv, client, ref, suma, data)
+            continue
+        ocupate[f["nr_iesire"]] = cale.name
+        _scrie_potrivire(rez, i, data, ref, client, suma, f, suma_xml, av, cont, moneda)
+    _semnaleaza_export_lipsa(rez, facturi)
+    return rez
+
+
+def proceseaza_sameday(cale, info, moneda, cont, facturi=None, folosite=None, partiale=None):
+    """Sameday: fara numar de comanda, deci nume + suma + data (ziua AWB-ului)."""
+    rez = rezultat_gol(cale)
+    rez["cheie"] = "AWB"
+    ocupate = dict(folosite or {})
+    nume = info["nume"]
+    c_awb, c_nume = _coloana(nume, "awb"), _coloana(nume, "nume destinatar")
+    c_val, c_data = _coloana(nume, "suma ramburs"), _coloana(nume, "data")
+    vedere = facturi_in(facturi, moneda) if facturi is not None else None
+    for i, rand in _randuri_date(info):
+        awb, client = ca_text(_celula(rand, c_awb)), ca_text(_celula(rand, c_nume))
+        suma, data = normalizeaza_suma(_celula(rand, c_val)), normalizeaza_data(_celula(rand, c_data))
+        lipsuri = _lipsuri(Data=data, Nume_destinatar=client, Suma_ramburs=suma)
+        if lipsuri:
+            _sari(rez, i, "lipseste " + ", ".join(lipsuri), client, awb, suma, data)
+            continue
+        if suma == 0:
+            _ignora(rez, i, "suma 0", client, awb, suma)
+            continue
+        if vedere is None:
+            _adauga_linie(rez, i, data, awb, suma, cont, client, None, moneda)
+            continue
+        f, suma_xml, av, motiv = alege_factura_nume(client, suma, data, vedere, ocupate)
+        if f is None:
+            _sari(rez, i, motiv, client, awb, suma, data)
+            continue
+        ocupate[f["nr_iesire"]] = cale.name
+        _scrie_potrivire(rez, i, data, f["inf_suplm"] or awb, client, suma, f, suma_xml, av,
+                         cont, moneda)
+    _semnaleaza_export_lipsa(rez, facturi)
+    return rez
+
+
+def proceseaza_trendyol(cale, info, moneda, cont, facturi=None, folosite=None, partiale=None):
+    """Trendyol: nume + suma + data; coletele aceleiasi comenzi se aduna; clientii
+    facturati in EUR se incaseaza in lei, la valoarea in lei a facturii (11.09.2026)."""
+    rez = rezultat_gol(cale)
+    rez["cheie"] = "Waybill"
+    ocupate = dict(folosite or {})
+    nume = info["nume"]
+    c_wb, c_data = _coloana(nume, "waybill"), _coloana(nume, "pickup date")
+    c_nume, c_val = _coloana(nume, "recipient"), _coloana(nume, "amount")
+    vedere = facturi_in(facturi, moneda) if facturi is not None else None
+    in_eur = facturi_in(facturi, "EUR") if facturi is not None and moneda == "RON" else None
+
+    def cauta(client, suma, data):
+        f, s, av, motiv = alege_factura_nume(client, suma, data, vedere, ocupate)
+        if f is None and in_eur is not None:
+            g, s2, av2, motiv2 = alege_factura_nume(client, suma, data, in_eur, ocupate,
+                                                    "total_lei")
+            if g is not None:
+                av2.insert(0, "clientul e facturat in EUR: factura %s de %s EUR; incasarea "
+                              "intra in lei, la valoarea in lei a facturii (%s)"
+                           % (g["nr_iesire"], g["total"], g["total_lei"]))
+                return g, s2, av2, None
+            if motiv.startswith("nicio factura pe numele") and not motiv2.startswith(
+                    "nicio factura pe numele"):
+                motiv = "client facturat in EUR: " + motiv2
+        return f, s, av, motiv
+
+    randuri = []
+    for i, rand in _randuri_date(info):
+        ref, client = ca_text(_celula(rand, c_wb)), ca_text(_celula(rand, c_nume))
+        suma, data = normalizeaza_suma(_celula(rand, c_val)), normalizeaza_data(_celula(rand, c_data))
+        lipsuri = _lipsuri(Pickup_date=data, Recipient=client, Amount=suma)
+        if lipsuri:
+            _sari(rez, i, "lipseste " + ", ".join(lipsuri), client, ref, suma, data)
+            continue
+        if suma == 0:
+            _ignora(rez, i, "suma 0", client, ref, suma)
+            continue
+        randuri.append({"rand": i, "ref": ref, "nume": client, "suma": suma, "data": data})
+
+    # Acelasi client, aceeasi zi, acelasi semn = coletele unei singure comenzi.
+    grupe = {}
+    for r in randuri:
+        grupe.setdefault((cheie_nume(r["nume"]), r["data"], r["suma"] > 0), []).append(r)
+    for grup in grupe.values():
+        prim = grup[0]
+        if vedere is None:
+            for r in grup:
+                _adauga_linie(rez, r["rand"], r["data"], r["ref"], r["suma"], cont, r["nume"],
+                              None, moneda)
+            continue
+        if len(grup) > 1:
+            total = sum((r["suma"] for r in grup), Decimal("0.00"))
+            f, s, av, motiv = cauta(prim["nume"], total, prim["data"])
+            if f is not None:
+                rand = ", ".join(str(r["rand"]) for r in grup)
+                av.insert(0, "%d colete ale aceleiasi comenzi (%s), %s in total"
+                          % (len(grup), ", ".join(r["ref"] for r in grup), total))
+                ocupate[f["nr_iesire"]] = cale.name
+                _scrie_potrivire(rez, rand, prim["data"], f["inf_suplm"] or prim["ref"],
+                                 prim["nume"], total, f, s, av, cont, moneda)
+                continue
+        for r in grup:
+            f, s, av, motiv = cauta(r["nume"], r["suma"], r["data"])
+            if f is None:
+                _sari(rez, r["rand"], motiv, r["nume"], r["ref"], r["suma"], r["data"])
+                continue
+            ocupate[f["nr_iesire"]] = cale.name
+            _scrie_potrivire(rez, r["rand"], r["data"], f["inf_suplm"] or r["ref"], r["nume"],
+                             r["suma"], f, s, av, cont, moneda)
+    _semnaleaza_export_lipsa(rez, facturi)
+    return rez
+
+
 # Sursa -> functia care ii proceseaza borderourile. O sursa lipsa de aici nu poate fi
 # rulata inca (--sursa refuza), dar fisierele ei sunt deja recunoscute si ocolite.
 PROFILURI = {
     "cargus": proceseaza_cargus,
+    "emag": proceseaza_emag,
+    "plationline": proceseaza_plationline,
+    "skroutz": proceseaza_skroutz,
+    "sameday": proceseaza_sameday,
+    "trendyol": proceseaza_trendyol,
 }
 
 
@@ -984,12 +1560,16 @@ def scrie_jurnal(dir_procesate, procesate, sursa=SURSA_COLECTOARE):
 
 
 def incarca_folosite(foldere, sursa, reproceseaza):
-    """{nr_iesire: 'fisier (Sursa)'} - facturile deja stinse, din jurnalele TUTUROR
-    surselor din folderele date. Fiecare task scrie doar jurnalul lui, dar le citeste
-    pe toate, ca aceeasi factura sa nu fie stinsa din doua borderouri. Borderourile
-    reprocesate acum de sursa curenta nu se numara.
+    """-> (folosite, partiale), din jurnalele TUTUROR surselor din folderele date.
+
+    folosite = {nr_iesire: 'fisier (Sursa)'} - facturile stinse de tot;
+    partiale = {nr_iesire: Decimal} - cat s-a incasat deja pe facturile platite in bucati
+    (eMAG: voucherul intr-o virare, rambursul in alta).
+    Fiecare task scrie doar jurnalul lui, dar le citeste pe toate, ca aceeasi factura
+    sa nu fie stinsa din doua borderouri. Borderourile reprocesate acum de sursa
+    curenta nu se numara.
     """
-    folosite = {}
+    folosite, partiale = {}, {}
     for folder in foldere:
         dir_procesate = folder / DIR_PROCESATE
         for s in SURSE:
@@ -998,7 +1578,10 @@ def incarca_folosite(foldere, sursa, reproceseaza):
                     continue
                 for nr in intrare.get("facturi", []):
                     folosite.setdefault(nr, "%s (%s)" % (fisier, SURSE[s]["eticheta"]))
-    return folosite
+                for nr, suma in (intrare.get("partiale") or {}).items():
+                    partiale[nr] = partiale.get(nr, Decimal("0.00")) + (
+                        normalizeaza_suma(suma) or Decimal("0.00"))
+    return folosite, partiale
 
 
 # --------------------------------------------------------------------------
@@ -1171,7 +1754,7 @@ def main(argv=None):
             lipsa.append(intrare["cale"])
         else:
             rezolvate.append((intrare, folder))
-    folosite = incarca_folosite([f for _, f in rezolvate], sursa, a.reproceseaza)
+    folosite, partiale = incarca_folosite([f for _, f in rezolvate], sursa, a.reproceseaza)
     profil = PROFILURI[sursa]
 
     for intrare, folder in rezolvate:
@@ -1204,7 +1787,7 @@ def main(argv=None):
                     "procesat": cale.name in citeste_jurnal(dir_procesate, info["sursa"])})
                 continue
 
-            rez = profil(cale, info, mon, cont, facturi, folosite)
+            rez = profil(cale, info, mon, cont, facturi, folosite, partiale)
             if rez["eroare"]:
                 r_folder["esuate"].append({"fisier": cale.name, "motiv": rez["eroare"]})
                 continue
@@ -1217,15 +1800,26 @@ def main(argv=None):
                     "sarite": rez["sarite"],
                     "total_sarit": str(rez["total_sarit"]),
                     "avertismente": rez["avertismente"],
+                    "ignorate": rez["ignorate"],
+                    "cheie": rez["cheie"],
                     "moneda": mon,
                 })
                 continue
 
             # Facturile stinse aici nu mai pot fi stinse de un borderou procesat dupa el,
             # nici in rularea asta, nici in ale altor surse (le citesc din jurnal).
-            stinse = sorted({l["FacturaNumar"] for l in rez["linii"] if l.get("FacturaNumar")})
+            # O plata partiala nu stinge factura: se aduna la ce s-a incasat deja pe ea.
+            stinse = sorted({l["FacturaNumar"] for l in rez["linii"]
+                             if l.get("FacturaNumar") and not l.get("partial")})
             for nr in stinse:
                 folosite.setdefault(nr, "%s (%s)" % (cale.name, SURSE[sursa]["eticheta"]))
+            partiale_noi = {}
+            for l in rez["linii"]:
+                if l.get("partial"):
+                    partiale_noi[l["FacturaNumar"]] = (partiale_noi.get(l["FacturaNumar"],
+                                                                        Decimal("0.00")) + l["Suma"])
+            for nr, s in partiale_noi.items():
+                partiale[nr] = partiale.get(nr, Decimal("0.00")) + s
 
             # Numele borderoului, dar fara spatii (cerinta clientului, 31.08.2026).
             iesire = dir_procesate / (re.sub(r"\s+", "_", cale.stem) + ".xml")
@@ -1239,6 +1833,8 @@ def main(argv=None):
                     "total": str(rez["total"]),
                     "facturi": stinse,
                 }
+                if partiale_noi:
+                    jurnal[cale.name]["partiale"] = {k: str(v) for k, v in sorted(partiale_noi.items())}
                 scrie_jurnal(dir_procesate, jurnal, sursa)
 
             r_folder["procesate"].append({
@@ -1252,6 +1848,8 @@ def main(argv=None):
                 "total_sarit": str(rez["total_sarit"]),
                 "corectate": rez["corectate"],
                 "corectie": str(rez["corectie"]),
+                "ignorate": rez["ignorate"],
+                "cheie": rez["cheie"],
             })
 
         raport["foldere"].append(r_folder)
@@ -1311,7 +1909,15 @@ def _detalii_sarite(p, moneda):
             r.append("    randul %s | %s | %s | %s %s"
                      % (x["rand"], x.get("data") or "?", x["destinatar"] or "?",
                         x.get("suma") or "?", moneda))
-            r.append("      RefExp1 %s: %s" % (x["refexp1"] or "-", x["motiv"]))
+            r.append("      %s %s: %s" % (p.get("cheie", "RefExp1"), x["refexp1"] or "-",
+                                          x["motiv"]))
+    if p.get("ignorate"):
+        r.append("")
+        r.append("  Nu intra in XML, nefiind incasari - %d randuri:" % len(p["ignorate"]))
+        for x in p["ignorate"]:
+            r.append("    randul %s | %s | %s %s | %s"
+                     % (x["rand"], x["destinatar"] or "?", x.get("suma") or "0", moneda,
+                        x["motiv"]))
     if p.get("avertismente"):
         r.append("")
         r.append("  De verificat (au intrat totusi in XML):")
@@ -1407,6 +2013,9 @@ def text_raport(raport):
                          % (s["rand"], s["motiv"], s["destinatar"] or "?"))
             if p["sarite"]:
                 r.append("      total nescris din randurile sarite: %s" % p["total_sarit"])
+            for s in p.get("ignorate", []):
+                r.append("      IGNORAT randul %s: %s (%s)"
+                         % (s["rand"], s["motiv"], s["destinatar"] or "?"))
             if p.get("raport"):
                 r.append("      raport pentru e-mail: %s" % p["raport"])
             for w in p["avertismente"]:

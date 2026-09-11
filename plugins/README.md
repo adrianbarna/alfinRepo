@@ -2,8 +2,9 @@
 
 > Repo-ul găzduiește **două plugin-uri**, ambele din aceeași sursă
 > `adrianbarna/alfinRepo`: **Monitorizare legislativă** (mai jos) și
-> **[Încasări Saga](incasari-saga/README.md)** — borderourile de ramburs Cargus /
-> Packeta transformate în XML de import pentru Saga. Sursa se adaugă o singură dată;
+> **[Încasări Saga](incasari-saga/README.md)** — borderourile de încasări (Cargus /
+> Packeta, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) transformate în XML de import
+> pentru Saga. Sursa se adaugă o singură dată;
 > plugin-urile se activează separat.
 
 Plugin pentru Claude (Cowork / Claude Code) care monitorizează **săptămânal** legislația contabilă și fiscală din România și trimite un **raport detaliat pe email** cu noutățile apărute și interpretările specialiștilor.

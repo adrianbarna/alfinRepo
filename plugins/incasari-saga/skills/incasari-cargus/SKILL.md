@@ -1,18 +1,23 @@
 ---
 name: incasari-cargus
 description: >
-  Transformă borderourile de ramburs Cargus / Packeta (.xlsx) în fișiere XML de
-  import pentru programul de contabilitate Saga (Import documente → Încasări).
-  Procesează doar borderourile noi și ține minte ce a procesat deja. Folosește
+  Transformă borderourile de încasări — Cargus / Packeta, eMAG (RO, BG, HU), Sameday,
+  Trendyol, Skroutz și PlatiOnline (.xlsx / .csv) — în fișiere XML de import pentru
+  programul de contabilitate Saga (Import documente → Încasări), câte o sursă pe
+  rulare. Procesează doar borderourile noi și ține minte ce a procesat deja. Folosește
   acest skill când apare „borderou", „borderouri", „încasări", „ramburs",
-  „Cargus", „Packeta", „xml pentru Saga", „procesează borderourile", „mai sunt
-  borderouri noi", „generează încasările". Tot el acoperă și configurarea —
+  „Cargus", „Packeta", „eMAG", „Sameday", „Trendyol", „Skroutz", „PlatiOnline",
+  „xml pentru Saga", „procesează borderourile", „mai sunt borderouri noi",
+  „generează încasările". Tot el acoperă și configurarea —
   „configurează încasările", „config încasări", „schimbă folderul de borderouri",
   „setează folderul de facturi", „schimbă adresele de raport", „adaugă EUR",
   „mută borderourile" — al cărei flux stă în references/configurare.md.
 ---
 
-# Borderouri Cargus / Packeta → XML Saga
+# Borderouri de încasări → XML Saga
+
+Numele skill-ului a rămas `incasari-cargus` (task-urile programate îl caută după el), dar
+acoperă toate cele șase surse.
 
 Toată conversia trece prin `scripts/proceseaza.py`, care vine împreună cu acest
 SKILL.md (vezi „Cum rulezi scriptul").
@@ -28,7 +33,7 @@ tuturor surselor (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) stau î
 în folderul valutei lor; formatul se recunoaște după coloane. **O rulare procesează o
 singură sursă** — `--sursa`, implicit `cargus`, singura implementată azi — și le lasă
 neatinse pe celelalte: fiecare sursă e un agent separat, cu task-ul, jurnalul și raportul
-ei.
+ei. Sursele: `cargus` (implicit), `emag`, `sameday`, `trendyol`, `skroutz`, `plationline`.
 
 ```
 borderouri/ron/  .xlsx / .csv  +  procesate/      facturi/  exporturile XML din Saga
@@ -115,9 +120,10 @@ Rolul tău: rulezi scriptul, rezumi raportul în chat (în română), îl trimi�
 
 ```
 py -3 <skill-dir>/scripts/proceseaza.py
+py -3 <skill-dir>/scripts/proceseaza.py --sursa emag
 ```
 
-Se uită în folder, sare peste borderourile deja procesate și scrie pentru fiecare
+Prima comandă e agentul Cargus; celelalte surse se dau cu `--sursa`. Se uită în folder, sare peste borderourile deja procesate și scrie pentru fiecare
 fișier nou un XML în `<folder>/procesate/`, cu **numele borderoului, dar fără
 spații** (`Cargus Packeta Iulie 2026.xlsx` → `Cargus_Packeta_Iulie_2026.xml`).
 
@@ -129,7 +135,8 @@ Dacă nu e nimic nou, spune-o într-o propoziție, fără ceremonie.
 ### 2. Trimite raportul pe e-mail
 
 Când s-a procesat ceva nou, scriptul compune raportul și îl scrie în
-`<folder>/procesate/ultimul-raport.txt`. Cu `--json` îl ai gata de trimis în
+`<folder>/procesate/ultimul-raport.txt` (Cargus) sau `ultimul-raport-<sursa>.txt` (celelalte
+surse). Cu `--json` îl ai gata de trimis în
 `email.subiect` și `email.corp`, iar destinatarii în `email.catre`.
 
 Trimite-l cu unealta de Gmail către adresele din `email.catre`, apoi spune în chat cui
@@ -163,8 +170,14 @@ cardul de rulare, pentru că el chiar a terminat, și deschide în schimb o sarc
 Echipă pentru omul care verifică. Așa boardul de agenți nu se umple de carduri care
 așteaptă un om, iar omul nu trebuie să se uite în două locuri.
 
-**ID-ul rulării** e `INC-<an>-<luna, două cifre>` — `INC-2026-07` pentru borderourile din
-iulie 2026. Apare pe ambele carduri și e singurul lucru care le leagă; nu-l inventa altfel.
+**ID-ul rulării** e `INC-<an>-<luna, două cifre>` la Cargus — `INC-2026-07` pentru
+borderourile din iulie 2026 — și `INC-<SURSĂ>-<an>-<lună>` la celelalte surse
+(`INC-EMAG-2026-07`, `INC-SAMEDAY-2026-07`, `INC-TRENDYOL-…`, `INC-SKROUTZ-…`,
+`INC-PLATIONLINE-…`). Apare pe ambele carduri și e singurul lucru care le leagă; nu-l
+inventa altfel.
+
+Fiecare sursă are **cardul ei** pe ambele boarduri: agenții lucrează separat, deci
+cardul eMAG din iulie nu e cardul Cargus din iulie.
 
 **Dacă uneltele Notion lipsesc din sesiune, nu te opri și nu cere activarea conectorului.**
 Procesarea, XML-ul și emailul sunt independente de boarduri. Spui la final, într-o
@@ -172,14 +185,15 @@ propoziție, ce carduri ar fi trebuit create, și mergi mai departe.
 
 #### Cardul rulării, pe AI Agent overview
 
-Caută întâi în data source după `Perioadă`: dacă există deja un card pentru aceeași lună,
-refolosește-l în loc să faci al doilea.
+Caută întâi în data source după `Perioadă` **și** `Agent`: dacă există deja un card al
+aceluiași agent pentru aceeași lună, refolosește-l în loc să faci al doilea. Doar după
+`Perioadă` ai lua cardul altui agent.
 
 | Proprietate | Valoare |
 |---|---|
-| `Rulare` | `Încasări — <luna> <anul>` (ex. `Încasări — septembrie 2026`) |
-| `ID rulare` | `INC-<an>-<lună>` (ex. `INC-2026-07`) |
-| `Agent` | `Agent Borderou Cargus` — etichetă albastră |
+| `Rulare` | Cargus: `Încasări — <luna> <anul>`; celelalte: `Încasări <Sursă> — <luna> <anul>` (ex. `Încasări eMAG — iulie 2026`) |
+| `ID rulare` | `INC-<an>-<lună>` la Cargus, `INC-<SURSĂ>-<an>-<lună>` la celelalte |
+| `Agent` | `Agent Borderou <Sursă>`: `Cargus`, `eMAG`, `Sameday`, `Trendyol`, `Skroutz`, `PlatiOnline` |
 | `Perioadă` | luna acoperită de borderouri |
 | `Declanșat` | ora la care a pornit rularea |
 | `Declanșare` | `Automat (programat)` dintr-un routine, altfel `Manual` |
@@ -236,7 +250,7 @@ actualizează-l în loc să faci al doilea.
 
 | Proprietate | Valoare |
 |---|---|
-| `Task` | `<ID> · Verifică încasările <luna> <anul> și importă-le în Saga` |
+| `Task` | `<ID> · Verifică încasările <luna> <anul> și importă-le în Saga`; la celelalte surse, cu numele sursei: `<ID> · Verifică încasările eMAG <luna> <anul> și importă-le în Saga` |
 | `Responsabil` | `Paula` — etichetă albastră; ea dă și coloana în care apare cardul |
 | `Termen` | peste 5 zile |
 | `Note` | același rezumat de o linie ca `Rezultat` |
@@ -298,7 +312,8 @@ Cod de ieșire: `0` = a mers, `2` = configurare lipsă (vezi pasul 4), `1` = ero
 </Incasari>
 ```
 
-Maparea (borderoul are header pe două rânduri, datele încep de la rândul 3):
+Maparea Cargus (borderoul are header pe două rânduri, datele încep de la rândul 3) e mai
+jos; maparea celorlalte cinci surse e în `mappings.md`, cu aceleași tag-uri XML:
 
 | Tag | Sursă | Transformare |
 |---|---|---|
@@ -339,6 +354,22 @@ leagă doar de facturile în valuta folderului lui. Un `.xls` nu se poate citi �
 4. **Rezervă:** dacă `RefExp1` nu duce la o factură confirmată de total, se caută după
    nume + total. Reușita e semnalată ca avertisment, ca să fie verificată.
 
+Celelalte surse caută factura așa (detalii și cifre în `mappings.md`):
+
+| Sursă | Cum | Particularități |
+|---|---|---|
+| eMAG | `Order ID` = `inf_suplm`, **pe comandă**: fracțiunile (card, ramburs, refund, voucher) se adună | `Data` = `Payout date`; HUF împărțit la 100; o comandă cu sumă netă 0 nu intră; **plată parțială** (doar o parte din bani în borderou) → intră cu suma din borderou și avertisment, iar virarea următoare stinge restul |
+| Skroutz | `Waybill` = `inf_suplm` (și cu sufix, `…-2`) | sumele 0 nu intră |
+| PlatiOnline | `Order Number` = `inf_suplm` | data plății e în format american; comenzile B2B (fără `inf_suplm`, seria `MCSCOD`) se leagă după sumă + zi, cu avertisment |
+| Sameday | nume + sumă + dată | `Numar` = `inf_suplm` al facturii găsite |
+| Trendyol | nume + sumă + dată; coletele aceluiași client din aceeași zi se adună | clienții facturați în EUR se încasează **în lei**, la valoarea în lei a facturii, cu avertisment |
+
+La legarea după nume, factura trebuie să fie la cel mult 15 zile de data din borderou
+(60 la stornări); numele grecești și chirilice se transliterează, iar variantele de
+transliterare (χ → x sau ch, ου → oy sau ou) se consideră egale. Rândurile care nu sunt
+încasări (sumă 0, comandă plătită și returnată în același borderou) apar în raport la
+„Nu intră în XML, nefiind încasări".
+
 Un rând ajunge **sărit** (nu intră în XML, apare în raport) când: nu există nicio
 factură nici pe `RefExp1`, nici pe nume; totalul nu confirmă niciuna; rămân mai
 multe facturi la fel de plauzibile; sau factura a fost **deja stinsă** printr-un alt
@@ -348,21 +379,17 @@ corectat e pus sub alt nume (pentru corecturi: `--reproceseaza` pe numele vechi)
 
 ## Ce e suportat și ce nu
 
-Suportat: borderouri **Cargus / Packeta în RON**, recunoscute după coloanele `Awb`
-și `Destinatar`.
-
-Recunoscute, dar lăsate agentului lor: borderourile **eMAG, Sameday, Trendyol, Skroutz
-și PlatiOnline** (`.csv`). Rularea Cargus nu le atinge, nu le marchează și nu le trece
-în e-mail; apar doar în rezumatul din chat, ca „lăsate altor agenți". Maparea lor e în
-`mappings.md`; profilurile se implementează pe rând.
+Suportate, câte o sursă pe rulare: **Cargus / Packeta** (implicit), **eMAG** (RO, BG,
+HU), **Sameday**, **Trendyol**, **Skroutz** și **PlatiOnline** (`.csv`), recunoscute după
+coloane. O rulare nu atinge borderourile altor surse: nu le marchează și nu le trece în
+e-mail; apar doar în rezumatul din chat, ca „lăsate altor agenți".
 
 Nerecunoscut, raportat explicit (o singură dată, de rularea Cargus) și **fără** a fi
 marcat ca procesat, deci se reia automat: orice fișier care nu se potrivește cu niciun
 format sau nu se poate citi.
 
-**Alte valute:** azi e configurat doar RON. Folderele `eur` și `huf` se adaugă când
-intră în lucru sursele lor (eMAG BG/HU, Skroutz), cu `--set-folder <cale>` — valuta vine
-din numele folderului, contul `5126` îl pune scriptul.
+**Alte valute:** folderele `eur` (eMAG BG, Skroutz) și `huf` (eMAG HU) se adaugă cu
+`--set-folder <cale>` — valuta vine din numele folderului, contul `5126` îl pune scriptul.
 
 ## Anomalii pe care le semnalează scriptul
 

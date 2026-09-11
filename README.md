@@ -7,7 +7,7 @@ plugin-uri Claude** și **folderul de lucru pentru încasări**.
 .claude-plugin/marketplace.json      marketplace-ul `alfin-consult`
 plugins/                             cele două plugin-uri
   monitorizare-legislativa/          veghe legislativă săptămânală, raport pe email
-  incasari-saga/                     borderouri Cargus/Packeta → XML de import în Saga
+  incasari-saga/                     borderouri (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) → XML Saga
 incasari/                            folderul de lucru al încasărilor (copia de lucru
                                      a skill-urilor + mapările de coloane)
 ```

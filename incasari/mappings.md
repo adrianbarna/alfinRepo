@@ -7,12 +7,12 @@
 >
 > | Sursă (`--sursa`) | Format | Folder | Stare |
 > |---|---|---|---|
-> | `cargus` — Cargus / Packeta | Cargus | `ron` | **implementat** |
-> | `emag` — eMAG RO / BG / HU | eMAG | `ron` / `eur` / `huf` | mapat mai jos, neimplementat |
-> | `sameday` — Sameday | Sameday | `ron` | mapat mai jos, neimplementat |
-> | `trendyol` — Trendyol | „waybill" | `ron` | mapat mai jos, neimplementat |
-> | `skroutz` — Skroutz | „waybill" (identic cu Trendyol) | `eur` | mapat mai jos, neimplementat |
-> | `plationline` — PlatiOnline (card) | CSV PlatiOnline | `ron` | mapat mai jos, neimplementat |
+> | `cargus` — Cargus / Packeta | Cargus | `ron` | implementat |
+> | `emag` — eMAG RO / BG / HU | eMAG | `ron` / `eur` / `huf` | implementat (11.09.2026) |
+> | `sameday` — Sameday | Sameday | `ron` | implementat (11.09.2026) |
+> | `trendyol` — Trendyol | „waybill" | `ron` | implementat (11.09.2026) |
+> | `skroutz` — Skroutz | „waybill" (identic cu Trendyol) | `eur` | implementat (11.09.2026) |
+> | `plationline` — PlatiOnline (card) | CSV PlatiOnline | `ron` | implementat (11.09.2026) |
 >
 > Exemplele reale pentru fiecare format stau în `exempluBorderouri/` (iulie 2026; doar
 > local, în `.gitignore` — conțin date de clienți, iar repo-ul e public). Cifrele
@@ -70,7 +70,9 @@ Pentru RON, regulile skill-ului Cargus au prioritate față de notițele vechi d
 | `Explicatie` | `Incasare ramburs client - <nume>`. Numele în alfabet grecesc sau chirilic se **transliterează în latină**: exporturile Saga sunt Windows-1252, iar pe facturi numele grecești apar deja transliterate („greeklish": Μιχάλης → MIXALIS). Aceeași transliterare servește și la comparația cu factura. |
 | `CodFiscal` | gol. |
 | Sume negative (refund, retur) | **linie negativă, legată de factura de storno** (factura cu `total` negativ). De validat la primul import în Saga. |
-| Sume zero | nu intră în XML; apar în raport. |
+| Sume zero | nu intră în XML; apar în raport, la „Nu intră în XML, nefiind încasări". |
+| Plăți parțiale (eMAG) | **linie cu suma din borderou**, legată de factură, cu avertisment „plată parțială"; jurnalul ține cât s-a încasat (`partiale`), iar virarea care aduce restul stinge factura. O a doua plată întreagă pe aceeași factură e sărită. |
+| Facturat în EUR, plătit în lei (Trendyol GR) | **încasare în RON** (5125), la valoarea în lei a facturii (`baza_tva` + `tva`), legată de factura în EUR, cu avertisment. |
 | O factură, două borderouri | o factură se stinge **o singură dată**: jurnalul fiecărei surse ține `nr_iesire`-urile stinse, iar fiecare rulare le citește pe ale tuturor surselor. Un rând care ar stinge a doua oară aceeași factură e sărit și raportat. |
 | Rânduri fără factură sigură | nu intră în XML; apar în raport, cu motiv (ca la Cargus). |
 
@@ -79,11 +81,16 @@ Cum se caută factura, pe sursă:
 | Sursă | Cheie | Control | Potrivire, iulie 2026 |
 |---|---|---|---|
 | Cargus | `RefExp1` = `inf_suplm` | total, apoi nume | 219/219 |
-| eMAG | `Order ID` = `inf_suplm`, pe **comandă** (fracțiunile adunate) | total, apoi nume | RO 44/44, BG 11/12, HU 15/17 — restul sunt plăți parțiale; comenzile cu sumă netă 0 nu se numără |
-| Skroutz | `Waybill` = `inf_suplm` (codul comenzii Skroutz) | total, apoi nume | 46/48 |
-| PlatiOnline | `Order Number` = `inf_suplm` | total, apoi nume; comenzile B2B (31xx) după sumă + zi pe seria `MCSCOD` | 46/49 pe cheie |
-| Sameday | nu există cheie comună cu factura | **nume + sumă + dată** | 72/76 |
-| Trendyol | nu există cheie comună cu factura | **nume + sumă + dată**; la clienții greci suma în lei a facturii în EUR | 12/21 pe nume românesc; grecii — vezi secțiunea Trendyol |
+| eMAG | `Order ID` = `inf_suplm`, pe **comandă** (fracțiunile adunate) | total, apoi nume | RO 44 linii + 7 comenzi cu sumă netă 0; BG 12 linii (1 parțială); HU 17 linii (2 parțiale) + 2 cu sumă netă 0 |
+| Skroutz | `Waybill` = `inf_suplm` (codul comenzii Skroutz, și cu sufix `-2`) | total, apoi nume | 46 linii, 6 sume 0, 2 sărite |
+| PlatiOnline | `Order Number` = `inf_suplm` | total, apoi nume; comenzile B2B (31xx) după sumă + zi pe seria `MCSCOD` | 49/49 (46 pe cheie, 1 pe nume, 2 B2B) |
+| Sameday | nu există cheie comună cu factura | **nume + sumă + dată** (cel mult 15 zile; 60 la storno) | 73/76 |
+| Trendyol | nu există cheie comună cu factura | **nume + sumă + dată**; coletele aceluiași client din aceeași zi se adună; clienții greci pe valoarea în lei a facturii în EUR | 21 de rânduri în 19 linii, niciunul sărit |
+
+Numele se compară după transliterare și după „plierea" variantelor de transliterare,
+pe ambele părți: `ch` = `x`, `ks` = `x`, `oy` = `ou`, `gk` = `g` (facturile Trendyol scriu
+MIXALIS KOYMLELLIS, cele Skroutz CHRISTOS, XIOURAS, GIOSIS). Cu plierea, avertismentele
+„numele diferă" de pe Skroutz au scăzut de la 13 la 0, iar XML-ul Cargus a rămas identic.
 
 ---
 
@@ -198,8 +205,9 @@ tag — Saga aplică singură cursul pe contul 5126 (confirmat de client, 25.08.
   ăsta, restul vine în altă virare: BG 1026468629 — doar voucherul de 4,60 din factura
   de 45,98; HU 1136145436 — COD 86,36 din 103,87; HU 1136237414 — două vouchere (20,00)
   din 55,98. Cheia e sigură (`Order ID`, o singură factură), doar suma nu acoperă
-  factura. **Propunere, de confirmat:** linia intră cu suma din borderou, legată de
-  factură, cu avertisment „plată parțială: X din Y"; a doua virare stinge restul.
+  factura. **Decizie 11.09.2026:** linia intră cu suma din borderou, legată de
+  factură, cu avertisment „plată parțială: X din Y"; a doua virare stinge restul
+  („completează factura …"). O a doua plată întreagă pe aceeași factură e sărită.
 
 ### HUF: împărțirea la 100 — confirmată pe facturi
 
@@ -294,8 +302,9 @@ Trendyol. Legarea se face după nume + sumă + dată.
   77,10 ↔ 77,10 (două colete de 38,55); 70,13 ↔ 70,06. Numele sunt transliterate în
   Saga după convenția „greeklish": Μιχάλης → MIXALIS, Χρήστος → XRISTOS, Θανάσης →
   THANASIS, Λουκάς → LOYKAS (χ → X, θ → TH, η → I, ου → OY). Transliterarea din
-  script trebuie să urmeze aceeași convenție. **De decis contabil:** încasare în lei pe
-  factură în EUR (diferența de curs).
+  script trebuie să urmeze aceeași convenție. **Decizie 11.09.2026: încasarea se face
+  în RON**, la valoarea în lei a facturii (70,13 din borderou → 70,06 de pe factură, cu
+  avertisment), legată de factura în EUR.
 
 ---
 
@@ -371,9 +380,10 @@ pe factură în EUR).
    5126, tratează `Suma` ca sumă în valută și aplică cursul singur (confirmat de client
    pentru EUR, 25.08.2026). De validat pe un import real EUR și HUF (la HUF, suma la sută
    de forinți, ca pe facturi).
-4. **Plăți parțiale eMAG** — linie cu suma din borderou pe factură mai mare (propunerea
-   din secțiunea eMAG).
-5. **Trendyol GR** — încasare în lei pe factură în EUR.
+4. **Plăți parțiale eMAG** — linie cu suma din borderou pe o factură mai mare; Saga o
+   acceptă ca plată parțială?
+5. **Trendyol GR** — încasare în lei (5125, `Moneda` RON) pe factură în EUR: cum închide
+   Saga factura și ce face cu diferența de curs.
 6. **`Data`**: la Cargus și eMAG data virării; la PlatiOnline data plății, care poate fi
    înaintea facturii — Saga acceptă o încasare datată înaintea facturii pe care o stinge?
 7. **Diacritice și transliterare** în nume — de verificat cum le afișează Saga.

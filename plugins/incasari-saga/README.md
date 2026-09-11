@@ -1,8 +1,9 @@
-# Încasări Saga — borderouri Cargus / Packeta → XML
+# Încasări Saga — borderouri de încasări → XML
 
-Plugin pentru Claude Code (inclusiv fila **Code** din aplicația Claude Desktop) care transformă **borderourile de ramburs**
-Cargus / Packeta (`.xlsx`) în fișiere **XML de import pentru Saga**
-(Import documente → Încasări) și leagă fiecare încasare de **factura ei**.
+Plugin pentru Claude Code (inclusiv fila **Code** din aplicația Claude Desktop) care transformă **borderourile de încasări**
+— Cargus / Packeta, eMAG (RO, BG, HU), Sameday, Trendyol, Skroutz și PlatiOnline (`.xlsx` /
+`.csv`) — în fișiere **XML de import pentru Saga** (Import documente → Încasări) și leagă
+fiecare încasare de **factura ei**.
 
 ## Ce face
 
@@ -67,7 +68,8 @@ borderouri/ron/   .xlsx / .csv  +  procesate/        facturi/   exporturile XML 
 
 Fiecare sursă de borderouri (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) e
 un agent separat, cu task-ul lui programat; o rulare procesează doar sursa ei și le lasă
-neatinse pe celelalte. Azi e implementat doar Cargus / Packeta.
+neatinse pe celelalte. Toate șase sunt implementate; cum se leagă factura la fiecare e în
+`mappings.md` și în SKILL.md.
 
 RON merge pe contul 5125, orice altă valută pe 5126. Momentan e configurat doar RON;
 o valută nouă se adaugă spunând asistentului unde stau borderourile ei.

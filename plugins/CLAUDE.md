@@ -31,7 +31,7 @@ alfinRepo/                                ← rădăcina git, remote `origin` �
 
 Pentru **monitorizare-legislativa** nu există cod executabil, build, dependențe sau teste: tot „sursa" sunt fișierele Markdown care descriu comportamentul unui agent de veghe legislativă. Consecința practică: **a edita acea parte înseamnă a edita comportamentul unui model**, nu a schimba logică deterministă. Nimic nu e impus de un runtime — o instrucțiune ambiguă produce un comportament greșit fără nicio eroare. Formularea contează la fel de mult ca structura.
 
-Pentru **incasari-saga** e invers: conversia e făcută de `skills/incasari-cargus/scripts/proceseaza.py`, cod determinist, verificabil. Skill-ul doar îl rulează și rezumă raportul. **Nu genera XML de mână și nu citi borderourile cu alte unelte** — un borderou are sute de rânduri.
+Pentru **incasari-saga** e invers: conversia e făcută de `skills/incasari-cargus/scripts/proceseaza.py`, cod determinist, verificabil, pentru toate cele șase surse de borderouri (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline; din 11.09.2026). Skill-ul și-a păstrat numele `incasari-cargus`, pentru că task-urile programate îl caută după el. Skill-ul doar îl rulează și rezumă raportul. **Nu genera XML de mână și nu citi borderourile cu alte unelte** — un borderou are sute de rânduri.
 
 Textul e integral în română, inclusiv comentariile și mesajele de commit. Păstrează limba.
 
@@ -152,7 +152,7 @@ python3 incasari-saga/skills/incasari-cargus/scripts/proceseaza.py \
   --dry-run --reproceseaza "Cargus Packeta Iulie 2026.xlsx"
 ```
 
-Rezultat așteptat: **219 linii, total 26570.21 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.35 / 6334.85 / 6951.57 / 6105.44, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, **87 de linii cu suma preluată de pe factură** (diferență totală +0,95 RON — `<Suma>` ia valoarea de pe factură, ca factura să se stingă exact), și 13 avertismente: 8 de nume, 3 de storno și 2 de sumă (0,08 și 0,02). Avertismentele de lungime `RefExp1` apar din 11.09.2026 doar cu `--fara-facturi`. La refactorizarea pe surse (11.09.2026) XML-ul a ieșit identic la byte cu cel al versiunii anterioare — orice schimbare de script se verifică la fel, prin comparație cu XML-ul produs înainte.
+Rezultat așteptat: **219 linii, total 26570.21 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.35 / 6334.85 / 6951.57 / 6105.44, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, **87 de linii cu suma preluată de pe factură** (diferență totală +0,95 RON — `<Suma>` ia valoarea de pe factură, ca factura să se stingă exact), și 13 avertismente: 8 de nume, 3 de storno și 2 de sumă (0,08 și 0,02). Avertismentele de lungime `RefExp1` apar din 11.09.2026 doar cu `--fara-facturi`. La refactorizarea pe surse (11.09.2026) XML-ul a ieșit identic la byte cu cel al versiunii anterioare — orice schimbare de script se verifică la fel, prin comparație cu XML-ul produs înainte. Celelalte cinci surse se verifică pe exemplele din `exempluBorderouri/` (doar local), cu rezultatul de referință din `incasari/CLAUDE.md`, „Stare curentă”, punctul 3.
 
 ### `monitorizare-legislativa`
 

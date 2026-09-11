@@ -20,8 +20,8 @@ codul e unul singur, `proceseaza.py`, cu câte un profil pe format.
 
 | Sursă (`--sursa`) | Coloane-cheie | Folder | Stare |
 |--------|---------------|--------|-------|
-| **`cargus`** — Cargus / Packeta | `Awb`, `Destinatar`, `Data OP`, `RefExp1` | `ron` | **automatizat** |
-| **`emag`** — eMAG RO / BG / HU | `Order ID`, `Fraction type`, `Client name` | `ron` / `eur` / `huf` | recunoscut, mapat în `mappings.md`, **neimplementat** |
+| **`cargus`** — Cargus / Packeta | `Awb`, `Destinatar`, `Data OP`, `RefExp1` | `ron` | **automatizat** (task programat) |
+| **`emag`** — eMAG RO / BG / HU | `Order ID`, `Fraction type`, `Client name` | `ron` / `eur` / `huf` | profil implementat (11.09.2026), fără task încă |
 | **`sameday`** | `AWB`, `Nume destinatar`, `Suma ramburs` | `ron` | idem |
 | **`trendyol`** | `Waybill`, `Recipient`, `Amount` (Waybill = număr) | `ron` | idem |
 | **`skroutz`** | aceleași coloane ca Trendyol (Waybill = `aallzz-nnnnnnn`) | `eur` | idem |
@@ -76,7 +76,7 @@ Claude Code în marketplace-ul `alfin-consult`:
 - **Pluginul:** `../plugins/incasari-saga/`; skill-urile stau în
   `incasari-saga/skills/`.
   **Versiunea stă într-un singur loc:** `incasari-saga/.claude-plugin/plugin.json`
-  (2.4.0 din 11.09.2026). Fără bump, push-ul nu ajunge la instalare, în tăcere.
+  (2.5.0 din 11.09.2026). Fără bump, push-ul nu ajunge la instalare, în tăcere.
 - **Protocolul de release** (detaliat în CLAUDE.md-ul repo-ului): copiezi skill-urile de
   aici peste `../plugins/incasari-saga/skills/` → bump în
   `plugin.json` → `claude plugin validate ./` **din rădăcina repo-ului**
@@ -156,7 +156,10 @@ Un singur skill, `incasari-cargus`, cu un script care tratează **câte un folde
 
 **Surse, profiluri, agenți (11.09.2026).** În script, `SURSE` ține cele șase surse, iar
 `FORMATE` coloanele după care se recunoaște fiecare format; `PROFILURI` ține funcția care
-procesează o sursă — azi doar `proceseaza_cargus`. O rulare procesează **doar** fișierele
+procesează o sursă: `proceseaza_cargus`, `_emag`, `_plationline`, `_skroutz`, `_sameday`,
+`_trendyol`. Legarea pe cheie trece prin `alege_factura()` (cu eticheta cheii în mesaje),
+cea după nume prin `alege_factura_nume()`, plățile parțiale eMAG prin
+`alege_factura_emag()`. O rulare procesează **doar** fișierele
 sursei ei; fișierele celorlalte surse sunt recunoscute și lăsate neatinse (apar în JSON
 ca `alte_surse` și în rezumatul din chat, nu pe e-mail). Un `--sursa` fără profil
 implementat iese cu codul 1. Fișierele pe care nu le recunoaște niciun format (sau care
@@ -364,11 +367,25 @@ valută". Scriptul îl citește ca `.xlsx` (sau XML); un `.xls` e raportat ca ne
 2. **Refactorizare pe surse (11.09.2026) — gata**, verificată pe borderoul de referință
    (XML identic la byte). Scriptul recunoaște toate cele șase surse, citește `.csv`,
    ține jurnal și raport pe sursă, nu stinge o factură de două ori și ia valuta din
-   numele folderului. Doar profilul `cargus` e implementat.
-3. **Următoarele profiluri** (ordinea din plan): eMAG + PlatiOnline (pe cheie), apoi
-   Sameday + Trendyol + Skroutz (nume + sumă + dată, transliterare „greeklish").
-   Cititorul de facturi acceptă deja exportul în valută (`facturi-valuta.xlsx`, 11.09.2026)
-   și leagă fiecare borderou doar de facturile în valuta folderului lui.
+   numele folderului.
+3. **Toate cele șase profiluri sunt implementate (11.09.2026)** și verificate pe
+   exemplele din `../exempluBorderouri/`, cu ambele exporturi de facturi — rezultatul de
+   comparat la orice modificare:
+
+   | Sursă | Borderou | Linii | Total | Sărite | Ignorate |
+   |---|---|---|---|---|---|
+   | `emag` | RO1 / BG1 / HU1 | 44 / 12 / 17 | 4.196,68 RON / 178,55 EUR / 3.126,31 HUF | 0 | 7 / 0 / 2 |
+   | `plationline` | C Solution | 49 | 4.954,45 RON | 0 | 0 |
+   | `skroutz` | Skroutz EUR | 46 | 931,11 EUR | 2 | 6 |
+   | `sameday` | Sameday | 73 | 7.054,78 RON | 3 | 0 |
+   | `trendyol` | Trendyol RON | 19 (din 21 de rânduri) | 966,26 RON | 0 | 0 |
+
+   Rulate pe rând, toate șase pe aceleași foldere: nicio factură stinsă de două surse; a
+   doua rulare nu mai găsește nimic nou. O plată parțială eMAG completată într-o virare
+   ulterioară stinge factura („completează factura …"), iar o plată întreagă repetată e
+   sărită.
+   Rămân de făcut: task-urile programate (câte unul pe sursă), cardurile de reminder,
+   `installation.md` și `ai-architecture.html`.
 4. **Un agent pe sursă (11.09.2026):** câte un task programat pentru fiecare sursă, după
    modelul „Procesare borderou cargus", la 30 de minute unul de altul pe 5 ale lunii;
    task-ul de reminder de pe 1 ale lunii creează, pe lângă cardul de facturi, câte un

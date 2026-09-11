@@ -14,7 +14,7 @@
     {
       "name": "incasari-saga",
       "source": "./plugins/incasari-saga",
-      "description": "Borderourile de ramburs Cargus / Packeta devin XML de import pentru Saga, cu factura legată de fiecare încasare."
+      "description": "Borderourile de încasări (Cargus / Packeta, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) devin XML de import pentru Saga, cu factura legată de fiecare încasare."
     }
   ]
 }
