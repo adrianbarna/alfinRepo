@@ -115,7 +115,7 @@
   .node text{font-family:inherit;pointer-events:none}
   .node .title{font-size:13px;font-weight:600}
   .node .meta{font-size:11px}
-  .edge{fill:none;stroke:var(--line-2);stroke-width:1.6}
+  .edge{fill:none;stroke:var(--line-2);stroke-width:1.6;stroke-linejoin:miter;stroke-linecap:butt}
   .edge.on{stroke:var(--flow);stroke-width:2.4}
   .edge.on.human{stroke:var(--flow-human)}
   .node.dim{opacity:.38}
@@ -130,7 +130,7 @@
 <div class="wrap">
   <header>
     <h1>ALFIN Consult — arhitectura agenților AI</h1>
-    <p class="sub">Cum curge informația printr-un agent, de la declanșare până la cardul închis în board. Apasă play, sau alege un pas din listă.</p>
+    <p class="sub">Cum curge informația printr-un agent, de la declanșatorul programat până la cardul închis în board. Alege un agent din tab-uri, apasă play, sau sari direct la un pas din listă.</p>
   </header>
 
   <div class="tabs" id="tabs" role="tablist"></div>
@@ -188,49 +188,73 @@ const AGENTS = {
     label: "Agent Borderou Cargus",
     status: "activ",
     plugin: "incasari-saga · skill incasari-cargus",
-    view: [0, 0, 1250, 700],
+    view: [0, 0, 1280, 850],
     nodes: [
-      { id:"routine", x:40,   y:320, w:180, h:64, kind:"trigger", title:"Routine lunar",        meta:"Claude Desktop · fila Code" },
-      { id:"skill",   x:270,  y:316, w:190, h:72, kind:"agent",   title:"incasari-cargus",      meta:"skill · orchestrează" },
-      { id:"script",  x:520,  y:320, w:180, h:64, kind:"code",    title:"proceseaza.py",        meta:"determinist · fără AI" },
-      { id:"bord",    x:420,  y:100, w:175, h:56, kind:"data",    title:"borderouri/ron",       meta:"*.xlsx Cargus/Packeta" },
-      { id:"fact",    x:615,  y:100, w:175, h:56, kind:"data",    title:"facturi",              meta:"export XML din Saga" },
-      { id:"jurnal",  x:520,  y:450, w:180, h:56, kind:"data",    title:".procesate.json",      meta:"ce s-a procesat deja" },
-      { id:"xml",     x:850,  y:312, w:170, h:60, kind:"data",    title:"procesate/*.xml",      meta:"fișierul de import" },
-      { id:"gmail",   x:850,  y:200, w:170, h:56, kind:"extern",  title:"Gmail",                meta:"raportul rulării" },
-      { id:"saga",    x:1050, y:200, w:160, h:56, kind:"extern",  title:"Saga",                 meta:"Import → Încasări" },
-      { id:"om",      x:1040, y:312, w:170, h:64, kind:"human",   title:"Paula",                meta:"verifică și importă" },
-      { id:"notion",  x:640,  y:560, w:250, h:72, kind:"extern",  title:"Notion · AI Agent overview", meta:"un card = o rulare" },
-      { id:"echipa",  x:990,  y:560, w:230, h:72, kind:"extern",  title:"Notion · Board Echipă",      meta:"coloana Paulei" }
+      { id:"remTask", x:40,   y:700, w:190, h:64, kind:"trigger", title:"Task programat",      meta:"lunar · creează reminderul" },
+      { id:"routine", x:40,   y:330, w:190, h:64, kind:"trigger", title:"Routine lunar",       meta:"Claude Desktop · fila Code" },
+      { id:"gmail",   x:270,  y:170, w:200, h:64, kind:"extern",  title:"Gmail",               meta:"atenționare + raport" },
+      { id:"skill",   x:270,  y:326, w:200, h:72, kind:"agent",   title:"incasari-cargus",     meta:"skill · orchestrează" },
+      { id:"check",   x:530,  y:326, w:200, h:72, kind:"code",    title:"Verifică reminderul", meta:"cardul e în „Done”?" },
+      { id:"script",  x:790,  y:330, w:190, h:64, kind:"code",    title:"proceseaza.py",       meta:"determinist · fără AI" },
+      { id:"bord",    x:635,  y:145, w:190, h:56, kind:"data",    title:"borderouri/ron",      meta:"*.xlsx Cargus/Packeta" },
+      { id:"fact",    x:845,  y:145, w:190, h:56, kind:"data",    title:"facturi",             meta:"export XML din Saga" },
+      { id:"jurnal",  x:790,  y:470, w:190, h:56, kind:"data",    title:".procesate.json",     meta:"ce s-a procesat deja" },
+      { id:"xml",     x:1040, y:334, w:180, h:56, kind:"data",    title:"procesate/*.xml",     meta:"fișierul de import" },
+      { id:"saga",    x:1040, y:470, w:180, h:56, kind:"extern",  title:"Saga",                meta:"Import → Încasări" },
+      { id:"notion",  x:270,  y:690, w:250, h:80, kind:"extern",  title:"Notion · AI Agent overview", meta:"un card = o rulare" },
+      { id:"echipa",  x:610,  y:690, w:250, h:80, kind:"extern",  title:"Notion · Board Echipă",      meta:"reminder + verificare" },
+      { id:"om",      x:960,  y:698, w:180, h:64, kind:"human",   title:"Paula",               meta:"exportă fișierul · îl pune pe Drive" }
     ],
     groups: [
-      { x:405, y:64, w:400, h:108, label:"Google Drive (Mirror) — fișiere reale pe disc" }
+      { x:620, y:110, w:430, h:120, label:"Google Drive (Mirror) — fișiere reale pe disc" }
     ],
     edges: [
-      { id:"e1",  from:["routine","r"],     to:["skill","l"] },
-      { id:"e2",  from:["skill","r",-13],    to:["script","l",-13] },
-      { id:"e7",  from:["script","l",13],    to:["skill","r",13] },
-      { id:"e3",  from:["script","t",-45],   to:["bord","b",10] },
-      { id:"e4",  from:["script","t",45],    to:["fact","b",-10] },
-      { id:"e5",  from:["script","b"],       to:["jurnal","t"] },
-      { id:"e6",  from:["script","r"],       to:["xml","l"] },
-      { id:"e8",  from:["skill","t",45],     to:["gmail","l"] },
-      { id:"e9",  from:["skill","b",30],     to:["notion","l"] },
-      { id:"e13", from:["notion","r"],       to:["echipa","l"] },
-      { id:"e10", from:["echipa","t",-45],   to:["om","b",-45] },
-      { id:"e11", from:["xml","t"],          to:["saga","b",-40] },
-      { id:"e12", from:["om","b",45],        to:["echipa","t",45] }
+      { id:"eRem1",    from:["remTask","b"],   to:["echipa","b",-80] },
+      { id:"eRem2",    from:["echipa","r",-16], to:["om","l",-16] },
+      { id:"eRemDone", from:["om","b",-40],    to:["echipa","b",80] },
+      { id:"e1",       from:["routine","r"],   to:["skill","l"] },
+      { id:"e2",       from:["skill","r"],     to:["check","l"] },
+      { id:"eCheck",   from:["check","b"],     to:["echipa","t",-80] },
+      { id:"eNo",      from:["check","t",-40], to:["gmail","r"] },
+      { id:"eYes",     from:["check","r"],     to:["script","l"] },
+      { id:"e3",       from:["script","t",-80], to:["bord","b",75] },
+      { id:"e4",       from:["script","t",80],  to:["fact","b",25] },
+      { id:"e5",       from:["script","b",60],  to:["jurnal","t",60] },
+      { id:"e6",       from:["script","r"],     to:["xml","l"] },
+      { id:"e7",       from:["script","b",-60], to:["skill","b",60] },
+      { id:"e8",       from:["skill","t"],      to:["gmail","b"] },
+      { id:"e9",       from:["skill","b",-60],  to:["notion","t",-60] },
+      { id:"e13",      from:["notion","r"],     to:["echipa","l"] },
+      { id:"eHand",    from:["echipa","r",16],  to:["om","l",16] },
+      { id:"eImport",  from:["om","t",40],      to:["saga","b"] },
+      { id:"e11",      from:["xml","b"],        to:["saga","t"] },
+      { id:"eDone",    from:["om","t",-40],     to:["echipa","t",40] }
     ],
     steps: [
+      { edges:["eRem1"], on:["remTask","echipa"], who:"agent", phase:"Reminder → În lucru",
+        title:"Task programat: se creează reminderul Paulei",
+        desc:"Un task programat deschide singur, în coloana Paulei de pe Board Echipă, cardul de reminder pentru rularea care urmează. Se creează cu zile înainte, ca pregătirea să nu depindă de memoria nimănui." },
+      { edges:["eRem2"], on:["echipa","om"], who:"om", phase:"Paula",
+        title:"Paula vede reminderul",
+        desc:"Cardul îi cere un singur lucru: exportul de facturi din Saga, pus în folderul de pe Drive. Cât timp cardul e deschis, agentul consideră că datele de intrare nu sunt gata." },
+      { edges:["eRemDone"], on:["om","echipa"], who:"om", phase:"Reminder → Done",
+        title:"Paula mută reminderul în „Done”",
+        desc:"Bifa e semnalul convenit: pregătirea e făcută. E singurul lucru pe care rularea îl citește ca „poți începe”." },
       { edges:["e1"], on:["routine","skill"], who:"agent", phase:"Programat → În lucru",
         title:"Routine-ul lunar pornește sesiunea",
         desc:"Un task local din fila Code, legat de folderul din Drive. Nu cere nicio confirmare — o rulare care așteaptă un „da” la 8 dimineața e o rulare ratată." },
       { edges:["e9"], on:["skill","notion"], who:"agent", phase:"În lucru",
         title:"Se deschide cardul lunii în board",
         desc:"Skill-ul caută un card pentru luna curentă; dacă nu există, îl creează în „În lucru”. Dacă Notion lipsește din sesiune, rularea merge mai departe fără el." },
-      { edges:["e2"], on:["skill","script"], who:"agent", phase:"În lucru",
-        title:"Skill-ul apelează scriptul",
-        desc:"Aici se termină partea de model. Conversia o face cod determinist — un borderou are sute de rânduri, iar XML-ul scris de un model nu e verificabil." },
+      { edges:["e2","eCheck"], on:["skill","check","echipa"], who:"agent", phase:"În lucru",
+        title:"Prima verificare: reminderul e în „Done”?",
+        desc:"Înainte de orice prelucrare, rularea citește starea cardului de reminder din Board Echipă. Tot ce urmează atârnă de răspunsul ăsta — e o poartă, nu o informație." },
+      { edges:["eNo"], on:["check","gmail"], who:"agent", phase:"Blocat / Necesită input",
+        title:"Nu e în „Done” → pleacă e-mail și rularea se oprește",
+        desc:"Paula primește o atenționare pe e-mail cu ce anume lipsește, iar cardul rulării rămâne în „Blocat / Necesită input”. Nu se procesează nimic pe date incomplete; la rularea următoare verificarea se reia din același punct." },
+      { edges:["eYes"], on:["check","script"], who:"agent", phase:"În lucru",
+        title:"E în „Done” → procesarea continuă",
+        desc:"Abia acum se apelează scriptul. Aici se termină partea de model: conversia o face cod determinist — un borderou are sute de rânduri, iar XML-ul scris de un model nu e verificabil." },
       { edges:["e5"], on:["script","jurnal"], who:"agent", phase:"În lucru",
         title:"Citește jurnalul: ce s-a procesat deja",
         desc:"<code>.procesate.json</code> ține evidența borderourilor duse la capăt. De aceea rularea e idempotentă: repornită, nu reface nimic." },
@@ -261,22 +285,104 @@ const AGENTS = {
       { edges:["e13"], on:["notion","echipa"], who:"agent", phase:"→ Done",
         title:"Verificarea se predă pe Board Echipă",
         desc:"Un card nou în coloana Paulei, purtând același ID de rulare (<code>INC-2026-07</code>) ca al cardului din „Done” — ID-ul e singurul lucru care leagă cele două boarduri. În corp: cifrele, avertismentele, calea XML-ului și cei trei pași de făcut." },
-      { edges:["e10"], on:["echipa","om"], who:"om", phase:"Paula",
+      { edges:["eHand"], on:["echipa","om"], who:"om", phase:"Paula",
         title:"Paula deschide sarcina",
         desc:"Aici se termină ce poate face agentul singur. Verifică totalurile, avertismentele și rândurile sărite, cu raportul de pe e-mail alături." },
-      { edges:["e11"], on:["xml","saga","om"], who:"om", phase:"Paula",
+      { edges:["eImport","e11"], on:["xml","saga","om"], who:"om", phase:"Paula",
         title:"Importul în Saga",
         desc:"Import documente → Încasări, cu XML-ul din <code>procesate/</code>. Singurul pas care atinge contabilitatea e făcut de om, deliberat." },
-      { edges:["e12"], on:["om","echipa"], who:"om", phase:"→ Done (echipă)",
+      { edges:["eDone"], on:["om","echipa"], who:"om", phase:"→ Done (echipă)",
         title:"Sarcina se mută în „Done”",
         desc:"Pe Board Echipă, „Done” înseamnă „încasările sunt în Saga”. Coloana o mută omul: un agent nu închide niciodată singur sarcina pe care tocmai a dat-o cuiva." }
     ]
   },
 
   monitorizare: {
-    label: "Monitorizare fiscală",
-    status: "planificat",
-    note: "Fluxul veghii legislative săptămânale — surse oficiale → deduplicare pe fișierul de stare → raport pe e-mail → card în board — se adaugă aici, în aceeași structură ca încasările."
+    label: "Monitorizare legislativă",
+    status: "activ",
+    plugin: "task programat · luni 10:00 · rulare în cloud",
+    view: [0, 0, 1280, 850],
+    nodes: [
+      { id:"rut",     x:40,   y:330, w:190, h:64, kind:"trigger", title:"Task programat",        meta:"luni 10:00 · săptămânal" },
+      { id:"notif",   x:270,  y:170, w:200, h:64, kind:"extern",  title:"Notificare + e-mail",   meta:"telefon · inbox ALFIN" },
+      { id:"sesiune", x:270,  y:326, w:200, h:72, kind:"agent",   title:"Sesiune Claude",        meta:"cloud · orchestrează" },
+      { id:"cautare", x:530,  y:326, w:200, h:72, kind:"agent",   title:"Căutare pe surse",      meta:"fereastră de 7 zile" },
+      { id:"filtru",  x:790,  y:330, w:190, h:64, kind:"agent",   title:"Filtru de relevanță",   meta:"are impact practic?" },
+      { id:"sinteza", x:1040, y:330, w:180, h:64, kind:"agent",   title:"Sinteza pe 4 arii",     meta:"act · dată MO · impact" },
+      { id:"mof",     x:520,  y:140, w:200, h:56, kind:"extern",  title:"Monitorul Oficial",     meta:"numărul actului · data" },
+      { id:"anaf",    x:760,  y:165, w:200, h:56, kind:"extern",  title:"ANAF",                  meta:"ordine · e-Factura · SAF-T" },
+      { id:"mf",      x:1000, y:190, w:200, h:56, kind:"extern",  title:"Ministerul Finanțelor", meta:"OMFP · raportare" },
+      { id:"poarta",  x:790,  y:480, w:190, h:64, kind:"code",    title:"Există ceva de dat?",   meta:"poartă · da / nu" },
+      { id:"gol",     x:1040, y:690, w:180, h:56, kind:"data",    title:"Niciun card",           meta:"săptămână fără impact" },
+      { id:"board",   x:270,  y:690, w:250, h:80, kind:"extern",  title:"Notion · Board Echipă", meta:"coloana Lacramioara" },
+      { id:"maya",    x:610,  y:698, w:190, h:64, kind:"human",   title:"Lacrămioara",           meta:"decide ce merge la clienți" }
+    ],
+    groups: [
+      { x:505, y:100, w:710, h:166, label:"Surse oficiale — căutate pe web la fiecare rulare" }
+    ],
+    edges: [
+      { id:"eStart",  from:["rut","r"],          to:["sesiune","l"] },
+      { id:"eSearch", from:["sesiune","r"],      to:["cautare","l"] },
+      { id:"eMof",    from:["cautare","t",-60],  to:["mof","b"] },
+      { id:"eAnaf",   from:["cautare","t"],      to:["anaf","b"] },
+      { id:"eMf",     from:["cautare","t",60],   to:["mf","b"] },
+      { id:"eFilt",   from:["cautare","r"],      to:["filtru","l"] },
+      { id:"eSint",   from:["filtru","r"],       to:["sinteza","l"] },
+      { id:"eBack",   from:["sinteza","b",-60],  to:["sesiune","b",60] },
+      { id:"eMail",   from:["sesiune","t"],      to:["notif","b"] },
+      { id:"eGate",   from:["sinteza","b",60],   to:["poarta","t",60] },
+      { id:"eNo",     from:["poarta","r"],       to:["gol","t"] },
+      { id:"eYes",    from:["poarta","b"],       to:["board","t",60] },
+      { id:"eHand",   from:["board","r"],        to:["maya","l"] },
+      { id:"eDone",   from:["maya","t",-40],     to:["board","t",40] }
+    ],
+    steps: [
+      { edges:["eStart"], on:["rut","sesiune"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Luni la 10:00 task-ul pornește singur",
+        desc:"O sesiune nouă, în cloud: nu cere calculatorul pornit și nu-și amintește nimic din conversațiile anterioare. Tot contextul — ariile, sursele, regulile — stă scris în prompt-ul task-ului, altfel nu există." },
+      { edges:[], on:["sesiune"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Stabilește fereastra: ultimele 7 zile",
+        desc:"Prima comandă e <code>date</code>. O rulare care presupune data ratează exact săptămâna pe care trebuie s-o acopere — iar ora de iarnă mută rularea cu o oră, nu ziua." },
+      { edges:["eSearch"], on:["sesiune","cautare"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Pornește căutarea pe cele patru arii",
+        desc:"Fiscal (Cod fiscal, TVA, impozite) · contribuții și Codul muncii · ANAF și sistemele electronice · contabilitate și raportare. Ariile sunt fixe, ca două rulări consecutive să fie comparabile." },
+      { edges:["eMof"], on:["cautare","mof"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Monitorul Oficial",
+        desc:"Sursa care dă numărul actului și data publicării. Fără ele o modificare nu e o modificare, ci un zvon — de aceea ce nu se poate confirma aici se marchează explicit ca neconfirmat." },
+      { edges:["eAnaf"], on:["cautare","anaf"], who:"agent", phase:"rulare (încă fără card)",
+        title:"ANAF — ordine și noutăți",
+        desc:"e-Factura, SAF-T (D406), e-TVA, e-Transport, SPV. Aici se schimbă termenele și procedurile, de multe ori fără să treacă printr-o lege — și tot aici se simt cel mai repede în lucrul zilnic." },
+      { edges:["eMf"], on:["cautare","mf"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Ministerul Finanțelor",
+        desc:"Ordinele privind reglementările contabile, situațiile financiare și termenele de depunere." },
+      { edges:["eFilt"], on:["cautare","filtru"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Filtrul de relevanță",
+        desc:"Se reține doar ce schimbă ceva în munca lunii. Presa de specialitate intră doar ca context, niciodată ca sursă a numărului de act. Restul se aruncă aici, nu în capul cititorului." },
+      { edges:["eSint"], on:["filtru","sinteza"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Sinteza",
+        desc:"Pentru fiecare act: tip și număr, data publicării în MO, ce se schimbă în două-trei propoziții, de la ce dată se aplică și impactul practic. La final, o secțiune scurtă „De făcut”." },
+      { edges:["eBack"], on:["sinteza","sesiune"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Sinteza devine concluzia rulării",
+        desc:"Spre deosebire de agentul de încasări, aici nu există niciun script determinist: tot ce iese e text scris de model. De asta filtrul e conservator, sursele sunt numite pe față, iar verificarea rămâne a cititorului." },
+      { edges:["eMail"], on:["sesiune","notif"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Notificarea și e-mailul pleacă",
+        desc:"Rezumatul ajunge pe telefon și pe adresa de contact, indiferent de rezultat. O săptămână goală e și ea o informație: înseamnă „s-a verificat”, nu „s-a uitat”." },
+      { edges:["eGate"], on:["sinteza","poarta"], who:"agent", phase:"rulare (încă fără card)",
+        title:"Poarta: există ceva cu impact practic?",
+        desc:"O singură întrebare decide dacă se atinge board-ul. Un card pe săptămână, creat din obișnuință, devine zgomot în două luni și nu-l mai citește nimeni." },
+      { edges:["eNo"], on:["poarta","gol"], who:"agent", phase:"fără card",
+        title:"Nu → nu se scrie nimic în Notion",
+        desc:"Board-ul rămâne neatins. Rularea se închide cu o singură frază în notificare, iar săptămâna următoare verificarea o ia de la capăt pe aceeași fereastră de 7 zile." },
+      { edges:["eYes"], on:["poarta","board"], who:"agent", phase:"Lacramioara",
+        title:"Da → card în coloana Lacramioara",
+        desc:"Titlu cu intervalul săptămânii, termen peste șapte zile, în <code>Note</code> o linie cu numărul modificărilor și aria principală; în corpul cardului, sinteza întreagă. Atenție: task-ul e deocamdată pe „întreabă înainte de a acționa”, deci scrierea în Notion așteaptă o confirmare. Până nu se trece pe aprobare automată, pasul ăsta nu se face nesupravegheat." },
+      { edges:["eHand"], on:["board","maya"], who:"om", phase:"Lacramioara",
+        title:"Lacrămioara preia sinteza",
+        desc:"Aici se termină ce poate face agentul singur. Decizia — ce se comunică clienților, cine trebuie anunțat, ce se schimbă în lucrul lunii — nu e o sarcină de căutare, ci una de răspundere profesională." },
+      { edges:["eDone"], on:["maya","board"], who:"om", phase:"→ Done",
+        title:"Cardul se mută în „Done”",
+        desc:"„Done” înseamnă aici că modificarea a fost citită și dusă mai departe, nu că agentul a terminat de căutat. Coloana o mută omul: un agent nu închide singur sarcina pe care tocmai a dat-o cuiva." }
+    ]
   }
 };
 
@@ -303,14 +409,28 @@ function anchor(node, side, off = 0) {
   return { x: node.x + node.w, y: cy + off };
 }
 
-function edgePath(a, sa, b, sb, bow = 0) {
-  const dx = b.x - a.x, dy = b.y - a.y;
-  const k = 0.4, clamp = v => Math.min(120, Math.max(34, v));
-  const push = (s, len) => s === "t" ? [0, -len] : s === "b" ? [0, len] : s === "l" ? [-len, 0] : [len, 0];
-  const la = clamp(Math.abs(/[lr]/.test(sa) ? dx : dy) * k) + Math.abs(bow);
-  const lb = clamp(Math.abs(/[lr]/.test(sb) ? dx : dy) * k) + Math.abs(bow);
-  const [ax, ay] = push(sa, la), [bx, by] = push(sb, lb);
-  return `M ${a.x} ${a.y} C ${a.x + ax} ${a.y + ay + bow}, ${b.x + bx} ${b.y + by + bow}, ${b.x} ${b.y}`;
+function edgePath(a, sa, b, sb) {
+  const S = 22;
+  const stub = (p, s) => s === "t" ? { x:p.x, y:p.y - S } : s === "b" ? { x:p.x, y:p.y + S }
+                       : s === "l" ? { x:p.x - S, y:p.y } : { x:p.x + S, y:p.y };
+  const vert = s => s === "t" || s === "b";
+  const A = stub(a, sa), B = stub(b, sb);
+  let pts;
+  if (vert(sa) && vert(sb)) {
+    const m = sa === sb ? (sa === "b" ? Math.max(A.y, B.y) : Math.min(A.y, B.y)) : (A.y + B.y) / 2;
+    pts = [a, A, { x:A.x, y:m }, { x:B.x, y:m }, B, b];
+  } else if (!vert(sa) && !vert(sb)) {
+    const m = sa === sb ? (sa === "r" ? Math.max(A.x, B.x) : Math.min(A.x, B.x)) : (A.x + B.x) / 2;
+    pts = [a, A, { x:m, y:A.y }, { x:m, y:B.y }, B, b];
+  } else if (vert(sa)) {
+    pts = [a, A, { x:A.x, y:B.y }, B, b];
+  } else {
+    pts = [a, A, { x:B.x, y:A.y }, B, b];
+  }
+  const out = [];
+  pts.forEach(q => { const l = out[out.length - 1];
+    if (!l || Math.abs(l.x - q.x) > 0.5 || Math.abs(l.y - q.y) > 0.5) out.push(q); });
+  return "M " + out.map(q => Math.round(q.x) + " " + Math.round(q.y)).join(" L ");
 }
 
 function render(key) {
@@ -353,7 +473,7 @@ function render(key) {
 
   a.edges.forEach(e => {
     const [fi, fs, fo = 0] = e.from, [ti, ts, to = 0] = e.to;
-    const d = edgePath(anchor(byId[fi], fs, fo), fs, anchor(byId[ti], ts, to), ts, e.bow || 0);
+    const d = edgePath(anchor(byId[fi], fs, fo), fs, anchor(byId[ti], ts, to), ts);
     const p = el("path", { d, class: "edge", id: `p-${e.id}`, "marker-end": "url(#ar)" });
     eLayer.appendChild(p); paths[e.id] = p;
   });
