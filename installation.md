@@ -425,7 +425,7 @@ Cardul pe care îl deschide agentul de încasări arată așa:
 | `Task` | `INC-2026-07 · Verifică încasările iulie 2026 și importă-le în Saga` |
 | `Responsabil` | `Paula` |
 | `Termen` | peste 5 zile de la rulare |
-| `Note` | `219 linii, 26.570,21 RON, 0 rânduri sărite, 15 avertismente. XML gata în Drive.` |
+| `Note` | `219 linii, 26.570,21 RON, 0 rânduri sărite, 13 avertismente. XML gata în Drive.` |
 
 În corp: link către cardul rulării, calea completă a XML-ului, cifrele, lista
 avertismentelor și cei trei pași — verifică, importă în Saga, mută cardul în `Done`.

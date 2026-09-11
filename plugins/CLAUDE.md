@@ -137,6 +137,8 @@ Fiecare vine dintr-un eșec real. Nu le slăbi fără motiv explicit.
 
 **Numele e control secundar, nu cheie.** Cheia e `RefExp1` = `inf_suplm`. Căutarea după nume e strict rezervă: folosită în paralel cu cheia, un omonim cu aceeași sumă face ambiguă o potrivire deja sigură. Un nume care diferă dă doar avertisment — pe colet e persoana, pe factură firma.
 
+**Fiecare sursă își scrie doar jurnalul ei** (`.procesate.json` pentru Cargus, `.procesate-<sursa>.json` pentru celelalte), dar le citește pe toate. Șase task-uri care scriu același jurnal își șterg reciproc intrările, iar luna următoare borderourile se reprocesează și ies XML-uri duble. Din același motiv, o factură prezentă în jurnalul oricărei surse nu se mai stinge a doua oară.
+
 **Un rând sărit e raportat, nu înghițit.** Inclusiv când *toate* rândurile sunt sărite: atunci nu se scrie niciun XML, dar raportul trebuie totuși compus și trimis — e cazul în care utilizatorul are cel mai mult de verificat.
 
 ## Verificare
@@ -150,7 +152,7 @@ python3 incasari-saga/skills/incasari-cargus/scripts/proceseaza.py \
   --dry-run --reproceseaza "Cargus Packeta Iulie 2026.xlsx"
 ```
 
-Rezultat așteptat: **219 linii, total 26570.21 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.35 / 6334.85 / 6951.57 / 6105.44, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, **87 de linii cu suma preluată de pe factură** (diferență totală +0,95 RON — `<Suma>` ia valoarea de pe factură, ca factura să se stingă exact), și 15 avertismente: 8 de nume, 3 de storno, 2 de sumă (0,08 și 0,02) și 2 de lungime `RefExp1`.
+Rezultat așteptat: **219 linii, total 26570.21 RON**, defalcat pe 10/16/23/30.07.2026 = 7178.35 / 6334.85 / 6951.57 / 6105.44, **fiecare linie cu `FacturaNumar` completat, niciun rând sărit**, **87 de linii cu suma preluată de pe factură** (diferență totală +0,95 RON — `<Suma>` ia valoarea de pe factură, ca factura să se stingă exact), și 13 avertismente: 8 de nume, 3 de storno și 2 de sumă (0,08 și 0,02). Avertismentele de lungime `RefExp1` apar din 11.09.2026 doar cu `--fara-facturi`. La refactorizarea pe surse (11.09.2026) XML-ul a ieșit identic la byte cu cel al versiunii anterioare — orice schimbare de script se verifică la fel, prin comparație cu XML-ul produs înainte.
 
 ### `monitorizare-legislativa`
 

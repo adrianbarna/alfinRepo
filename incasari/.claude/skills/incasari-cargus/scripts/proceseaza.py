@@ -1,25 +1,39 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Transforma borderourile de ramburs Cargus / Packeta (.xlsx) in fisiere XML de
-import pentru programul de contabilitate Saga (Import documente -> Incasari).
+Transforma borderourile de incasari (curieri, marketplace-uri, procesatori de plati)
+in fisiere XML de import pentru programul de contabilitate Saga (Import documente ->
+Incasari).
+
+Fiecare *sursa* (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) e un agent
+separat, cu task-ul lui programat (decizia din 11.09.2026): o rulare proceseaza doar
+borderourile sursei date cu --sursa si le lasa neatinse pe ale celorlalte. Formatul
+se recunoaste dupa coloane, nu dupa numele fisierului (Trendyol si Skroutz au acelasi
+format, "waybill"); valuta e data de folder. Fiecare sursa are jurnalul si raportul ei
+in procesate/, ca task-urile sa nu-si calce evidenta unul altuia.
 
 Fara dependinte externe: .xlsx e citit direct din stdlib (zipfile + ElementTree),
-ca skill-ul sa mearga pe orice PC unde exista python3.
+.csv cu modulul csv, ca skill-ul sa mearga pe orice PC unde exista python3.
 
 Fiecare rand de borderou e legat de factura lui din folderul de facturi (export XML
-din Saga, <VFPData><c_xml>): cheia e RefExp1 = inf_suplm, iar numele (fara diacritice)
-si totalul sunt dublul control. <FacturaNumar> primeste nr_iesire de pe factura.
-Randurile fara factura sigura NU intra in XML, ci in raportul trimis pe e-mail.
+din Saga, <VFPData><c_xml>): la Cargus cheia e RefExp1 = inf_suplm, iar numele (fara
+diacritice) si totalul sunt dublul control. <FacturaNumar> primeste nr_iesire de pe
+factura. Randurile fara factura sigura NU intra in XML, ci in raportul trimis pe
+e-mail. O factura stinsa deja printr-un borderou (al oricarei surse, dupa jurnale) nu
+se mai stinge a doua oara.
 
 Cerinte: Python 3.8+, doar biblioteca standard. Se porneste cu `python3` pe
 macOS/Linux si cu `py -3` (sau `python`) pe Windows; in rest comenzile sunt identice
 si merg la fel in bash si in PowerShell.
 
 Utilizare:
-    proceseaza.py                        # proceseaza doar fisierele noi
+    proceseaza.py                        # proceseaza doar fisierele noi (sursa cargus)
+    proceseaza.py --sursa <sursa>        # alta sursa: cargus, emag, sameday, trendyol,
+                                         # skroutz, plationline
     proceseaza.py --dry-run              # arata ce ar face, nu scrie nimic
-    proceseaza.py --folder <cale>        # ignora config.json, foloseste calea data
+    proceseaza.py --folder <cale>        # ignora config.json, foloseste calea data; se
+                                         # poate repeta, valuta vine din numele folderului
+                                         # (ron / eur / huf) daca lipseste --moneda
     proceseaza.py --reproceseaza <nume>  # forteaza un fisier deja procesat
     proceseaza.py --set-folder <cale> [--moneda RON]   # scrie config.json
     proceseaza.py --facturi <cale>       # folderul cu facturi, doar pentru rularea asta
@@ -36,6 +50,7 @@ Coduri de iesire:
 """
 
 import argparse
+import csv
 import datetime as _dt
 import json
 import os
@@ -78,6 +93,32 @@ def cale_config():
 DIR_PROCESATE = "procesate"
 JURNAL = ".procesate.json"
 RAPORT_EMAIL = "ultimul-raport.txt"
+
+# Sursele = agentii, cate un task programat pe fiecare (decizia din 11.09.2026).
+# `format` spune cum arata fisierul; doua surse pot avea acelasi format (Trendyol si
+# Skroutz). O sursa fara profil implementat nu poate fi rulata inca, dar fisierele ei
+# sunt recunoscute, ca sa nu fie luate drept "format nerecunoscut" de altii.
+SURSE = {
+    "cargus": {"eticheta": "Cargus / Packeta", "format": "cargus"},
+    "emag": {"eticheta": "eMAG", "format": "emag"},
+    "sameday": {"eticheta": "Sameday", "format": "sameday"},
+    "trendyol": {"eticheta": "Trendyol", "format": "waybill"},
+    "skroutz": {"eticheta": "Skroutz", "format": "waybill"},
+    "plationline": {"eticheta": "PlatiOnline", "format": "plationline"},
+}
+# Sursa care raporteaza si fisierele pe care nu le recunoaste niciun format, o singura
+# data pe luna, in loc de sase ori. Tot ea pastreaza numele vechi de jurnal si raport,
+# ca task-ul Cargus existent sa mearga neschimbat.
+SURSA_COLECTOARE = "cargus"
+
+
+def jurnal_sursa(sursa):
+    return JURNAL if sursa == SURSA_COLECTOARE else ".procesate-%s.json" % sursa
+
+
+def raport_sursa(sursa):
+    return RAPORT_EMAIL if sursa == SURSA_COLECTOARE else "ultimul-raport-%s.txt" % sursa
+
 
 CONT_CLIENT = "4111"
 PREFIX_EXPLICATIE = "Incasare ramburs client"
@@ -217,6 +258,45 @@ def citeste_xlsx(cale):
     return randuri
 
 
+def citeste_csv(cale):
+    """Returneaza list[list] ca citeste_xlsx: celulele goale devin None.
+
+    Exportul PlatiOnline vine cu ';' si fiecare valoare intre '#' (#131.70#); marcajele
+    se scot aici, ca restul scriptului sa vada doar valorile. Valorile raman text.
+    """
+    brut = cale.read_bytes()
+    for codec in ("utf-8-sig", "cp1250", "cp1252"):
+        try:
+            text = brut.decode(codec)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        text = brut.decode("cp1252", "replace")
+    linii = text.splitlines()
+    mostra = "\n".join(linii[:10])
+    delim = ";" if mostra.count(";") >= mostra.count(",") else ","
+    randuri = []
+    for rand in csv.reader(linii, delimiter=delim):
+        celule = []
+        for v in rand:
+            v = v.strip()
+            if len(v) >= 2 and v.startswith("#") and v.endswith("#"):
+                v = v[1:-1].strip()
+            celule.append(v if v else None)
+        while celule and celule[-1] is None:
+            celule.pop()
+        randuri.append(celule)
+    return randuri
+
+
+def citeste_tabel(cale):
+    """.xlsx sau .csv -> list[list]."""
+    if cale.suffix.lower() == ".csv":
+        return citeste_csv(cale)
+    return citeste_xlsx(cale)
+
+
 # --------------------------------------------------------------------------
 # Normalizari
 # --------------------------------------------------------------------------
@@ -335,8 +415,32 @@ def _decodeaza(brut):
     return brut.decode("cp1252", "replace")
 
 
+def _factura(nr, camp, sursa):
+    """Factura in forma comuna, oricare ar fi exportul. `camp(nume)` -> valoarea bruta.
+
+    Exportul in lei are `total`. Exportul in valuta nu are: acolo totalul, in valuta
+    facturii, e `val_val` + `tva_val` (baza + TVA); la HUF, Saga tine sumele la suta de
+    forinti, ca in cursul BNR. `cod_valuta` lipseste din exportul in lei -> RON.
+    """
+    total = normalizeaza_suma(camp("total"))
+    if total is None:
+        baza = normalizeaza_suma(camp("val_val"))
+        if baza is not None:
+            total = baza + (normalizeaza_suma(camp("tva_val")) or Decimal("0.00"))
+    data = camp("data")
+    return {
+        "nr_iesire": nr,
+        "denumire": ca_text(camp("denumire")),
+        "total": total,
+        "inf_suplm": ca_text(camp("inf_suplm")),
+        "data": data.strftime("%Y-%m-%d") if isinstance(data, _dt.datetime) else ca_text(data),
+        "valuta": ca_text(camp("cod_valuta")).upper() or "RON",
+        "sursa": sursa,
+    }
+
+
 def citeste_facturi_xml(cale):
-    """-> list[dict]: nr_iesire, denumire, total, inf_suplm, data, sursa."""
+    """-> list[dict]: nr_iesire, denumire, total, inf_suplm, data, valuta, sursa."""
     # expat nu stie Windows-1252: decodam noi si scoatem declaratia de encoding.
     root = ET.fromstring(_DECL.sub("", _decodeaza(cale.read_bytes()), count=1))
     facturi = []
@@ -347,15 +451,35 @@ def citeste_facturi_xml(cale):
         nr = camp("nr_iesire")
         if not nr:
             continue
-        facturi.append({
-            "nr_iesire": nr,
-            "denumire": camp("denumire"),
-            "total": normalizeaza_suma(camp("total")),
-            "inf_suplm": camp("inf_suplm"),
-            "data": camp("data"),
-            "sursa": cale.name,
-        })
+        facturi.append(_factura(nr, camp, cale.name))
     return facturi
+
+
+def citeste_facturi_xlsx(cale):
+    """Exportul de facturi salvat ca .xlsx (lista in valuta din Saga, 11.09.2026).
+
+    Aceleasi nume de camp ca in XML, ca antet de coloana: nr_iesire, denumire, data,
+    cod_valuta, val_val, tva_val, inf_suplm...
+    """
+    randuri = citeste_xlsx(cale)
+    for i, rand in enumerate(randuri[:5]):
+        nume = {ca_text(v).lower(): j for j, v in enumerate(rand) if ca_text(v)}
+        if "nr_iesire" in nume:
+            break
+    else:
+        raise ValueError("nu am gasit coloana nr_iesire in primele 5 randuri")
+    facturi = []
+    for rand in randuri[i + 1:]:
+        def camp(c, rand=rand):
+            j = nume.get(c)
+            return rand[j] if j is not None and j < len(rand) else None
+        nr = ca_text(camp("nr_iesire"))
+        if nr:
+            facturi.append(_factura(nr, camp, cale.name))
+    return facturi
+
+
+CITITOARE_FACTURI = {".xml": citeste_facturi_xml, ".xlsx": citeste_facturi_xlsx}
 
 
 def incarca_facturi(folder):
@@ -367,14 +491,25 @@ def incarca_facturi(folder):
     decat una raportata.
     """
     idx = {"dupa_inf": {}, "dupa_nume": {}, "numar": 0, "fisiere": [], "erori": [],
-           "de_la": None, "pana_la": None, "corectate": []}
+           "de_la": None, "pana_la": None, "corectate": [], "pe_valuta": {}, "valute": {}}
 
     exporturi = []
     for cale in sorted(folder.rglob("*")):
-        if not cale.is_file() or cale.suffix.lower() != ".xml" or cale.name.startswith("~$"):
+        if not cale.is_file() or cale.name.startswith("~$"):
+            continue
+        suf = cale.suffix.lower()
+        if suf == ".xls":
+            # Excel vechi (binar): nu se poate citi din biblioteca standard. Tacem doar
+            # daca langa el exista acelasi export salvat intr-o forma citibila.
+            if not any(cale.with_suffix(s).exists() or cale.with_suffix(s.upper()).exists()
+                       for s in CITITOARE_FACTURI):
+                idx["erori"].append("%s: format .xls (Excel vechi), nu se poate citi - "
+                                    "salveaza-l ca .xlsx sau exporta-l ca XML" % cale.name)
+            continue
+        if suf not in CITITOARE_FACTURI:
             continue
         try:
-            facturi = citeste_facturi_xml(cale)
+            facturi = CITITOARE_FACTURI[suf](cale)
         except Exception as exc:
             idx["erori"].append("%s: %s" % (cale.name, exc))
             continue
@@ -400,17 +535,29 @@ def incarca_facturi(folder):
             vazute[f["nr_iesire"]] = f
 
     for f in vazute.values():
-        if f["inf_suplm"]:
-            idx["dupa_inf"].setdefault(f["inf_suplm"], []).append(f)
+        # Indexul pe toate valutele, plus cate unul pe valuta: un borderou se leaga doar
+        # de facturile in valuta folderului lui (un omonim facturat in EUR nu are ce
+        # cauta langa un ramburs in lei).
+        vedere = idx["valute"].setdefault(f["valuta"], {"dupa_inf": {}, "dupa_nume": {}})
         k = cheie_nume(f["denumire"])
-        if k:
-            idx["dupa_nume"].setdefault(k, []).append(f)
+        for tinta in (idx, vedere):
+            if f["inf_suplm"]:
+                tinta["dupa_inf"].setdefault(f["inf_suplm"], []).append(f)
+            if k:
+                tinta["dupa_nume"].setdefault(k, []).append(f)
+        idx["pe_valuta"][f["valuta"]] = idx["pe_valuta"].get(f["valuta"], 0) + 1
 
     toate = [f["data"] for f in vazute.values() if f["data"]]
     if toate:
         idx["de_la"], idx["pana_la"] = min(toate), max(toate)
     idx["numar"] = len(vazute)
     return idx
+
+
+def facturi_in(idx, moneda):
+    """Indexul redus la facturile intr-o singura valuta (gol daca nu exista niciuna)."""
+    vedere = idx["valute"].get(moneda.upper(), {"dupa_inf": {}, "dupa_nume": {}})
+    return dict(idx, dupa_inf=vedere["dupa_inf"], dupa_nume=vedere["dupa_nume"])
 
 
 def perioada_facturi(idx):
@@ -503,38 +650,70 @@ def alege_factura(ref, dest, suma, idx):
 # Recunoasterea formatului
 # --------------------------------------------------------------------------
 
+# Coloanele (litere mici) care identifica fiecare format. Toate trebuie sa stea pe
+# acelasi rand de header, cautat in primele 5 randuri: Cargus, Sameday, eMAG si
+# Trendyol/Skroutz au deasupra harta pusa de client, PlatiOnline trei randuri de
+# preambul. Cargus si Sameday au amandoua `AWB`, dar doar Cargus are `Destinatar` simplu.
+FORMATE = (
+    ("cargus", ("awb", "destinatar")),
+    ("sameday", ("awb", "nume destinatar", "suma ramburs")),
+    ("emag", ("order id", "fraction type", "client name")),
+    ("waybill", ("waybill", "recipient", "amount")),
+    ("plationline", ("statementid", "order number", "amount")),
+)
+
 COLOANE_CERUTE = ("awb", "destinatar", "suma", "data op", "refexp1")
-COLOANE_EMAG = ("order id", "fraction value", "client name")
+
+# Trendyol si Skroutz au acelasi format; ii desparte continutul coloanei Waybill:
+# Skroutz pune codul comenzii (aallzz-nnnnnnn, ex. 260518-9008682), Trendyol un numar.
+_COD_SKROUTZ = re.compile(r"^\d{6}-\d{7}$")
+
+MESAJ_NERECUNOSCUT = ("format nerecunoscut: nu se potriveste cu niciun borderou cunoscut "
+                      "(Cargus, eMAG, Sameday, Trendyol / Skroutz, PlatiOnline)")
 
 
 def gaseste_header(randuri):
-    """-> (index_rand, {nume_coloana_lower: index_coloana}) sau (None, None)."""
+    """-> (format, index_rand, {nume_coloana_lower: index_coloana}) sau (None, None, None)."""
     for i, rand in enumerate(randuri[:5]):
         nume = {ca_text(v).lower(): j for j, v in enumerate(rand) if ca_text(v)}
-        if "awb" in nume and "destinatar" in nume:
-            return i, nume
-    return None, None
+        for fmt, cerute in FORMATE:
+            if all(c in nume for c in cerute):
+                return fmt, i, nume
+    return None, None, None
 
 
-def pare_emag(randuri):
-    for rand in randuri[:5]:
-        nume = {ca_text(v).lower() for v in rand if ca_text(v)}
-        if sum(1 for c in COLOANE_EMAG if c in nume) >= 2:
-            return True
-    return False
+def identifica(cale):
+    """Citeste fisierul si spune carei surse ii apartine.
+
+    -> dict: randuri, format, idx_header, nume, sursa (None = nerecunoscut), eroare.
+    """
+    info = {"randuri": None, "format": None, "idx_header": None, "nume": None,
+            "sursa": None, "eroare": None}
+    try:
+        randuri = citeste_tabel(cale)
+    except Exception as exc:  # zip corupt, fisier deschis in Excel etc.
+        info["eroare"] = "nu am putut citi fisierul: %s" % exc
+        return info
+    fmt, idx, nume = gaseste_header(randuri)
+    info.update(randuri=randuri, format=fmt, idx_header=idx, nume=nume)
+    if fmt is None:
+        info["eroare"] = MESAJ_NERECUNOSCUT
+    elif fmt == "waybill":
+        c = nume["waybill"]
+        coduri = [ca_text(r[c]) for r in randuri[idx + 1:] if c < len(r) and ca_text(r[c])]
+        skroutz = sum(1 for x in coduri if _COD_SKROUTZ.match(x))
+        info["sursa"] = "skroutz" if coduri and skroutz * 2 > len(coduri) else "trendyol"
+    else:
+        info["sursa"] = fmt
+    return info
 
 
 # --------------------------------------------------------------------------
 # Conversia unui borderou
 # --------------------------------------------------------------------------
 
-def proceseaza_borderou(cale, moneda, cont, facturi=None):
-    """-> dict cu linii, avertismente, randuri sarite, totaluri.
-
-    `facturi` = indexul din incarca_facturi(); None inseamna fara legare de facturi
-    (FacturaNumar ramane gol si niciun rand nu e sarit din lipsa de factura).
-    """
-    rez = {
+def rezultat_gol(cale):
+    return {
         "fisier": cale.name,
         "linii": [],
         "avertismente": [],
@@ -547,20 +726,19 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
         "eroare": None,
     }
 
-    try:
-        randuri = citeste_xlsx(cale)
-    except Exception as exc:  # zip corupt, fisier deschis in Excel etc.
-        rez["eroare"] = "nu am putut citi fisierul: %s" % exc
-        return rez
 
-    idx_header, nume = gaseste_header(randuri)
-    if idx_header is None:
-        rez["eroare"] = (
-            "format eMAG, nesuportat de acest skill (vezi mappings.md)"
-            if pare_emag(randuri)
-            else "format nerecunoscut: nu am gasit un rand de header cu 'Awb' si 'Destinatar'"
-        )
-        return rez
+def proceseaza_cargus(cale, info, moneda, cont, facturi=None, folosite=None):
+    """Profilul Cargus / Packeta -> dict cu linii, avertismente, randuri sarite, totaluri.
+
+    `info` = rezultatul lui identifica(). `facturi` = indexul din incarca_facturi();
+    None inseamna fara legare de facturi (FacturaNumar ramane gol si niciun rand nu e
+    sarit din lipsa de factura). `folosite` = {nr_iesire: unde a fost stinsa}, din
+    jurnalele tuturor surselor.
+    """
+    rez = rezultat_gol(cale)
+    randuri, idx_header, nume = info["randuri"], info["idx_header"], info["nume"]
+    folosite = folosite if folosite is not None else {}
+    in_valuta = facturi_in(facturi, moneda) if facturi is not None else None
 
     lipsa = [c for c in COLOANE_CERUTE if c not in nume]
     if lipsa:
@@ -612,7 +790,12 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
 
         factura_nr = ""
         if facturi is not None:
-            factura, suma_xml, av, motiv = alege_factura(ref, dest, suma, facturi)
+            factura, suma_xml, av, motiv = alege_factura(ref, dest, suma, in_valuta)
+            if factura is not None and factura["nr_iesire"] in folosite:
+                # Aceeasi factura stinsa din doua borderouri = incasare dubla in Saga.
+                motiv = ("factura %s e deja stinsa prin %s"
+                         % (factura["nr_iesire"], folosite[factura["nr_iesire"]]))
+                factura, av = None, []
             for a in av:
                 rez["avertismente"].append("randul %d: %s" % (i, a))
             if factura is None:
@@ -642,11 +825,15 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
             "probabil lipseste un export de facturi"
             % (len(negasite), perioada_facturi(facturi) or "o perioada necunoscuta")))
 
-    # RefExp1 in afara tiparului dominant de lungime
+    # RefExp1 in afara tiparului dominant de lungime - doar fara facturi. Cand facturile
+    # sunt legate, factura insasi confirma cheia: 9822 si 26540717, semnalate luni la
+    # rand ca "greseli de tastare", sunt inf_suplm reale (MCS36218, MCS36251), iar 98xx
+    # e a doua serie de comenzi (apare si la PlatiOnline). O cheie gresita tot iese la
+    # iveala: nu gaseste factura si cade pe cautarea dupa nume, cu avertisment.
     lungimi = {}
     for l in rez["linii"]:
         lungimi.setdefault(len(l["Numar"]), []).append(l)
-    if len(lungimi) > 1:
+    if facturi is None and len(lungimi) > 1:
         dominanta = max(lungimi, key=lambda k: len(lungimi[k]))
         for lung, grup in sorted(lungimi.items()):
             if lung == dominanta:
@@ -656,6 +843,13 @@ def proceseaza_borderou(cale, moneda, cont, facturi=None):
                     "randul %d: RefExp1 '%s' are %d caractere, restul au %d"
                     % (l["rand"], l["Numar"], lung, dominanta))
     return rez
+
+
+# Sursa -> functia care ii proceseaza borderourile. O sursa lipsa de aici nu poate fi
+# rulata inca (--sursa refuza), dar fisierele ei sunt deja recunoscute si ocolite.
+PROFILURI = {
+    "cargus": proceseaza_cargus,
+}
 
 
 def construieste_xml(linii):
@@ -684,6 +878,15 @@ def construieste_xml(linii):
 
 def cont_pentru(moneda):
     return "5125" if moneda.upper() == "RON" else "5126"
+
+
+VALUTE_CUNOSCUTE = ("RON", "EUR", "HUF")
+
+
+def moneda_din_folder(cale, implicit="RON"):
+    """'.../borderouri/eur' -> 'EUR'. Valuta e data de folder; altfel `implicit`."""
+    nume = Path(cale).name.upper()
+    return nume if nume in VALUTE_CUNOSCUTE else implicit
 
 
 def rezolva(cale):
@@ -764,8 +967,8 @@ def normalizeaza_email(brut):
     return [a.strip() for a in (brut or []) if a and a.strip()]
 
 
-def citeste_jurnal(dir_procesate):
-    f = dir_procesate / JURNAL
+def citeste_jurnal(dir_procesate, sursa=SURSA_COLECTOARE):
+    f = dir_procesate / jurnal_sursa(sursa)
     if not f.exists():
         return {}
     try:
@@ -775,9 +978,27 @@ def citeste_jurnal(dir_procesate):
         return {}
 
 
-def scrie_jurnal(dir_procesate, procesate):
-    _scrie(dir_procesate / JURNAL,
+def scrie_jurnal(dir_procesate, procesate, sursa=SURSA_COLECTOARE):
+    _scrie(dir_procesate / jurnal_sursa(sursa),
            json.dumps({"procesate": procesate}, ensure_ascii=False, indent=2) + "\n")
+
+
+def incarca_folosite(foldere, sursa, reproceseaza):
+    """{nr_iesire: 'fisier (Sursa)'} - facturile deja stinse, din jurnalele TUTUROR
+    surselor din folderele date. Fiecare task scrie doar jurnalul lui, dar le citeste
+    pe toate, ca aceeasi factura sa nu fie stinsa din doua borderouri. Borderourile
+    reprocesate acum de sursa curenta nu se numara.
+    """
+    folosite = {}
+    for folder in foldere:
+        dir_procesate = folder / DIR_PROCESATE
+        for s in SURSE:
+            for fisier, intrare in citeste_jurnal(dir_procesate, s).items():
+                if s == sursa and fisier in reproceseaza:
+                    continue
+                for nr in intrare.get("facturi", []):
+                    folosite.setdefault(nr, "%s (%s)" % (fisier, SURSE[s]["eticheta"]))
+    return folosite
 
 
 # --------------------------------------------------------------------------
@@ -794,8 +1015,12 @@ def main(argv=None):
     _consola_utf8()
     ap = argparse.ArgumentParser(add_help=True, description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--folder", help="proceseaza aceasta cale, ignorand config.json")
-    ap.add_argument("--moneda", default="RON", help="valuta folderului (implicit RON)")
+    ap.add_argument("--sursa", default=SURSA_COLECTOARE, choices=sorted(SURSE),
+                    help="ce borderouri se proceseaza (implicit %s)" % SURSA_COLECTOARE)
+    ap.add_argument("--folder", action="append", default=[],
+                    help="proceseaza aceasta cale, ignorand config.json (se poate repeta)")
+    ap.add_argument("--moneda", default=None,
+                    help="valuta folderului (implicit din numele lui: ron/eur/huf, altfel RON)")
     ap.add_argument("--set-folder", dest="set_folder",
                     help="salveaza calea in config.json si iese")
     ap.add_argument("--facturi", help="folderul cu facturi, doar pentru rularea asta")
@@ -813,8 +1038,6 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true", dest="ca_json",
                     help="raport JSON in loc de text")
     a = ap.parse_args(argv)
-
-    moneda = a.moneda.upper()
 
     if a.arata_config:
         cale = cale_config()
@@ -878,6 +1101,7 @@ def main(argv=None):
         if not p.is_dir():
             print("Calea nu exista sau nu e un folder: %s" % a.set_folder, file=sys.stderr)
             return 1
+        moneda = (a.moneda or moneda_din_folder(p)).upper()
         cfg = citeste_config() or {"foldere": []}
         intrare = {"cale": stocheaza(p), "moneda": moneda, "cont": cont_pentru(moneda)}
         cfg["foldere"] = [f for f in cfg.get("foldere", [])
@@ -887,9 +1111,22 @@ def main(argv=None):
               % (unde, intrare["cale"], moneda, intrare["cont"]))
         return 0
 
+    sursa = a.sursa
+    if sursa not in PROFILURI:
+        mesaj = ("Sursa '%s' nu e inca implementata in script (implementate: %s). "
+                 "Maparea ei e in mappings.md." % (sursa, ", ".join(sorted(PROFILURI))))
+        if a.ca_json:
+            print(json.dumps({"stare": "eroare", "mesaj": mesaj}, ensure_ascii=False, indent=2))
+        else:
+            print(mesaj, file=sys.stderr)
+        return 1
+
     cfg = citeste_config()
     if a.folder:
-        foldere = [{"cale": a.folder, "moneda": moneda, "cont": cont_pentru(moneda)}]
+        foldere = []
+        for f in a.folder:
+            mon = (a.moneda or moneda_din_folder(f)).upper()
+            foldere.append({"cale": f, "moneda": mon, "cont": cont_pentru(mon)})
     else:
         if not cfg or not cfg.get("foldere"):
             return eroare_config(
@@ -917,35 +1154,57 @@ def main(argv=None):
                 % (dir_facturi, motiv), a.ca_json)
 
     adrese = normalizeaza_email((cfg or {}).get("email"))
-    raport = {"stare": "ok", "dry_run": a.dry_run, "foldere": [],
+    raport = {"stare": "ok", "dry_run": a.dry_run, "sursa": sursa, "foldere": [],
               "facturi": ({"cale": str(dir_facturi), "numar": facturi["numar"],
                            "fisiere": facturi["fisiere"], "erori": facturi["erori"],
                            "perioada": perioada_facturi(facturi),
+                           "pe_valuta": facturi["pe_valuta"],
                            "corectate": facturi["corectate"]}
                           if facturi is not None else None),
               "email": {"catre": adrese, "neconfigurat": not adrese}}
     lipsa = []
 
+    rezolvate = []
     for intrare in foldere:
         folder = rezolva(intrare["cale"])
         if folder is None:
             lipsa.append(intrare["cale"])
-            continue
+        else:
+            rezolvate.append((intrare, folder))
+    folosite = incarca_folosite([f for _, f in rezolvate], sursa, a.reproceseaza)
+    profil = PROFILURI[sursa]
+
+    for intrare, folder in rezolvate:
         mon = intrare.get("moneda", "RON").upper()
         cont = intrare.get("cont") or cont_pentru(mon)
         dir_procesate = folder / DIR_PROCESATE
-        jurnal = citeste_jurnal(dir_procesate)
+        jurnal = citeste_jurnal(dir_procesate, sursa)
 
         r_folder = {"cale": str(folder), "moneda": mon, "cont": cont,
-                    "procesate": [], "sarite_deja": [], "esuate": []}
+                    "procesate": [], "sarite_deja": [], "esuate": [], "alte_surse": []}
 
-        xlsx = sorted(p for p in folder.glob("*.xlsx") if not p.name.startswith("~$"))
-        for cale in xlsx:
+        fisiere = sorted(p for p in folder.iterdir()
+                         if p.is_file() and p.suffix.lower() in (".xlsx", ".csv")
+                         and not p.name.startswith("~$"))
+        for cale in fisiere:
             if cale.name in jurnal and cale.name not in a.reproceseaza:
                 r_folder["sarite_deja"].append(cale.name)
                 continue
 
-            rez = proceseaza_borderou(cale, mon, cont, facturi)
+            info = identifica(cale)
+            if info["sursa"] is None:
+                # Necitit sau nerecunoscut: il raporteaza doar sursa colectoare, o data.
+                if sursa == SURSA_COLECTOARE:
+                    r_folder["esuate"].append({"fisier": cale.name, "motiv": info["eroare"]})
+                continue
+            if info["sursa"] != sursa:
+                # Al altui agent: ramane neatins, nu se raporteaza pe e-mail.
+                r_folder["alte_surse"].append({
+                    "fisier": cale.name, "sursa": info["sursa"],
+                    "procesat": cale.name in citeste_jurnal(dir_procesate, info["sursa"])})
+                continue
+
+            rez = profil(cale, info, mon, cont, facturi, folosite)
             if rez["eroare"]:
                 r_folder["esuate"].append({"fisier": cale.name, "motiv": rez["eroare"]})
                 continue
@@ -962,6 +1221,12 @@ def main(argv=None):
                 })
                 continue
 
+            # Facturile stinse aici nu mai pot fi stinse de un borderou procesat dupa el,
+            # nici in rularea asta, nici in ale altor surse (le citesc din jurnal).
+            stinse = sorted({l["FacturaNumar"] for l in rez["linii"] if l.get("FacturaNumar")})
+            for nr in stinse:
+                folosite.setdefault(nr, "%s (%s)" % (cale.name, SURSE[sursa]["eticheta"]))
+
             # Numele borderoului, dar fara spatii (cerinta clientului, 31.08.2026).
             iesire = dir_procesate / (re.sub(r"\s+", "_", cale.stem) + ".xml")
             if not a.dry_run:
@@ -972,8 +1237,9 @@ def main(argv=None):
                     "xml": iesire.name,
                     "linii": len(rez["linii"]),
                     "total": str(rez["total"]),
+                    "facturi": stinse,
                 }
-                scrie_jurnal(dir_procesate, jurnal)
+                scrie_jurnal(dir_procesate, jurnal, sursa)
 
             r_folder["procesate"].append({
                 "fisier": cale.name,
@@ -1006,7 +1272,7 @@ def main(argv=None):
         if not a.dry_run:
             for f in raport["foldere"]:
                 if f["procesate"] or any(e.get("sarite") for e in f["esuate"]):
-                    cale_raport = Path(f["cale"]) / DIR_PROCESATE / RAPORT_EMAIL
+                    cale_raport = Path(f["cale"]) / DIR_PROCESATE / raport_sursa(sursa)
                     cale_raport.parent.mkdir(parents=True, exist_ok=True)
                     _scrie(cale_raport, raport["email"]["corp"])
                     f["raport"] = str(cale_raport)
@@ -1028,7 +1294,11 @@ def subiect_email(raport):
     fisiere = [p["fisier"] for p in _sarite_din(raport)]
     sarite = sum(len(p["sarite"]) for p in _sarite_din(raport))
     coada = " - %d randuri fara factura" % sarite if sarite else " - fara probleme"
-    return "Incasari Saga: %s%s" % (", ".join(fisiere), coada)
+    # Cargus pastreaza subiectul de dinainte; celelalte surse se numesc, fiindca
+    # fiecare agent trimite raportul lui.
+    sursa = raport.get("sursa", SURSA_COLECTOARE)
+    eticheta = "" if sursa == SURSA_COLECTOARE else " " + SURSE[sursa]["eticheta"]
+    return "Incasari Saga%s: %s%s" % (eticheta, ", ".join(fisiere), coada)
 
 
 def _detalii_sarite(p, moneda):
@@ -1050,6 +1320,10 @@ def _detalii_sarite(p, moneda):
     return r
 
 
+def _pe_valuta(fact):
+    return ", ".join("%s %d" % (v, n) for v, n in sorted(fact["pe_valuta"].items()))
+
+
 def corp_email(raport):
     """Textul raportului: ce a intrat in XML si, mai ales, ce NU a intrat."""
     r = []
@@ -1060,6 +1334,8 @@ def corp_email(raport):
         r.append("Facturi citite: %d din %s (%s), acoperind %s."
                  % (fact["numar"], fact["cale"], ", ".join(fact["fisiere"]) or "-",
                     fact["perioada"] or "o perioada necunoscuta"))
+        if len(fact.get("pe_valuta") or {}) > 1:
+            r.append("  pe valute: %s" % _pe_valuta(fact))
         for e in fact["erori"]:
             r.append("  ATENTIE fisier de facturi necitit: %s" % e)
         for c in fact["corectate"]:
@@ -1105,6 +1381,8 @@ def text_raport(raport):
         r.append("Facturi: %d din %s (%s), acoperind %s"
                  % (fact["numar"], fact["cale"], ", ".join(fact["fisiere"]) or "-",
                     fact["perioada"] or "o perioada necunoscuta"))
+        if len(fact.get("pe_valuta") or {}) > 1:
+            r.append("  pe valute: %s" % _pe_valuta(fact))
         for e in fact["erori"]:
             r.append("  ! fisier de facturi necitit: %s" % e)
         for c in fact["corectate"]:
@@ -1135,6 +1413,11 @@ def text_raport(raport):
                 r.append("      ATENTIE %s" % w)
         if f["sarite_deja"]:
             r.append("  Deja procesate (sarite): %s" % ", ".join(f["sarite_deja"]))
+        if f.get("alte_surse"):
+            r.append("  Lasate altor agenti: %s" % ", ".join(
+                "%s (%s%s)" % (x["fisier"], SURSE[x["sursa"]]["eticheta"],
+                               ", procesat" if x["procesat"] else ", neprocesat inca")
+                for x in f["alte_surse"]))
         for e in f["esuate"]:
             r.append("  ! %s: %s" % (e["fisier"], e["motiv"]))
             if e.get("sarite"):

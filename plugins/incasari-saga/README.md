@@ -58,12 +58,16 @@ La prima rulare vi se cer trei lucruri, o singură dată:
 
 Răspunsurile se salvează în `~/.claude/incasari-saga/config.json` și nu mai sunt cerute.
 
-Structura așteptată — **valuta e dată de folder**, sursa nu are folder (Cargus și eMAG
-stau împreună, formatul se recunoaște după coloane):
+Structura așteptată — **valuta e dată de folder**, sursa nu are folder (borderourile
+tuturor surselor stau împreună, formatul se recunoaște după coloane):
 
 ```
-borderouri/ron/   .xlsx  +  procesate/        facturi/   exporturile XML din Saga
+borderouri/ron/   .xlsx / .csv  +  procesate/        facturi/   exporturile XML din Saga
 ```
+
+Fiecare sursă de borderouri (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) e
+un agent separat, cu task-ul lui programat; o rulare procesează doar sursa ei și le lasă
+neatinse pe celelalte. Azi e implementat doar Cargus / Packeta.
 
 RON merge pe contul 5125, orice altă valută pe 5126. Momentan e configurat doar RON;
 o valută nouă se adaugă spunând asistentului unde stau borderourile ei.
@@ -116,7 +120,8 @@ când rămân mai multe la fel de plauzibile.
 - sumă diferită de totalul facturii cu mai mult de un ban;
 - număr de expediție care are și **factură de storno** — banii au intrat, dar factura e
   anulată;
-- rânduri incomplete în borderou, numere de expediție duplicate sau de lungime atipică;
+- rânduri incomplete în borderou, numere de expediție duplicate;
+- o factură care ar fi stinsă a doua oară, printr-un alt borderou — rândul e sărit;
 - **exporturi de facturi care se contrazic** — aceeași factură cu alt total în două
   exporturi; câștigă exportul cu perioada mai târzie, iar diferența e semnalată;
 - **un export de facturi lipsă** — raportul spune ce perioadă acoperă exporturile
@@ -124,10 +129,13 @@ când rămân mai multe la fel de plauzibile.
 
 ## Pentru administrator
 
-- **Ce citește:** `.xlsx` fără dependențe externe (doar `python3` din stdlib) și export
-  XML de facturi din Saga (`<VFPData><c_xml>`, Windows-1252).
-- **Ce scrie:** `<folder>/procesate/<nume borderou, cu spațiile înlocuite de _>.xml`, jurnalul `.procesate.json`
-  (cheie = numele fișierului `.xlsx`) și `ultimul-raport.txt` — textul trimis pe email.
+- **Ce citește:** `.xlsx` și `.csv` fără dependențe externe (doar `python3` din stdlib) și
+  exporturile de facturi din Saga: în lei ca XML (`<VFPData><c_xml>`, Windows-1252), în
+  valută ca `.xlsx` sau XML (`cod_valuta`, `val_val` + `tva_val`).
+- **Ce scrie:** `<folder>/procesate/<nume borderou, cu spațiile înlocuite de _>.xml`, jurnalul
+  sursei (`.procesate.json` pentru Cargus, `.procesate-<sursa>.json` pentru celelalte; cheie
+  = numele fișierului, plus facturile stinse) și raportul ei (`ultimul-raport.txt`, respectiv
+  `ultimul-raport-<sursa>.txt`) — textul trimis pe email.
 - **Configurația** stă în `~/.claude/incasari-saga/config.json`, în afara plugin-ului,
   ca să supraviețuiască actualizărilor. Poate fi mutată cu variabila `INCASARI_CONFIG`.
   Plugin-ul vine fără căi setate; prima configurare (și orice schimbare ulterioară) se

@@ -8,3 +8,12 @@ __pycache__/
 # configurarea incasarilor (cai + adrese de raport): sta in Drive sau per masina,
 # niciodata in git — vezi installation.md
 config.json
+
+# borderouri si facturi reale (nume, adrese, sume ale clientilor): raman local,
+# repo-ul e public. Exemplele de format stau in exempluBorderouri/, necomise.
+# Un fisier de test fara date reale se adauga explicit, cu git add -f.
+exempluBorderouri/
+*.xlsx
+*.xls
+*.csv
+*.XML

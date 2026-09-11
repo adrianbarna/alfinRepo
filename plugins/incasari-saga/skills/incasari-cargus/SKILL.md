@@ -23,11 +23,15 @@ valoarea **de pe factură**, ca factura să se stingă exact. Un rând care nu p
 legat sigur de o factură **nu intră în XML** — ajunge în raportul trimis pe e-mail,
 ca să fie verificat manual.
 
-Structura de lucru: **valuta e dată de folder, sursa nu are folder**. Cargus și eMAG
-stau împreună; formatul se recunoaște după coloane.
+Structura de lucru: **valuta e dată de folder, sursa nu are folder**. Borderourile
+tuturor surselor (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) stau împreună
+în folderul valutei lor; formatul se recunoaște după coloane. **O rulare procesează o
+singură sursă** — `--sursa`, implicit `cargus`, singura implementată azi — și le lasă
+neatinse pe celelalte: fiecare sursă e un agent separat, cu task-ul, jurnalul și raportul
+ei.
 
 ```
-borderouri/ron/  .xlsx  +  procesate/      facturi/  exporturile XML din Saga
+borderouri/ron/  .xlsx / .csv  +  procesate/      facturi/  exporturile XML din Saga
 ```
 
 **Azi e configurat doar RON.** O altă valută se adaugă cu o singură comandă
@@ -179,7 +183,7 @@ refolosește-l în loc să faci al doilea.
 | `Perioadă` | luna acoperită de borderouri |
 | `Declanșat` | ora la care a pornit rularea |
 | `Declanșare` | `Automat (programat)` dintr-un routine, altfel `Manual` |
-| `Rezultat` | rezumat de o linie: `219 linii, 26.570,21 RON, 0 rânduri sărite, 15 avertismente` |
+| `Rezultat` | rezumat de o linie: `219 linii, 26.570,21 RON, 0 rânduri sărite, 13 avertismente` |
 | `Responsabil` | **gol** — verificarea stă pe cardul de pe Board Echipă |
 
 `Fază` se pune la final, după ce a plecat raportul pe email:
@@ -211,7 +215,7 @@ Total pe zile: 7.178,35 / 6.334,85 / 6.951,57 / 6.105,44 RON.
 87 de linii au luat suma de pe factură (+0,95 RON față de borderou).
 
 ## De verificat
-- 15 avertismente: 8 de nume, 3 de storno, 2 de sumă, 2 de lungime RefExp1
+- 13 avertismente: 8 de nume, 3 de storno, 2 de sumă
 - rânduri sărite: niciunul
 
 ## Raport
@@ -265,7 +269,8 @@ propuse, e acolo.
 |---|---|
 | `--dry-run` | arată ce s-ar întâmpla, nu scrie nimic |
 | `--reproceseaza "<nume.xlsx>"` | borderoul a fost corectat și trebuie regenerat |
-| `--folder <cale>` | o rulare punctuală pe alt folder, fără să atingi configul |
+| `--sursa <sursa>` | altă sursă decât `cargus`; o sursă încă neimplementată iese cu codul 1 |
+| `--folder <cale>` | o rulare punctuală pe alt folder, fără să atingi configul; se poate repeta, valuta vine din numele folderului (`ron`/`eur`/`huf`) dacă lipsește `--moneda` |
 | `--facturi <cale>` | alt folder de facturi, doar pentru rularea asta |
 | `--fara-facturi` | nu lega facturile: `FacturaNumar` rămâne gol și nimic nu se sare |
 | `--arata-config` | arată configurarea curentă |
@@ -312,8 +317,12 @@ Coloanele `Awb`, `Data tur`, `Livrata`, `Numar`, `Numar OP`, `Beneficiar plata`,
 
 ## Cum se găsește factura
 
-Folderul de facturi conține exportul XML din Saga (`<VFPData><c_xml>`, de obicei
-Windows-1252). Câmpurile folosite: `nr_iesire`, `denumire`, `total`, `inf_suplm`.
+Folderul de facturi conține exporturile din Saga: facturile în lei ca XML
+(`<VFPData><c_xml>`, de obicei Windows-1252) și facturile în valută ca `.xlsx` (sau XML),
+cu `cod_valuta` și totalul ca `val_val` + `tva_val`. Câmpurile folosite: `nr_iesire`,
+`denumire`, `total` (sau `val_val` + `tva_val`), `inf_suplm`, `cod_valuta`. Un borderou se
+leagă doar de facturile în valuta folderului lui. Un `.xls` nu se poate citi — dacă apare
+în raport ca „fișier de facturi necitit", cere-i utilizatorului să-l salveze ca `.xlsx`.
 
 1. **Cheia e `RefExp1` = `inf_suplm`.** Pe borderoul de referință se potrivește 219/219.
 2. **Totalul confirmă.** Diferențele până la 0,01 lei sunt rotunjiri normale și trec
@@ -331,30 +340,34 @@ Windows-1252). Câmpurile folosite: `nr_iesire`, `denumire`, `total`, `inf_suplm
    nume + total. Reușita e semnalată ca avertisment, ca să fie verificată.
 
 Un rând ajunge **sărit** (nu intră în XML, apare în raport) când: nu există nicio
-factură nici pe `RefExp1`, nici pe nume; totalul nu confirmă niciuna; sau rămân mai
-multe facturi la fel de plauzibile.
+factură nici pe `RefExp1`, nici pe nume; totalul nu confirmă niciuna; rămân mai
+multe facturi la fel de plauzibile; sau factura a fost **deja stinsă** printr-un alt
+borderou, al oricărei surse. Jurnalul fiecărei surse ține facturile stinse, iar fiecare
+rulare le citește pe toate — o factură se stinge o singură dată, chiar dacă un borderou
+corectat e pus sub alt nume (pentru corecturi: `--reproceseaza` pe numele vechi).
 
 ## Ce e suportat și ce nu
 
 Suportat: borderouri **Cargus / Packeta în RON**, recunoscute după coloanele `Awb`
 și `Destinatar`.
 
-Nesuportat, raportat explicit și **fără** a fi marcat ca procesat (deci se reia
-automat după ce adaugi maparea):
+Recunoscute, dar lăsate agentului lor: borderourile **eMAG, Sameday, Trendyol, Skroutz
+și PlatiOnline** (`.csv`). Rularea Cargus nu le atinge, nu le marchează și nu le trece
+în e-mail; apar doar în rezumatul din chat, ca „lăsate altor agenți". Maparea lor e în
+`mappings.md`; profilurile se implementează pe rând.
 
-- **borderouri eMAG** — alt format cu totul (`Order ID`, `Fraction value`,
-  `Client name`); maparea lor e în `mappings.md`, dar nu e implementată aici;
-- orice fișier fără header recunoscut.
+Nerecunoscut, raportat explicit (o singură dată, de rularea Cargus) și **fără** a fi
+marcat ca procesat, deci se reia automat: orice fișier care nu se potrivește cu niciun
+format sau nu se poate citi.
 
-**Alte valute:** azi e configurat doar RON. Se adaugă cu `--set-folder <cale>
---moneda EUR` (cont `5126`) și nu au nevoie de cod nou: `total` de pe factură e deja
-în valuta facturii. **HUF e ignorat deocamdată** — factorul de 100 din `mappings.md`
-e documentat doar pentru eMAG, nu pentru Cargus.
+**Alte valute:** azi e configurat doar RON. Folderele `eur` și `huf` se adaugă când
+intră în lucru sursele lor (eMAG BG/HU, Skroutz), cu `--set-folder <cale>` — valuta vine
+din numele folderului, contul `5126` îl pune scriptul.
 
 ## Anomalii pe care le semnalează scriptul
 
-- `RefExp1` cu altă lungime decât tiparul dominant (posibil greșeală de tastare);
 - `RefExp1` duplicat între rânduri;
+- factură deja stinsă prin alt borderou (rândul e sărit);
 - sumă ≤ 0;
 - rânduri **sărite** — lipsește `Data OP`, `Suma`, `Destinatar` sau `RefExp1`, suma nu
   se poate interpreta, ori nu s-a găsit o factură sigură. Raportul spune numărul
@@ -365,7 +378,10 @@ e documentat doar pentru eMAG, nu pentru Cargus.
   spune ce perioadă acoperă exporturile și că probabil lipsește unul. Atunci: aduci
   exportul și rulezi `--reproceseaza` pe borderoul respectiv;
 - factura găsită doar după nume, nume diferit față de factură, sumă diferită de total
-  cu mai mult de 0,01, `RefExp1` care are și factură de storno.
+  cu mai mult de 0,01, `RefExp1` care are și factură de storno;
+- doar la `--fara-facturi`: `RefExp1` cu altă lungime decât tiparul dominant. Cu facturi
+  legate, factura confirmă cheia — `9822` și `26540717`, semnalate înainte, sunt comenzi
+  reale.
 
 Avertismentele nu opresc generarea: XML-ul se scrie oricum, cu rândurile bune.
 
@@ -375,6 +391,7 @@ Avertismentele nu opresc generarea: XML-ul se scrie oricum, cu rândurile bune.
    obligatoriu ca Saga să trateze fișierul ca import de încasări. S-a ales numele
    borderoului. **Dacă importul în Saga e refuzat, asta e prima cauză de verificat.**
 2. **`Data` = `Data OP`** (data virării banilor). Rândul 1 din borderou, pus de
-   contabil, indica `Livrata` (data livrării). De confirmat ce dată vrea în contabilitate.
+   contabil, indica `Livrata` (data livrării); decizia din 11.09.2026 — data virării
+   unde borderoul o are, pentru toate sursele — menține `Data OP`.
 3. **`FacturaID` = `RefExp1`** — util doar dacă facturile sunt importate cu același ID.
 4. **Diacriticele** din nume — de verificat cum le afișează Saga după import.

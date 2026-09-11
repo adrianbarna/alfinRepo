@@ -13,13 +13,23 @@ Nu e un proiect software clasic: nu există build, teste sau dependințe. E un f
 lucru contabil + două skill-uri cu un script Python care face conversia. Din 05.09.2026
 folderul **e versionat**, ca subfolder în repo-ul `alfinRepo` — vezi „Versionare și release".
 
-Există **două formate-sursă**, fără nicio coloană comună (formatul se recunoaște
-după coloane, nu după nume de fișier):
+Există **șase surse de borderouri, în cinci formate** (decizia din 11.09.2026; formatul
+se recunoaște după coloane, nu după nume de fișier). Fiecare sursă e un **agent
+separat**: are task-ul ei programat, cardul ei de reminder, jurnalul ei și raportul ei;
+codul e unul singur, `proceseaza.py`, cu câte un profil pe format.
 
-| Format | Coloane-cheie | Stare |
-|--------|---------------|-------|
-| **Cargus / Packeta** | `Awb`, `Destinatar`, `Data OP`, `RefExp1` | **automatizat** — skill-ul `incasari-cargus` |
-| **eMAG** | `Order ID`, `Fraction value`, `Client name` | mapat în `mappings.md`, **neimplementat** |
+| Sursă (`--sursa`) | Coloane-cheie | Folder | Stare |
+|--------|---------------|--------|-------|
+| **`cargus`** — Cargus / Packeta | `Awb`, `Destinatar`, `Data OP`, `RefExp1` | `ron` | **automatizat** |
+| **`emag`** — eMAG RO / BG / HU | `Order ID`, `Fraction type`, `Client name` | `ron` / `eur` / `huf` | recunoscut, mapat în `mappings.md`, **neimplementat** |
+| **`sameday`** | `AWB`, `Nume destinatar`, `Suma ramburs` | `ron` | idem |
+| **`trendyol`** | `Waybill`, `Recipient`, `Amount` (Waybill = număr) | `ron` | idem |
+| **`skroutz`** | aceleași coloane ca Trendyol (Waybill = `aallzz-nnnnnnn`) | `eur` | idem |
+| **`plationline`** — plăți cu cardul, `.csv` | `StatementID`, `Order Number`, `Amount` | `ron` | idem |
+
+Exemplele reale, câte unul pe format (iulie 2026), stau în `../exempluBorderouri/` — **doar
+local, în `.gitignore`**: conțin nume, adrese și sume ale clienților, iar repo-ul e public.
+La fel orice `.xlsx` / `.xls` / `.csv` / `.XML` din repo.
 
 **Codul și datele stau în foldere separate** (decizie din 25.08.2026), ca să
 poată fi versionat doar ce nu conține date de client:
@@ -33,9 +43,14 @@ alfinRepo/incasari/   ← AICI. În git, fără date de client.
 ~/.claude/incasari-saga/config.json        ← Configul. Per mașină, nu se livrează.
 
 clienti/test-incasari/                     ← Datele. Niciodată în git.
-  borderouri/ron/  .xlsx (Cargus/Packeta sau eMAG)  +  procesate/
+  borderouri/ron/  .xlsx / .csv, toate sursele în lei   +  procesate/
+  borderouri/eur/  eMAG BG, Skroutz                      +  procesate/
+  borderouri/huf/  eMAG HU                               +  procesate/
   facturi/         exporturile XML din Saga (nume păstrat ca atare)
 ```
+
+La ALFIN, datele stau în Google Drive (Mirror):
+`C:\Users\Barna\My Drive\claude\incasari-saga\{borderouri,facturi}`.
 
 Structura datelor — **valuta e dată de folder, sursa nu are folder**. Calea către ele
 e absolută în `config.json`; se schimbă cu `--set-folder` / `--set-facturi`, niciodată
@@ -43,9 +58,10 @@ editând configul de mână. **Skill-ul se livrează fără căi setate** (deciz
 26.08.2026): pe o mașină nouă, prima configurare urmează
 `references/configurare.md`, care propune căile și le salvează prin script.
 
-**Azi skill-ul e doar pe RON** (decizie din 25.08.2026). EUR se adaugă cu o
-singură comandă când apare primul borderou — `--set-folder borderouri/eur --moneda EUR`
-creează intrarea cu contul 5126. **HUF e ignorat deocamdată.**
+**Azi e configurat doar RON** (decizie din 25.08.2026). EUR și HUF se adaugă cu câte o
+comandă când intră în lucru eMAG BG/HU și Skroutz — `--set-folder borderouri/eur` și
+`--set-folder borderouri/huf` (valuta vine din numele folderului, contul 5126 îl pune
+scriptul). Până atunci, HUF nu are niciun borderou procesabil.
 
 ## Versionare și release
 
@@ -60,7 +76,7 @@ Claude Code în marketplace-ul `alfin-consult`:
 - **Pluginul:** `../plugins/incasari-saga/`; skill-urile stau în
   `incasari-saga/skills/`.
   **Versiunea stă într-un singur loc:** `incasari-saga/.claude-plugin/plugin.json`
-  (2.0.0 din 05.09.2026). Fără bump, push-ul nu ajunge la instalare, în tăcere.
+  (2.4.0 din 11.09.2026). Fără bump, push-ul nu ajunge la instalare, în tăcere.
 - **Protocolul de release** (detaliat în CLAUDE.md-ul repo-ului): copiezi skill-urile de
   aici peste `../plugins/incasari-saga/skills/` → bump în
   `plugin.json` → `claude plugin validate ./` **din rădăcina repo-ului**
@@ -83,7 +99,9 @@ o comandă pe linie, fără `&&`/`||`/redirecționări). Fără fișiere de lans
 python3 .claude/skills/incasari-cargus/scripts/proceseaza.py             # procesează doar borderourile noi
 python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --dry-run   # arată ce ar face, nu scrie nimic
 python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --reproceseaza "Cargus Packeta Iulie 2026.xlsx"  # după ce sosește un export de facturi lipsă
+python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --sursa emag  # alt agent: cargus (implicit), emag, sameday, trendyol, skroutz, plationline
 python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --folder <cale> --moneda EUR   # rulare punctuală, nu atinge configul
+python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --folder <.../ron> --folder <.../eur>   # mai multe foldere; valuta din numele folderului
 python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --set-folder <cale> [--moneda RON]  # scrie config.json și iese
 python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --set-facturi <cale>   # folderul cu facturi
 python3 .claude/skills/incasari-cargus/scripts/proceseaza.py --set-email a@b.ro,c@d.ro  # cui se trimite raportul
@@ -102,8 +120,13 @@ rezultat de referință e **219 linii, total 26570.21 RON**, defalcat pe 4 date 
 (10/16/23/30.07.2026 = 7178.35 / 6334.85 / 6951.57 / 6105.44), **fiecare linie cu
 `FacturaNumar` completat (219 `nr_iesire` distincte), niciun rând sărit**, și
 **87 de linii cu suma preluată de pe factură (diferență totală +0,95 RON)**.
-Avertismente: 15 — 8 de nume (persoană pe colet vs. firmă pe factură), 3 de storno,
-2 de sumă peste 0,01 (rândurile 12 și 123) și 2 de lungime `RefExp1` (rândurile 35 și 49).
+Avertismente: 13 — 8 de nume (persoană pe colet vs. firmă pe factură), 3 de storno și
+2 de sumă peste 0,01 (rândurile 12 și 123). Cele 2 de lungime `RefExp1` (rândurile 35 și
+49) apar din 11.09.2026 doar cu `--fara-facturi` — vezi „Stare curentă".
+
+Refactorizarea pe surse (11.09.2026) a fost verificată pe acest borderou: XML-ul iese
+**identic la byte** cu cel produs de versiunea anterioară, iar raportul și JSON-ul la fel
+(în JSON apar în plus doar cheile `sursa` și `alte_surse`).
 
 ## Reguli de lucru
 
@@ -121,14 +144,24 @@ Avertismente: 15 — 8 de nume (persoană pe colet vs. firmă pe factură), 3 de
 
 ## Arhitectură
 
-Un singur skill, `incasari-cargus`, cu un script care tratează **câte un folder per valută**.
-Valuta se determină din **folderul** în care se află borderoul, nu din conținut:
+Un singur skill, `incasari-cargus`, cu un script care tratează **câte un folder per valută**
+și **câte o sursă per rulare** (`--sursa`, implicit `cargus`). Valuta se determină din
+**folderul** în care se află borderoul, nu din conținut:
 
-| Folder | Valută | Cont | Stare |
-|--------|--------|------|-------|
-| `borderouri/ron` | RON | 5125 | **singurul activ azi** |
-| `borderouri/eur` | EUR | 5126 | de adăugat când apare primul borderou |
-| — | HUF | 5126 | ignorat deocamdată
+| Folder | Valută | Cont | Surse | Stare |
+|--------|--------|------|-------|-------|
+| `borderouri/ron` | RON | 5125 | Cargus, eMAG RO, Sameday, Trendyol, PlatiOnline | **activ** (doar Cargus implementat) |
+| `borderouri/eur` | EUR | 5126 | eMAG BG, Skroutz | de adăugat odată cu sursele lui |
+| `borderouri/huf` | HUF | 5126 | eMAG HU | de adăugat odată cu eMAG |
+
+**Surse, profiluri, agenți (11.09.2026).** În script, `SURSE` ține cele șase surse, iar
+`FORMATE` coloanele după care se recunoaște fiecare format; `PROFILURI` ține funcția care
+procesează o sursă — azi doar `proceseaza_cargus`. O rulare procesează **doar** fișierele
+sursei ei; fișierele celorlalte surse sunt recunoscute și lăsate neatinse (apar în JSON
+ca `alte_surse` și în rezumatul din chat, nu pe e-mail). Un `--sursa` fără profil
+implementat iese cu codul 1. Fișierele pe care nu le recunoaște niciun format (sau care
+nu se pot citi) le raportează doar sursa colectoare, `cargus`, ca să nu apară de șase
+ori pe lună.
 
 Detalii greu de dedus din citirea unui singur fișier:
 
@@ -142,17 +175,31 @@ Detalii greu de dedus din citirea unui singur fișier:
   Rădăcina se deduce din structura folderelor părinte (`.claude/skills/<skill>/`) —
   deci **skill-ul trebuie să rămână la `.claude/skills/incasari-cargus/`**, altfel se
   rupe detecția.
-- **Evidența** e per folder, în `<folder>/procesate/.procesate.json`, **cheie = numele
-  fișierului xlsx**. Redenumirea unui borderou îl face „nou" și se reprocesează.
-  Mutarea unui folder de valută nu strică nimic: jurnalul călătorește cu el.
+- **Evidența** e per folder **și per sursă**, în `<folder>/procesate/`, **cheie = numele
+  fișierului**: `.procesate.json` pentru Cargus (numele vechi, ca task-ul existent să
+  meargă neschimbat), `.procesate-<sursa>.json` pentru celelalte. Un jurnal comun ar fi
+  scris de șase task-uri, iar al doilea care scrie șterge intrările primului — luna
+  următoare primul reprocesează tot și iese XML dublu. Redenumirea unui borderou îl face
+  „nou"; mutarea unui folder de valută nu strică nimic, jurnalele călătoresc cu el.
+- **O factură se stinge o singură dată.** Din 11.09.2026 fiecare intrare de jurnal ține
+  și `facturi` — `nr_iesire`-urile stinse de borderoul acela. La fiecare rulare,
+  `incarca_folosite()` citește jurnalele **tuturor** surselor din folderele procesate
+  (fiecare task scrie doar jurnalul lui, dar le citește pe toate); un rând care ar
+  stinge a doua oară o factură e sărit, cu motivul „factura X e deja stinsă prin Y".
+  Borderourile date la `--reproceseaza` nu se numără. Protecția acoperă borderourile
+  procesate de acum încolo: intrările vechi de jurnal nu au `facturi`. Consecință utilă:
+  un borderou corectat și pus sub **alt nume** nu mai dublează încasările — se folosește
+  `--reproceseaza` pe numele vechi.
 - **Ieșirea**: `<folder>/procesate/<numele borderoului, cu spațiile înlocuite de _>.xml`
   (cerință din 31.08.2026), un singur XML per borderou, chiar dacă borderoul
   conține mai multe date de plată.
-- **Formate nesuportate** (eMAG, header nerecunoscut) sunt raportate explicit și **nu**
-  se marchează ca procesate — se reiau automat când se adaugă maparea.
-- Fișierele temporare Excel (`~$*.xlsx`) sunt ignorate.
-- **Raportul de e-mail** e scris în `<folder>/procesate/ultimul-raport.txt` (suprascris
-  la fiecare rulare) și livrat în `--json` ca `email.subiect` / `email.corp` /
+- **Fișiere nerecunoscute** sunt raportate explicit (doar de `cargus`) și **nu** se
+  marchează ca procesate — se reiau automat. Un fișier al unei surse încă neimplementate
+  așteaptă, nemarcat, până îi vine agentul.
+- Se citesc `.xlsx` și `.csv` (PlatiOnline); fișierele temporare Excel (`~$*`) sunt ignorate.
+- **Raportul de e-mail** e scris în `<folder>/procesate/ultimul-raport.txt` pentru Cargus și
+  `ultimul-raport-<sursa>.txt` pentru celelalte (suprascris la fiecare rulare) și livrat
+  în `--json` ca `email.subiect` / `email.corp` /
   `email.catre`. **Scriptul nu trimite e-mail** — îl trimite skill-ul cu unealta de
   Gmail. Se compune și când niciun rând nu a putut fi legat de o factură: atunci nu
   există XML, dar lista rândurilor sărite e tot ce contează.
@@ -199,6 +246,18 @@ aceeași valută ca borderoul. Deci comparația e directă, în orice valută.
 
 A existat aici o încercare de a converti prin `curs_ref` — **greșită**, ștearsă. Dacă
 reapare tentația: `total` **nu** e în lei pentru o factură în valută.
+
+Verificat pe 11.09.2026: exportul XML de mai sus conține **doar facturile în lei**.
+Facturile în EUR și HUF vin într-un export separat, cu `cod_valuta` și totalul în
+valută ca `val_val` + `tva_val` (HUF la sută de forinți) — vezi `mappings.md`,
+„Exportul de facturi în valută". Singura excepție din exportul în lei e MCS36350
+(`curs_ref` 5,2374): o comandă Skroutz de 9,66 EUR facturată în lei.
+
+Scriptul citește toate exporturile `.xml` și `.xlsx` din folder (un `.xls` e raportat ca
+necitit, dacă nu are lângă el aceeași formă citibilă), le indexează o dată pe toate și o
+dată pe valută, iar un borderou se leagă **doar de facturile în valuta folderului lui**
+(`facturi_in()`). Verificat: cu exportul în valută adăugat în folder, XML-ul Cargus din
+iulie iese identic; raportul primește doar rândul „pe valute: EUR 221, HUF 96, RON 1788".
 
 - **Cheia: `RefExp1` = `inf_suplm`** — 219/219 pe borderoul de referință. `nr_iesire`
   e unic (1788/1788), `inf_suplm` **nu** e (153 duplicate, tipic factură + storno).
@@ -252,8 +311,9 @@ totuși numele borderoului (din 31.08.2026 cu spațiile înlocuite de `_`), la c
 
 ## Maparea Excel → XML
 
-Sursa de adevăr e **`mappings.md`**, care acoperă ambele formate în detaliu, cu exemple.
-Rezumat pentru orientare:
+Sursa de adevăr e **`mappings.md`**, care acoperă toate cele șase surse în detaliu, cu
+exemple, cifrele de potrivire cu facturile și deciziile comune din 11.09.2026. Rezumat
+pentru orientare:
 
 ### Cargus / Packeta (folderul `borderouri/ron`) — cel folosit azi
 
@@ -274,51 +334,67 @@ schema veche, rândul 2 are numele reale); datele încep de la rândul 3.
 `Awb`, `Data tur`, `Livrata`, `Numar`, `Numar OP`, `Beneficiar plata`, `RefExp2`,
 `RefFact` nu intră în XML.
 
-Anomalii semnalate automat: `RefExp1` cu lungime diferită de tiparul dominant, `RefExp1`
-duplicat, sumă ≤ 0, și rânduri **sărite** (lipsă `Data OP` / `Suma` / `Destinatar` /
-`RefExp1`) — cu numărul rândului din Excel și cât lipsește din total.
+Anomalii semnalate automat: `RefExp1` duplicat, sumă ≤ 0, factură stinsă deja prin alt
+borderou, și rânduri **sărite** (lipsă `Data OP` / `Suma` / `Destinatar` / `RefExp1`) —
+cu numărul rândului din Excel și cât lipsește din total. `RefExp1` cu lungime diferită de
+tiparul dominant se semnalează doar la `--fara-facturi`.
 
-### eMAG — documentat, neimplementat
+### Celelalte cinci surse — mapate, neimplementate
 
-Tabele complete în `mappings.md`. Pe scurt: `Data` ← `Order finalization date`,
-`Numar`/`FacturaID` ← `Order ID`, `Suma` ← `Fraction value`, `Explicatie` ←
-`Incasare ramburs client - <Client name>`. Singura logică per valută e `Cont`, `Moneda`
-și **factorul HUF: `Suma` = `Fraction value` / 100** (împărțit, nu înmulțit — confirmat
-de utilizator pe 15.08.2026, înlocuiește notele contradictorii anterioare).
+Tabele complete în `mappings.md`. Deciziile comune (11.09.2026): `Data` = data virării
+unde există (eMAG `Payout date`), altfel data din rândul 1; `Numar`/`FacturaID` =
+numărul comenzii; `Suma` de pe factură; linie negativă pe factura de storno; eMAG o
+linie pe comandă (fracțiunile adunate); nume grecești/chirilice transliterate.
+**Factorul HUF: `Suma` = `Fraction value` / 100** (confirmat de utilizator pe
+15.08.2026 și, pe 11.09.2026, pe facturile HUF: Saga ține HUF la sută de forinți).
 
 Câmpurile vechi `DEN_PARTENER`, `CURS`, `SUMA_VALUTA` nu au tag în formatul nou: numele
 cumpărătorului intră în `Explicatie`, iar cursul/suma în valută sunt acoperite de `Suma`
 (în valuta folderului) + `Moneda`.
+
+Facturile în valută vin într-un **export separat**, cu alte coloane (`cod_valuta`,
+`val_val`, `tva_val`, fără `total`) — vezi `mappings.md`, „Exportul de facturi în
+valută". Scriptul îl citește ca `.xlsx` (sau XML); un `.xls` e raportat ca necitit.
 
 ## Stare curentă / next steps
 
 1. **Cargus / Packeta — automatizat**, cu `FacturaNumar` completat din `facturi/`:
    `borderouri/ron/procesate/Cargus_Packeta_Iulie_2026.xml` — 219 linii, 26.570,21 RON,
    toate legate de factură. **De testat importul în Saga.**
-2. **eMAG — neimplementat.** `I_30.03.2026.xml` (o linie, formatul corect `<Linie>`)
-   rămâne exemplul de testat la import.
-3. **De confirmat la primul import** (detaliat în `mappings.md`, secțiunea
+2. **Refactorizare pe surse (11.09.2026) — gata**, verificată pe borderoul de referință
+   (XML identic la byte). Scriptul recunoaște toate cele șase surse, citește `.csv`,
+   ține jurnal și raport pe sursă, nu stinge o factură de două ori și ia valuta din
+   numele folderului. Doar profilul `cargus` e implementat.
+3. **Următoarele profiluri** (ordinea din plan): eMAG + PlatiOnline (pe cheie), apoi
+   Sameday + Trendyol + Skroutz (nume + sumă + dată, transliterare „greeklish").
+   Cititorul de facturi acceptă deja exportul în valută (`facturi-valuta.xlsx`, 11.09.2026)
+   și leagă fiecare borderou doar de facturile în valuta folderului lui.
+4. **Un agent pe sursă (11.09.2026):** câte un task programat pentru fiecare sursă, după
+   modelul „Procesare borderou cargus", la 30 de minute unul de altul pe 5 ale lunii;
+   task-ul de reminder de pe 1 ale lunii creează, pe lângă cardul de facturi, câte un
+   card „Adauga borderoul <sursă> in Drive" pentru Paula. Fiecare task pornește doar cu
+   cardul de facturi **și** cardul lui în `Done`; altfel trimite reminder doar despre
+   borderoul lui. Cardurile și task-urile se adaugă odată cu fiecare profil. Pentru
+   verificarea dublei stingeri, task-urile trebuie să stage-uiască **toate**
+   `procesate/.procesate*.json`, nu doar jurnalul lor.
+5. **De confirmat la primul import** (detaliat în `mappings.md`, secțiunea
    „De confirmat la primul import", și în `SKILL.md`):
    - numele fișierului fără prefixul `I_` — **prima cauză de verificat dacă importul e refuzat**;
-   - `Data` = `Data OP` (ales, se potrivește cu extrasul) vs `Livrata` (indicat de harta
-     din rândul 1 al borderoului);
    - `FacturaID` = `RefExp1` — util doar dacă facturile sunt importate cu același ID;
    - diacriticele în Saga după import UTF-8;
    - **totalul XML e cu 0,95 RON mai mare decât borderoul** (suma vine de pe factură);
      de confirmat că reconcilierea cu extrasul de cont nu se supără;
-   - două valori `RefExp1` atipice în borderoul din iulie (`9822`, `26540717`) — probabil
-     greșeli de tastare, de corectat la sursă;
-   - ce se întâmplă cu refund-urile / sumele negative (nu apar încă la Cargus);
+   - liniile negative, pe factura de storno (eMAG, Trendyol, Skroutz, PlatiOnline);
    - **cele 3 `RefExp1` cu factură de storno** (47356, 47364, 47170): banii au fost
      încasați, dar factura e stornată — se importă încasarea pe factura inițială?
    - **diferențele de 0,08 și 0,02** (rândurile 12 și 123) — restul sunt de 0,01.
-4. **EUR** — skill-ul e azi doar pe RON, la cerere. Când apare primul
-   borderou EUR: `--set-folder borderouri/eur --moneda EUR` și atât — maparea nu are
-   nevoie de cod nou, fiindcă `total` e deja în valuta facturii. **HUF: ignorat
-   deocamdată** (factorul de 100 rămâne documentat doar pentru eMAG, în `mappings.md`).
-5. **Facturile eMAG nu au `inf_suplm`** — 58 din 1788 (`V-MKTP-*`, `H-MKTP-*` de la
-   DANTE INTERNATIONAL SA, plus 38 `MCSCOD*` de B2B). Când se implementează eMAG, cheia
-   va trebui să fie alta decât `RefExp1`; de stabilit ce leagă `Order ID` de `nr_iesire`.
+   - rezolvat pe 11.09.2026: `RefExp1` `9822` și `26540717` **nu** sunt greșeli de
+     tastare — sunt `inf_suplm` reale (MCS36218, MCS36251); 98xx e a doua serie de comenzi.
+6. **Cheile facturilor, verificate pe 11.09.2026.** Din cele 58 de facturi fără
+   `inf_suplm` din exportul în lei, niciuna nu e de eMAG client: 8 sunt `V-MKTP-*` /
+   `H-MKTP-*` către DANTE INTERNATIONAL SA (eMAG ca partener), 38 `MCSCOD*` (B2B,
+   plătite prin PlatiOnline) și 12 `MCS`. Comenzile eMAG RO **au** `inf_suplm` = `Order ID`
+   (seria de 9 cifre, 51/51); eMAG BG/HU și Skroutz au cheia pe facturile în valută.
 6. **Windows (03.09.2026) — de testat pe PC-ul de lucru**, din fila Code:
    `py -3 … --arata-config` (prima linie arată versiunea de Python și sistemul),
    configurarea prin `references/configurare.md`, `--dry-run`, o rulare reală (XML UTF-8 cu

@@ -23,11 +23,15 @@ valoarea **de pe factură**, ca factura să se stingă exact. Un rând care nu p
 legat sigur de o factură **nu intră în XML** — ajunge în raportul trimis pe e-mail,
 ca să fie verificat manual.
 
-Structura de lucru: **valuta e dată de folder, sursa nu are folder**. Cargus și eMAG
-stau împreună; formatul se recunoaște după coloane.
+Structura de lucru: **valuta e dată de folder, sursa nu are folder**. Borderourile
+tuturor surselor (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) stau împreună
+în folderul valutei lor; formatul se recunoaște după coloane. **O rulare procesează o
+singură sursă** — `--sursa`, implicit `cargus`, singura implementată azi — și le lasă
+neatinse pe celelalte: fiecare sursă e un agent separat, cu task-ul, jurnalul și raportul
+ei.
 
 ```
-borderouri/ron/  .xlsx  +  procesate/      facturi/  exporturile XML din Saga
+borderouri/ron/  .xlsx / .csv  +  procesate/      facturi/  exporturile XML din Saga
 ```
 
 **Azi e configurat doar RON.** O altă valută se adaugă cu o singură comandă
@@ -101,8 +105,9 @@ Configul stă la `~/.claude/incasari-saga/config.json` — pe Windows
 sute de rânduri; scriptul e determinist, XML-ul scris de model nu e. La fel, **nu
 edita `.procesate.json`** direct — îl gestionează scriptul.
 
-Rolul tău: rulezi scriptul, rezumi raportul în chat (în română), îl trimiți pe email și
-ții la zi cardul rulării în board-ul Notion (pasul 3).
+Rolul tău: rulezi scriptul, rezumi raportul în chat (în română), îl trimiți pe email,
+închizi cardul rulării în board-ul Notion și predai verificarea Paulei, pe Board Echipă
+(pasul 3).
 
 ## Flux
 
@@ -141,49 +146,57 @@ se scrie niciun XML, dar lista rândurilor sărite e exact ce trebuie verificat.
 Dacă `email.neconfigurat` e `true`, sau uneltele Gmail lipsesc din sesiune, vezi
 `references/configurare.md`.
 
-### 3. Ține la zi cardul din board-ul Notion
+### 3. Închide cardul rulării și predă verificarea
 
-Fiecare rulare are un card în board-ul **AI Agent overview** din Notion. Acolo se vede că
-rularea a avut loc și ce a mai rămas de făcut — mai ales când rularea e programată și nu
-o urmărește nimeni în direct.
+Fiecare rulare lasă urmă în două boarduri Notion, legate între ele prin **ID-ul rulării**:
 
 ```
-Board:       https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f
-Data source: aa9a26d8-67fc-47d2-acf0-0460d8bc9abf
+AI Agent overview   https://app.notion.com/p/6ab8018a469d4f18abda5e239cf4932f
+                    data source aa9a26d8-67fc-47d2-acf0-0460d8bc9abf
+Board Echipă        https://app.notion.com/p/257459732c16428cb19a6f6b880dfa44
+                    data source 6ac9dfdd-5891-4194-a5f5-a2cebd9ff908
 ```
+
+**AI Agent overview** e istoricul agenților: ce a rulat, când, cu ce rezultat. **Board
+Echipă** e lista de lucru a oamenilor. Împărțirea e simplă: agentul își închide singur
+cardul de rulare, pentru că el chiar a terminat, și deschide în schimb o sarcină pe Board
+Echipă pentru omul care verifică. Așa boardul de agenți nu se umple de carduri care
+așteaptă un om, iar omul nu trebuie să se uite în două locuri.
+
+**ID-ul rulării** e `INC-<an>-<luna, două cifre>` — `INC-2026-07` pentru borderourile din
+iulie 2026. Apare pe ambele carduri și e singurul lucru care le leagă; nu-l inventa altfel.
 
 **Dacă uneltele Notion lipsesc din sesiune, nu te opri și nu cere activarea conectorului.**
-Procesarea, XML-ul și emailul sunt independente de board. Spui la final, într-o
-propoziție, în ce fază ar fi trebuit să ajungă cardul, și mergi mai departe.
+Procesarea, XML-ul și emailul sunt independente de boarduri. Spui la final, într-o
+propoziție, ce carduri ar fi trebuit create, și mergi mai departe.
 
-**La început**, imediat ce știi că ai borderouri noi de procesat, creează cardul:
-
-| Proprietate | Valoare |
-|---|---|
-| `Rulare` | `Încasări — <luna> <anul>` (ex. `Încasări — septembrie 2026`) |
-| `Agent` | `Încasări Cargus/Packeta` |
-| `Fază` | `În lucru` |
-| `Perioadă` | luna acoperită de borderouri |
-| `Declanșat` | data și ora de acum |
-| `Declanșare` | `Automat (programat)` dintr-un routine, altfel `Manual` |
+#### Cardul rulării, pe AI Agent overview
 
 Caută întâi în data source după `Perioadă`: dacă există deja un card pentru aceeași lună,
 refolosește-l în loc să faci al doilea.
 
-**La final**, după ce raportul pe email a plecat, mută cardul într-una din trei faze:
+| Proprietate | Valoare |
+|---|---|
+| `Rulare` | `Încasări — <luna> <anul>` (ex. `Încasări — septembrie 2026`) |
+| `ID rulare` | `INC-<an>-<lună>` (ex. `INC-2026-07`) |
+| `Agent` | `Agent Borderou Cargus` — etichetă albastră |
+| `Perioadă` | luna acoperită de borderouri |
+| `Declanșat` | ora la care a pornit rularea |
+| `Declanșare` | `Automat (programat)` dintr-un routine, altfel `Manual` |
+| `Rezultat` | rezumat de o linie: `219 linii, 26.570,21 RON, 0 rânduri sărite, 13 avertismente` |
+| `Responsabil` | **gol** — verificarea stă pe cardul de pe Board Echipă |
 
-| Ce s-a întâmplat | `Fază` | `Pas manual rămas` |
-|---|---|---|
-| S-a scris XML, cu sau fără avertismente | `De verificat` | `Verifică totalurile și rândurile sărite, apoi importă XML-ul în Saga` |
-| Toate rândurile sărite, niciun XML | `Blocat / Necesită input` | ce lipsește concret (un export de facturi, un borderou corectat…) |
-| Cod de ieșire 1 sau 2 | `Blocat / Necesită input` | ce trebuie reparat sau configurat |
+`Fază` se pune la final, după ce a plecat raportul pe email:
 
-`Rezultat` primește un rezumat de o linie: `219 linii, 26.570,21 RON, 0 rânduri sărite,
-15 avertismente`.
+| Ce s-a întâmplat | `Fază` | `Finalizat` | `Pas manual rămas` |
+|---|---|---|---|
+| S-a scris XML, cu sau fără avertismente | `Done` | ora de acum | `Verificarea e la Paula, pe Board Echipă (card <ID>)` |
+| Toate rândurile sărite, niciun XML | `Blocat / Necesită input` | gol | ce lipsește concret (un export de facturi, un borderou corectat…) |
+| Cod de ieșire 1 sau 2 | `Blocat / Necesită input` | gol | ce trebuie reparat sau configurat |
 
-**Nu muta niciodată cardul în `De aplicat` sau `Done`.** Cele două faze înseamnă „omul a
-verificat" și „omul a importat"; le mută utilizatorul. Un agent care își închide singur
-cardul face board-ul inutil.
+`Done` aici înseamnă „agentul a terminat", nu „încasările sunt în Saga" — aia se vede pe
+Board Echipă. O rulare blocată **rămâne** în `Blocat / Necesită input` și nu primește card
+de verificare: n-are ce verifica nimeni încă.
 
 **În corpul cardului scrie jurnalul rulării, în română**, ca peste o lună să se înțeleagă
 ce s-a întâmplat fără să caute nimeni raportul de email:
@@ -202,18 +215,43 @@ Total pe zile: 7.178,35 / 6.334,85 / 6.951,57 / 6.105,44 RON.
 87 de linii au luat suma de pe factură (+0,95 RON față de borderou).
 
 ## De verificat
-- 15 avertismente: 8 de nume, 3 de storno, 2 de sumă, 2 de lungime RefExp1
+- 13 avertismente: 8 de nume, 3 de storno, 2 de sumă
 - rânduri sărite: niciunul
 
 ## Raport
 Trimis la 08:04 către alfin.consult.ai@gmail.com.
+
+## Predare
+Verificarea și importul sunt la Paula: <link către cardul de pe Board Echipă>, termen 10.09.2026.
 ```
 
 Scrie doar ce s-a întâmplat efectiv: fără secțiuni goale, fără cifre inventate. Dacă
-rularea s-a oprit, jurnalul spune unde și de ce — asta e tot rostul lui.
+rularea s-a oprit, jurnalul spune unde și de ce — asta e tot rostul lui, iar secțiunea
+„Predare" lipsește, pentru că n-ai ce preda.
 
-**Când nu e nimic nou de procesat, nu crea niciun card.** O lună fără borderouri noi nu
-e o rulare.
+#### Sarcina de verificare, pe Board Echipă
+
+Se creează **doar când s-a scris XML**. Dacă există deja un card cu același ID în titlu,
+actualizează-l în loc să faci al doilea.
+
+| Proprietate | Valoare |
+|---|---|
+| `Task` | `<ID> · Verifică încasările <luna> <anul> și importă-le în Saga` |
+| `Responsabil` | `Paula` — etichetă albastră; ea dă și coloana în care apare cardul |
+| `Termen` | peste 5 zile |
+| `Note` | același rezumat de o linie ca `Rezultat` |
+
+În corpul cardului: link către cardul rulării, calea completă a XML-ului în Drive, cifrele
+(total, pe zile, câte linii au luat suma de pe factură), lista avertismentelor și a
+rândurilor sărite, și cei trei pași — verifică, importă în Saga (`Import documente →
+Încasări`), mută cardul în coloana `Done`.
+
+**Nu muta niciodată cardul Paulei în `Done`.** Coloana aia înseamnă „omul a importat"; o
+mută ea. Un agent care închide singur sarcina pe care tocmai a dat-o unui om face boardul
+inutil.
+
+**Când nu e nimic nou de procesat, nu crea niciun card** — nici pe un board, nici pe
+celălalt. O lună fără borderouri noi nu e o rulare.
 
 ### 4. Configurare lipsă sau de schimbat
 
@@ -231,7 +269,8 @@ propuse, e acolo.
 |---|---|
 | `--dry-run` | arată ce s-ar întâmpla, nu scrie nimic |
 | `--reproceseaza "<nume.xlsx>"` | borderoul a fost corectat și trebuie regenerat |
-| `--folder <cale>` | o rulare punctuală pe alt folder, fără să atingi configul |
+| `--sursa <sursa>` | altă sursă decât `cargus`; o sursă încă neimplementată iese cu codul 1 |
+| `--folder <cale>` | o rulare punctuală pe alt folder, fără să atingi configul; se poate repeta, valuta vine din numele folderului (`ron`/`eur`/`huf`) dacă lipsește `--moneda` |
 | `--facturi <cale>` | alt folder de facturi, doar pentru rularea asta |
 | `--fara-facturi` | nu lega facturile: `FacturaNumar` rămâne gol și nimic nu se sare |
 | `--arata-config` | arată configurarea curentă |
@@ -278,8 +317,12 @@ Coloanele `Awb`, `Data tur`, `Livrata`, `Numar`, `Numar OP`, `Beneficiar plata`,
 
 ## Cum se găsește factura
 
-Folderul de facturi conține exportul XML din Saga (`<VFPData><c_xml>`, de obicei
-Windows-1252). Câmpurile folosite: `nr_iesire`, `denumire`, `total`, `inf_suplm`.
+Folderul de facturi conține exporturile din Saga: facturile în lei ca XML
+(`<VFPData><c_xml>`, de obicei Windows-1252) și facturile în valută ca `.xlsx` (sau XML),
+cu `cod_valuta` și totalul ca `val_val` + `tva_val`. Câmpurile folosite: `nr_iesire`,
+`denumire`, `total` (sau `val_val` + `tva_val`), `inf_suplm`, `cod_valuta`. Un borderou se
+leagă doar de facturile în valuta folderului lui. Un `.xls` nu se poate citi — dacă apare
+în raport ca „fișier de facturi necitit", cere-i utilizatorului să-l salveze ca `.xlsx`.
 
 1. **Cheia e `RefExp1` = `inf_suplm`.** Pe borderoul de referință se potrivește 219/219.
 2. **Totalul confirmă.** Diferențele până la 0,01 lei sunt rotunjiri normale și trec
@@ -297,30 +340,34 @@ Windows-1252). Câmpurile folosite: `nr_iesire`, `denumire`, `total`, `inf_suplm
    nume + total. Reușita e semnalată ca avertisment, ca să fie verificată.
 
 Un rând ajunge **sărit** (nu intră în XML, apare în raport) când: nu există nicio
-factură nici pe `RefExp1`, nici pe nume; totalul nu confirmă niciuna; sau rămân mai
-multe facturi la fel de plauzibile.
+factură nici pe `RefExp1`, nici pe nume; totalul nu confirmă niciuna; rămân mai
+multe facturi la fel de plauzibile; sau factura a fost **deja stinsă** printr-un alt
+borderou, al oricărei surse. Jurnalul fiecărei surse ține facturile stinse, iar fiecare
+rulare le citește pe toate — o factură se stinge o singură dată, chiar dacă un borderou
+corectat e pus sub alt nume (pentru corecturi: `--reproceseaza` pe numele vechi).
 
 ## Ce e suportat și ce nu
 
 Suportat: borderouri **Cargus / Packeta în RON**, recunoscute după coloanele `Awb`
 și `Destinatar`.
 
-Nesuportat, raportat explicit și **fără** a fi marcat ca procesat (deci se reia
-automat după ce adaugi maparea):
+Recunoscute, dar lăsate agentului lor: borderourile **eMAG, Sameday, Trendyol, Skroutz
+și PlatiOnline** (`.csv`). Rularea Cargus nu le atinge, nu le marchează și nu le trece
+în e-mail; apar doar în rezumatul din chat, ca „lăsate altor agenți". Maparea lor e în
+`mappings.md`; profilurile se implementează pe rând.
 
-- **borderouri eMAG** — alt format cu totul (`Order ID`, `Fraction value`,
-  `Client name`); maparea lor e în `mappings.md`, dar nu e implementată aici;
-- orice fișier fără header recunoscut.
+Nerecunoscut, raportat explicit (o singură dată, de rularea Cargus) și **fără** a fi
+marcat ca procesat, deci se reia automat: orice fișier care nu se potrivește cu niciun
+format sau nu se poate citi.
 
-**Alte valute:** azi e configurat doar RON. Se adaugă cu `--set-folder <cale>
---moneda EUR` (cont `5126`) și nu au nevoie de cod nou: `total` de pe factură e deja
-în valuta facturii. **HUF e ignorat deocamdată** — factorul de 100 din `mappings.md`
-e documentat doar pentru eMAG, nu pentru Cargus.
+**Alte valute:** azi e configurat doar RON. Folderele `eur` și `huf` se adaugă când
+intră în lucru sursele lor (eMAG BG/HU, Skroutz), cu `--set-folder <cale>` — valuta vine
+din numele folderului, contul `5126` îl pune scriptul.
 
 ## Anomalii pe care le semnalează scriptul
 
-- `RefExp1` cu altă lungime decât tiparul dominant (posibil greșeală de tastare);
 - `RefExp1` duplicat între rânduri;
+- factură deja stinsă prin alt borderou (rândul e sărit);
 - sumă ≤ 0;
 - rânduri **sărite** — lipsește `Data OP`, `Suma`, `Destinatar` sau `RefExp1`, suma nu
   se poate interpreta, ori nu s-a găsit o factură sigură. Raportul spune numărul
@@ -331,7 +378,10 @@ e documentat doar pentru eMAG, nu pentru Cargus.
   spune ce perioadă acoperă exporturile și că probabil lipsește unul. Atunci: aduci
   exportul și rulezi `--reproceseaza` pe borderoul respectiv;
 - factura găsită doar după nume, nume diferit față de factură, sumă diferită de total
-  cu mai mult de 0,01, `RefExp1` care are și factură de storno.
+  cu mai mult de 0,01, `RefExp1` care are și factură de storno;
+- doar la `--fara-facturi`: `RefExp1` cu altă lungime decât tiparul dominant. Cu facturi
+  legate, factura confirmă cheia — `9822` și `26540717`, semnalate înainte, sunt comenzi
+  reale.
 
 Avertismentele nu opresc generarea: XML-ul se scrie oricum, cu rândurile bune.
 
@@ -341,6 +391,7 @@ Avertismentele nu opresc generarea: XML-ul se scrie oricum, cu rândurile bune.
    obligatoriu ca Saga să trateze fișierul ca import de încasări. S-a ales numele
    borderoului. **Dacă importul în Saga e refuzat, asta e prima cauză de verificat.**
 2. **`Data` = `Data OP`** (data virării banilor). Rândul 1 din borderou, pus de
-   contabil, indica `Livrata` (data livrării). De confirmat ce dată vrea în contabilitate.
+   contabil, indica `Livrata` (data livrării); decizia din 11.09.2026 — data virării
+   unde borderoul o are, pentru toate sursele — menține `Data OP`.
 3. **`FacturaID` = `RefExp1`** — util doar dacă facturile sunt importate cu același ID.
 4. **Diacriticele** din nume — de verificat cum le afișează Saga după import.
