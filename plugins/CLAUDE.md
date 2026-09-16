@@ -65,9 +65,10 @@ Sursă frecventă de confuzie:
 | Invocare rulare | — | `/monitorizare-legislativa:monitorizare-stiri-conta` |
 | Invocare configurare | — | `/monitorizare-legislativa:initial-config-monitorizare-stiri-conta` |
 | Nume plugin 2 | `incasari-saga/.claude-plugin/plugin.json` | `incasari-saga` |
-| Nume skill 2 | folderul + frontmatter | `incasari-cargus` |
+| Nume skill 2 | folderul + frontmatter | `incasari-cargus` (fluxul complet) |
+| Skill-uri subțiri 2 | folderul + frontmatter | `incasari-emag`, `incasari-sameday`, `incasari-trendyol`, `incasari-skroutz`, `incasari-plationline` |
 | Instalare 2 | — | `incasari-saga@alfin-consult` |
-| Invocare 2 | — | `/incasari-saga:incasari-cargus` |
+| Invocare 2 | — | `/incasari-saga:incasari-cargus`, `/incasari-saga:incasari-emag` etc. |
 | Configurare 2 | fișier de referință | `incasari-cargus/references/configurare.md` |
 
 ## Protocol de release
@@ -79,6 +80,13 @@ Sursă frecventă de confuzie:
 **Niciodată `version` în intrările din `marketplace.json`.** Documentația oficială interzice dublarea — „Avoid setting `version` in both `plugin.json` and the marketplace entry. Claude Code always uses the `plugin.json` value without warning" — iar când am avut-o, cele două valori au divergat în aceeași zi. `claude plugin validate ./` prinde nepotrivirea; rulează-l înainte de push.
 
 Alternativa fără `version` (versiunea = SHA-ul commit-ului, push = release) e și ea validă oficial și a fost folosită temporar; dacă bump-ul devine o povară, e calea de simplificare.
+
+Sincronizarea copiei de lucru copiază **toate** skill-urile plugin-ului, nu doar
+`incasari-cargus` (din 16.09.2026 sunt șase):
+
+```powershell
+Copy-Item -Recurse -Force ".\plugins\incasari-saga\skills\*" ".\incasari\.claude\skills\"
+```
 
 Push pe `origin` (`github.com:adrianbarna/alfinRepo`) — sursa de adevăr, singurul remote rămas. **Din 05.09.2026 remote-urile sunt curățate**: vechiul GitHub și GitLab-ul au fost scoase, iar rădăcina git s-a mutat cu un nivel mai sus, la `alfinRepo/`. Notele mai vechi despre un remote numit `github` și despre un `origin` GitLab care respinge push-ul nu mai sunt valabile. Două sesiuni Claude lucrează uneori simultan pe acest repo — fă `git pull --rebase origin main` înainte de push.
 
@@ -109,6 +117,7 @@ Când modifici un comportament, verifică dacă e descris în mai multe locuri. 
 
 - `incasari-saga/skills/incasari-cargus/SKILL.md` — fluxul conversațional de procesare.
 - `incasari-saga/skills/incasari-cargus/references/configurare.md` — fluxul de configurare: prima rulare pe o mașină nouă și orice schimbare de căi/adrese. Citit **doar** la cod de ieșire 2 sau la cerere explicită, ca rularea normală să nu-l încarce. Din 05.09.2026 e un fișier de referință, nu un skill separat: comenzile `--set-*` erau descrise și acolo, și în pașii 1/1b din SKILL.md, exact tiparul care produce contradicții.
+- `incasari-saga/skills/incasari-<sursa>/SKILL.md` (16.09.2026) — cinci **învelișuri subțiri**, unul pe sursă (`emag`, `sameday`, `trendyol`, `skroutz`, `plationline`), de ~50 de rânduri fiecare: fixează `--sursa`, numele jurnalului și al raportului, eticheta agentului și ID-ul rulării, apoi trimit imperativ la `incasari-cargus/SKILL.md`. Rostul lor e să apară în listă și să poată fi pornite pe nume; **fluxul rămâne într-un singur loc**. Când schimbi fluxul, nu-l copia în ele.
 - `incasari-saga/skills/incasari-cargus/references/mappings.md` — **sursa de adevăr pentru mapări**: câte o secțiune pe sursă (Cargus, eMAG, Sameday, Trendyol/Skroutz, PlatiOnline), deciziile comune și cifrele de potrivire cu facturile. Stă în skill, nu în `incasari/`, ca să plece odată cu plugin-ul — SKILL.md trimite la el (mutat acolo pe 16.09.2026; înainte era `incasari/mappings.md` și lipsea din instalarea de plugin).
 - `incasari-saga/skills/incasari-cargus/scripts/proceseaza.py` — toată logica. Fără dependințe externe: `.xlsx` e citit direct cu `zipfile` + `ElementTree`, ca să meargă pe orice PC cu Python 3 (`python3` pe macOS/Linux, `py -3` sau `python` pe Windows; fără Python nu merge nimic și nu se instalează automat).
 - **Configurația nu stă în plugin.** Se scrie în `~/.claude/incasari-saga/config.json`, pentru că folderul plugin-ului e rescris la fiecare actualizare. Poate fi mutată cu variabila de mediu `INCASARI_CONFIG`. **Plugin-ul se livrează fără căi setate** (decizia din 26.08.2026): pe o mașină nouă, configurarea o face `references/configurare.md`, care propune căile ALFIN din Google Drive (Mirror) ca valori de confirmat.

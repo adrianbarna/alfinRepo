@@ -36,9 +36,11 @@ poată fi versionat doar ce nu conține date de client:
 
 ```
 alfinRepo/incasari/   ← AICI. În git, fără date de client.
-  .claude/skills/incasari-cargus/          skill-ul de procesare
+  .claude/skills/incasari-cargus/          fluxul de procesare, pentru toate sursele
     references/configurare.md              fluxul de configurare (citit la nevoie)
     references/mappings.md                 maparea fiecărei surse (sursa de adevăr)
+  .claude/skills/incasari-<sursa>/         cinci învelișuri subțiri: emag, sameday,
+                                           trendyol, skroutz, plationline
   CLAUDE.md
 
 ~/.claude/incasari-saga/config.json        ← Configul. Per mașină, nu se livrează.
@@ -145,7 +147,7 @@ Refactorizarea pe surse (11.09.2026) a fost verificată pe acest borderou: XML-u
 
 ## Arhitectură
 
-Un singur skill, `incasari-cargus`, cu un script care tratează **câte un folder per valută**
+Un singur flux, în skill-ul `incasari-cargus`, cu un script care tratează **câte un folder per valută**
 și **câte o sursă per rulare** (`--sursa`, implicit `cargus`). Valuta se determină din
 **folderul** în care se află borderoul, nu din conținut:
 

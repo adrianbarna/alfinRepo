@@ -67,7 +67,10 @@ borderouri/ron/   .xlsx / .csv  +  procesate/        facturi/   exporturile XML 
 ```
 
 Fiecare sursă de borderouri (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) e
-un agent separat, cu task-ul lui programat; o rulare procesează doar sursa ei și le lasă
+un agent separat, cu task-ul lui programat și cu skill-ul lui în listă
+(`/incasari-saga:incasari-emag`, `…-sameday`, `…-trendyol`, `…-skroutz`,
+`…-plationline`); fluxul e scris o singură dată, în `incasari-cargus`. O rulare
+procesează doar sursa ei și le lasă
 neatinse pe celelalte. Toate șase sunt implementate; cum se leagă factura la fiecare e în
 [SKILL.md](skills/incasari-cargus/SKILL.md), pe scurt, și în
 [references/mappings.md](skills/incasari-cargus/references/mappings.md), în detaliu.

@@ -17,7 +17,11 @@ description: >
 # Borderouri de încasări → XML Saga
 
 Numele skill-ului a rămas `incasari-cargus` (task-urile programate îl caută după el), dar
-acoperă toate cele șase surse.
+**aici stă fluxul pentru toate cele șase surse**. Fiecare din celelalte cinci are un skill
+subțire — `incasari-emag`, `incasari-sameday`, `incasari-trendyol`, `incasari-skroutz`,
+`incasari-plationline` — care nu face decât să fixeze sursa și să trimită aici. Dacă ai
+ajuns dintr-unul din ele, sursa vine de acolo; altfel e `cargus`. Când schimbi fluxul, îl
+schimbi **doar în fișierul ăsta**.
 
 Toată conversia trece prin `scripts/proceseaza.py`, care vine împreună cu acest
 SKILL.md (vezi „Cum rulezi scriptul").
@@ -31,8 +35,7 @@ ca să fie verificat manual.
 Structura de lucru: **valuta e dată de folder, sursa nu are folder**. Borderourile
 tuturor surselor (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) stau împreună
 în folderul valutei lor; formatul se recunoaște după coloane. **O rulare procesează o
-singură sursă** — `--sursa`, implicit `cargus`, singura implementată azi — și le lasă
-neatinse pe celelalte: fiecare sursă e un agent separat, cu task-ul, jurnalul și raportul
+singură sursă** — `--sursa`, implicit `cargus` — și le lasă neatinse pe celelalte: fiecare sursă e un agent separat, cu task-ul, jurnalul și raportul
 ei. Sursele: `cargus` (implicit), `emag`, `sameday`, `trendyol`, `skroutz`, `plationline`.
 
 ```

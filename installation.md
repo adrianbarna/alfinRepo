@@ -322,6 +322,10 @@ Clonarea reușise deja, iar eroarea vine de la curățarea folderului, ținut oc
 antivirus sau de o sesiune Claude care tocmai îl citea. A doua încercare trece. Nu șterge
 folderul de mână și nu reinstala nimic.
 
+`incasari-saga` aduce șase skill-uri: `incasari-cargus` (fluxul complet, pentru toate
+sursele) și câte unul subțire pe sursă — `incasari-emag`, `incasari-sameday`,
+`incasari-trendyol`, `incasari-skroutz`, `incasari-plationline`.
+
 Un skill nou instalat **nu apare în sesiunile deja deschise** — pluginurile se citesc la
 pornirea sesiunii. După instalare, deschide o sesiune nouă (sau `/reload-plugins`).
 
