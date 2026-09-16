@@ -69,7 +69,8 @@ borderouri/ron/   .xlsx / .csv  +  procesate/        facturi/   exporturile XML 
 Fiecare sursă de borderouri (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) e
 un agent separat, cu task-ul lui programat; o rulare procesează doar sursa ei și le lasă
 neatinse pe celelalte. Toate șase sunt implementate; cum se leagă factura la fiecare e în
-`mappings.md` și în SKILL.md.
+[SKILL.md](skills/incasari-cargus/SKILL.md), pe scurt, și în
+[references/mappings.md](skills/incasari-cargus/references/mappings.md), în detaliu.
 
 RON merge pe contul 5125, orice altă valută pe 5126. Momentan e configurat doar RON;
 o valută nouă se adaugă spunând asistentului unde stau borderourile ei.

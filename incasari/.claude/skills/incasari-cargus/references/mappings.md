@@ -1,5 +1,9 @@
 # Mapare borderouri → XML import Saga „Încasări"
 
+> Fișierul stă în skill (`references/mappings.md`), ca să plece odată cu plugin-ul, și
+> e **sursa de adevăr** pentru mapări. Din 16.09.2026 nu mai există o a doua copie în
+> `incasari/`: copia de lucru vine din sincronizarea skill-ului.
+
 > **Șase surse, cinci formate** (decizia din 11.09.2026). Fiecare sursă e un agent
 > separat, cu task-ul lui programat, jurnalul lui și raportul lui; codul e unul singur,
 > `proceseaza.py`, cu câte un *profil* pe format. Formatul se recunoaște după coloane,

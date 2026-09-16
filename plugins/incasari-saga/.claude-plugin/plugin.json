@@ -1,7 +1,7 @@
 {
   "name": "incasari-saga",
   "description": "Transformă borderourile de încasări — Cargus / Packeta, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline (.xlsx / .csv) — în fișiere XML de import pentru programul de contabilitate Saga (Import documente → Încasări). Leagă fiecare încasare de factura ei din exportul de facturi, verificând numărul de expediție, numele și totalul, și trimite pe email raportul cu rândurile care au nevoie de verificare manuală.",
-  "version": "2.5.0",
+  "version": "2.5.1",
   "author": {
     "name": "Adrian Barna",
     "email": "alfin.consult.ai@gmail.com"

@@ -313,7 +313,7 @@ Cod de ieșire: `0` = a mers, `2` = configurare lipsă (vezi pasul 4), `1` = ero
 ```
 
 Maparea Cargus (borderoul are header pe două rânduri, datele încep de la rândul 3) e mai
-jos; maparea celorlalte cinci surse e în `mappings.md`, cu aceleași tag-uri XML:
+jos; maparea celorlalte cinci surse e în `references/mappings.md`, cu aceleași tag-uri XML:
 
 | Tag | Sursă | Transformare |
 |---|---|---|
@@ -354,7 +354,7 @@ leagă doar de facturile în valuta folderului lui. Un `.xls` nu se poate citi �
 4. **Rezervă:** dacă `RefExp1` nu duce la o factură confirmată de total, se caută după
    nume + total. Reușita e semnalată ca avertisment, ca să fie verificată.
 
-Celelalte surse caută factura așa (detalii și cifre în `mappings.md`):
+Celelalte surse caută factura așa (detalii și cifre în `references/mappings.md`):
 
 | Sursă | Cum | Particularități |
 |---|---|---|
@@ -414,7 +414,7 @@ Avertismentele nu opresc generarea: XML-ul se scrie oricum, cu rândurile bune.
 
 ## Neconfirmate la import — spune-i utilizatorului dacă apare problema
 
-1. **Numele fișierului fără prefix `I_`** — `mappings.md` susține că prefixul e
+1. **Numele fișierului fără prefix `I_`** — `references/mappings.md` susține că prefixul e
    obligatoriu ca Saga să trateze fișierul ca import de încasări. S-a ales numele
    borderoului. **Dacă importul în Saga e refuzat, asta e prima cauză de verificat.**
 2. **`Data` = `Data OP`** (data virării banilor). Rândul 1 din borderou, pus de

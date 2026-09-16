@@ -921,7 +921,7 @@ def proceseaza_cargus(cale, info, moneda, cont, facturi=None, folosite=None, par
 
 # --------------------------------------------------------------------------
 # Profilurile noi (11.09.2026): eMAG, PlatiOnline, Skroutz, Sameday, Trendyol.
-# Regulile sunt in mappings.md; aici doar cum se aplica.
+# Regulile sunt in references/mappings.md; aici doar cum se aplica.
 # --------------------------------------------------------------------------
 
 FEREASTRA_ZILE = 15   # legare dupa nume: factura la cel mult atatea zile de borderou
@@ -1697,7 +1697,7 @@ def main(argv=None):
     sursa = a.sursa
     if sursa not in PROFILURI:
         mesaj = ("Sursa '%s' nu e inca implementata in script (implementate: %s). "
-                 "Maparea ei e in mappings.md." % (sursa, ", ".join(sorted(PROFILURI))))
+                 "Maparea ei e in references/mappings.md." % (sursa, ", ".join(sorted(PROFILURI))))
         if a.ca_json:
             print(json.dumps({"stare": "eroare", "mesaj": mesaj}, ensure_ascii=False, indent=2))
         else:

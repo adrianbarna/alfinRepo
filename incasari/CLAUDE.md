@@ -38,7 +38,8 @@ poată fi versionat doar ce nu conține date de client:
 alfinRepo/incasari/   ← AICI. În git, fără date de client.
   .claude/skills/incasari-cargus/          skill-ul de procesare
     references/configurare.md              fluxul de configurare (citit la nevoie)
-  CLAUDE.md   mappings.md
+    references/mappings.md                 maparea fiecărei surse (sursa de adevăr)
+  CLAUDE.md
 
 ~/.claude/incasari-saga/config.json        ← Configul. Per mașină, nu se livrează.
 
@@ -252,7 +253,7 @@ reapare tentația: `total` **nu** e în lei pentru o factură în valută.
 
 Verificat pe 11.09.2026: exportul XML de mai sus conține **doar facturile în lei**.
 Facturile în EUR și HUF vin într-un export separat, cu `cod_valuta` și totalul în
-valută ca `val_val` + `tva_val` (HUF la sută de forinți) — vezi `mappings.md`,
+valută ca `val_val` + `tva_val` (HUF la sută de forinți) — vezi `references/mappings.md`,
 „Exportul de facturi în valută". Singura excepție din exportul în lei e MCS36350
 (`curs_ref` 5,2374): o comandă Skroutz de 9,66 EUR facturată în lei.
 
@@ -314,7 +315,8 @@ totuși numele borderoului (din 31.08.2026 cu spațiile înlocuite de `_`), la c
 
 ## Maparea Excel → XML
 
-Sursa de adevăr e **`mappings.md`**, care acoperă toate cele șase surse în detaliu, cu
+Sursa de adevăr e **`.claude/skills/incasari-cargus/references/mappings.md`** (mutat
+acolo pe 16.09.2026, ca să plece odată cu plugin-ul), care acoperă toate cele șase surse în detaliu, cu
 exemple, cifrele de potrivire cu facturile și deciziile comune din 11.09.2026. Rezumat
 pentru orientare:
 
@@ -344,7 +346,7 @@ tiparul dominant se semnalează doar la `--fara-facturi`.
 
 ### Celelalte cinci surse — mapate, neimplementate
 
-Tabele complete în `mappings.md`. Deciziile comune (11.09.2026): `Data` = data virării
+Tabele complete în `references/mappings.md`. Deciziile comune (11.09.2026): `Data` = data virării
 unde există (eMAG `Payout date`), altfel data din rândul 1; `Numar`/`FacturaID` =
 numărul comenzii; `Suma` de pe factură; linie negativă pe factura de storno; eMAG o
 linie pe comandă (fracțiunile adunate); nume grecești/chirilice transliterate.
@@ -356,8 +358,8 @@ cumpărătorului intră în `Explicatie`, iar cursul/suma în valută sunt acope
 (în valuta folderului) + `Moneda`.
 
 Facturile în valută vin într-un **export separat**, cu alte coloane (`cod_valuta`,
-`val_val`, `tva_val`, fără `total`) — vezi `mappings.md`, „Exportul de facturi în
-valută". Scriptul îl citește ca `.xlsx` (sau XML); un `.xls` e raportat ca necitit.
+`val_val`, `tva_val`, fără `total`) — vezi `references/mappings.md`, „Exportul de facturi
+în valută". Scriptul îl citește ca `.xlsx` (sau XML); un `.xls` e raportat ca necitit.
 
 ## Stare curentă / next steps
 
@@ -394,7 +396,7 @@ valută". Scriptul îl citește ca `.xlsx` (sau XML); un `.xls` e raportat ca ne
    borderoul lui. Cardurile și task-urile se adaugă odată cu fiecare profil. Pentru
    verificarea dublei stingeri, task-urile trebuie să stage-uiască **toate**
    `procesate/.procesate*.json`, nu doar jurnalul lor.
-5. **De confirmat la primul import** (detaliat în `mappings.md`, secțiunea
+5. **De confirmat la primul import** (detaliat în `references/mappings.md`, secțiunea
    „De confirmat la primul import", și în `SKILL.md`):
    - numele fișierului fără prefixul `I_` — **prima cauză de verificat dacă importul e refuzat**;
    - `FacturaID` = `RefExp1` — util doar dacă facturile sunt importate cu același ID;
@@ -432,7 +434,7 @@ valută". Scriptul îl citește ca `.xlsx` (sau XML); un `.xls` e raportat ca ne
 - `<date>/facturi/` — exporturile XML de facturi din Saga, sursa pentru `FacturaNumar`
 - `<date>/borderouri/<valuta>/procesate/ultimul-raport.txt` — raportul ultimei rulări,
   textul trimis pe e-mail
-- `mappings.md` — maparea xlsx → XML pentru ambele formate (**sursa de adevăr**)
+- `.claude/skills/incasari-cargus/references/mappings.md` — maparea fiecărei surse (**sursa de adevăr**)
 - `<date>/borderouri/ron/Cargus Packeta Iulie 2026.xlsx` — borderoul de referință
 - `<date>/borderouri/<valuta>/procesate/` — XML-urile generate + `.procesate.json`
 
@@ -441,7 +443,7 @@ Referite în notele vechi, dar **inexistente pe disc** — șterse din proiect p
 25.08.2026; ce descriau a rămas în documentație:
 
 - `emag RO2 Aprilie 2026.xlsx` — borderoul eMAG, sursa coloanelor pentru maparea din
-  `mappings.md`. Maparea rămâne, exemplul nu.
+  `references/mappings.md`. Maparea rămâne, exemplul nu.
 - `I_30.03.2026.xml` — exemplu XML eMAG în formatul corect `<Linie>`. Formatul e mai
   sus, în „Contractul XML cu Saga".
 - `exemplu_incasare.xml` (prima încercare, cu structura greșită `<rand>`),
