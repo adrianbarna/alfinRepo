@@ -120,6 +120,39 @@ def raport_sursa(sursa):
     return RAPORT_EMAIL if sursa == SURSA_COLECTOARE else "ultimul-raport-%s.txt" % sursa
 
 
+def dir_jurnal(folder, comun=None):
+    """Unde stau jurnalele: folderul comun, daca e dat, altfel `<folder>/procesate`.
+
+    Cu borderourile impartite pe luni (borderouri/2026-09/ron), jurnalul per folder
+    ar porni gol in fiecare luna, iar o factura stinsa luna trecuta ar putea fi stinsa
+    din nou luna asta - incasare dubla in Saga. Un singur folder de jurnale, in afara
+    lunii (borderouri/procesate), pastreaza evidenta peste luni. XML-ul si raportul
+    raman langa borderouri, in `<folder>/procesate`.
+    """
+    return Path(comun) if comun else folder / DIR_PROCESATE
+
+
+def cheie_jurnal(cale, comun=None):
+    """Cum e tinut minte un borderou in jurnal.
+
+    Fara folder comun: numele fisierului, ca pana acum. Cu folder comun, jurnalul
+    aduna mai multe luni, iar numele singur s-ar putea repeta (doua luni cu acelasi
+    `borderou.xlsx` - a doua ar fi sarita in tacere). Atunci cheia e calea relativa
+    la parintele folderului de jurnale: `2026-09/ron/borderou.xlsx`.
+    """
+    if not comun:
+        return cale.name
+    try:
+        return Path(cale).resolve().relative_to(Path(comun).resolve().parent).as_posix()
+    except ValueError:
+        return cale.name
+
+
+def e_reprocesat(cale, cheie, reproceseaza):
+    """--reproceseaza accepta si numele fisierului, si cheia din jurnal."""
+    return cheie in reproceseaza or cale.name in reproceseaza
+
+
 CONT_CLIENT = "4111"
 PREFIX_EXPLICATIE = "Incasare ramburs client"
 
@@ -1559,8 +1592,8 @@ def scrie_jurnal(dir_procesate, procesate, sursa=SURSA_COLECTOARE):
            json.dumps({"procesate": procesate}, ensure_ascii=False, indent=2) + "\n")
 
 
-def incarca_folosite(foldere, sursa, reproceseaza):
-    """-> (folosite, partiale), din jurnalele TUTUROR surselor din folderele date.
+def incarca_folosite(foldere, sursa, reproceseaza, comun=None):
+    """-> (folosite, partiale), din jurnalele TUTUROR surselor.
 
     folosite = {nr_iesire: 'fisier (Sursa)'} - facturile stinse de tot;
     partiale = {nr_iesire: Decimal} - cat s-a incasat deja pe facturile platite in bucati
@@ -1568,13 +1601,17 @@ def incarca_folosite(foldere, sursa, reproceseaza):
     Fiecare task scrie doar jurnalul lui, dar le citeste pe toate, ca aceeasi factura
     sa nu fie stinsa din doua borderouri. Borderourile reprocesate acum de sursa
     curenta nu se numara.
+
+    Cu folder comun de jurnale se citeste o singura data, si acopera toate lunile;
+    fara el, cate un set de jurnale per folder, ca inainte.
     """
     folosite, partiale = {}, {}
-    for folder in foldere:
-        dir_procesate = folder / DIR_PROCESATE
+    dire = [Path(comun)] if comun else [f / DIR_PROCESATE for f in foldere]
+    for dir_procesate in dire:
         for s in SURSE:
             for fisier, intrare in citeste_jurnal(dir_procesate, s).items():
-                if s == sursa and fisier in reproceseaza:
+                if s == sursa and (fisier in reproceseaza
+                                   or Path(fisier).name in reproceseaza):
                     continue
                 for nr in intrare.get("facturi", []):
                     folosite.setdefault(nr, "%s (%s)" % (fisier, SURSE[s]["eticheta"]))
@@ -1606,6 +1643,10 @@ def main(argv=None):
                     help="valuta folderului (implicit din numele lui: ron/eur/huf, altfel RON)")
     ap.add_argument("--set-folder", dest="set_folder",
                     help="salveaza calea in config.json si iese")
+    ap.add_argument("--jurnale", default=None,
+                    help="un singur folder pentru jurnale, in afara folderelor de "
+                         "borderouri (ex. borderouri/procesate cand borderourile sunt "
+                         "impartite pe luni); XML-ul si raportul raman langa borderouri")
     ap.add_argument("--facturi", help="folderul cu facturi, doar pentru rularea asta")
     ap.add_argument("--set-facturi", dest="set_facturi",
                     help="salveaza folderul de facturi in config.json si iese")
@@ -1754,14 +1795,22 @@ def main(argv=None):
             lipsa.append(intrare["cale"])
         else:
             rezolvate.append((intrare, folder))
-    folosite, partiale = incarca_folosite([f for _, f in rezolvate], sursa, a.reproceseaza)
+    comun = a.jurnale or (cfg or {}).get("jurnale")
+    if comun:
+        comun = str(Path(comun).expanduser())
+        if not a.dry_run:
+            Path(comun).mkdir(parents=True, exist_ok=True)
+        raport["jurnale"] = comun
+    folosite, partiale = incarca_folosite([f for _, f in rezolvate], sursa,
+                                          a.reproceseaza, comun)
     profil = PROFILURI[sursa]
 
     for intrare, folder in rezolvate:
         mon = intrare.get("moneda", "RON").upper()
         cont = intrare.get("cont") or cont_pentru(mon)
         dir_procesate = folder / DIR_PROCESATE
-        jurnal = citeste_jurnal(dir_procesate, sursa)
+        dir_jur = dir_jurnal(folder, comun)
+        jurnal = citeste_jurnal(dir_jur, sursa)
 
         r_folder = {"cale": str(folder), "moneda": mon, "cont": cont,
                     "procesate": [], "sarite_deja": [], "esuate": [], "alte_surse": []}
@@ -1770,7 +1819,8 @@ def main(argv=None):
                          if p.is_file() and p.suffix.lower() in (".xlsx", ".csv")
                          and not p.name.startswith("~$"))
         for cale in fisiere:
-            if cale.name in jurnal and cale.name not in a.reproceseaza:
+            cheie = cheie_jurnal(cale, comun)
+            if cheie in jurnal and not e_reprocesat(cale, cheie, a.reproceseaza):
                 r_folder["sarite_deja"].append(cale.name)
                 continue
 
@@ -1784,7 +1834,7 @@ def main(argv=None):
                 # Al altui agent: ramane neatins, nu se raporteaza pe e-mail.
                 r_folder["alte_surse"].append({
                     "fisier": cale.name, "sursa": info["sursa"],
-                    "procesat": cale.name in citeste_jurnal(dir_procesate, info["sursa"])})
+                    "procesat": cheie in citeste_jurnal(dir_jur, info["sursa"])})
                 continue
 
             rez = profil(cale, info, mon, cont, facturi, folosite, partiale)
@@ -1826,7 +1876,7 @@ def main(argv=None):
             if not a.dry_run:
                 dir_procesate.mkdir(parents=True, exist_ok=True)
                 _scrie(iesire, construieste_xml(rez["linii"]))
-                jurnal[cale.name] = {
+                jurnal[cheie] = {
                     "procesat_la": _dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "xml": iesire.name,
                     "linii": len(rez["linii"]),
@@ -1834,8 +1884,9 @@ def main(argv=None):
                     "facturi": stinse,
                 }
                 if partiale_noi:
-                    jurnal[cale.name]["partiale"] = {k: str(v) for k, v in sorted(partiale_noi.items())}
-                scrie_jurnal(dir_procesate, jurnal, sursa)
+                    jurnal[cheie]["partiale"] = {k: str(v) for k, v in sorted(partiale_noi.items())}
+                dir_jur.mkdir(parents=True, exist_ok=True)
+                scrie_jurnal(dir_jur, jurnal, sursa)
 
             r_folder["procesate"].append({
                 "fisier": cale.name,

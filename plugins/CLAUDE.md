@@ -149,6 +149,8 @@ Fiecare vine dintr-un eșec real. Nu le slăbi fără motiv explicit.
 
 **Fiecare sursă își scrie doar jurnalul ei** (`.procesate.json` pentru Cargus, `.procesate-<sursa>.json` pentru celelalte), dar le citește pe toate. Șase task-uri care scriu același jurnal își șterg reciproc intrările, iar luna următoare borderourile se reprocesează și ies XML-uri duble. Din același motiv, o factură prezentă în jurnalul oricărei surse nu se mai stinge a doua oară.
 
+**Jurnalele stau în afara folderelor de lună** (19.09.2026, odată cu trecerea la `borderouri/<an>-<luna>/<valuta>`): toate, într-un singur `borderouri/procesate/`, dat cu `--jurnale` sau cu cheia `jurnale` din config. Un jurnal per lună ar porni gol în fiecare lună, iar o factură stinsă luna trecută s-ar stinge din nou luna asta — încasare dublă în Saga, exact ce previne invariantul de mai sus. Verificat: cu jurnale comune, același borderou pus în luna următoare iese cu toate cele 219 rânduri sărite; fără ele, scrie din nou 219 linii. Cu jurnale comune, cheia din jurnal e calea relativă (`2026-09/ron/borderou.xlsx`), nu numele fișierului — altfel două luni cu același nume de fișier ar face-o pe a doua să fie sărită în tăcere. Fără `--jurnale`, comportamentul vechi rămâne neschimbat, bit cu bit.
+
 **Un rând sărit e raportat, nu înghițit.** Inclusiv când *toate* rândurile sunt sărite: atunci nu se scrie niciun XML, dar raportul trebuie totuși compus și trimis — e cazul în care utilizatorul are cel mai mult de verificat.
 
 ## Verificare

@@ -32,9 +32,9 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru Trendyol |
 |---|---|
 | `--sursa` | `trendyol` |
-| Foldere de borderouri | `borderouri/ron` |
-| Jurnal | `procesate/.procesate-trendyol.json` |
-| Raport pentru e-mail | `procesate/ultimul-raport-trendyol.txt` |
+| Foldere de borderouri | `borderouri/<an>-<luna>/ron` |
+| Jurnal | `borderouri/procesate/.procesate-trendyol.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
+| Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-trendyol.txt` |
 | `Agent`, pe AI Agent overview | `Agent Borderou Trendyol` |
 | `ID rulare`, pe ambele boarduri | `INC-TRENDYOL-<an>-<lună>` (ex. `INC-TRENDYOL-2026-07`) |
 | `Task`, pe Board Echipă | `<ID> · Verifică încasările Trendyol <luna> <anul> și importă-le în Saga` |

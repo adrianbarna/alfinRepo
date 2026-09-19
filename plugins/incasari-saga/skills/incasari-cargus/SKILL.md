@@ -32,18 +32,35 @@ valoarea **de pe factură**, ca factura să se stingă exact. Un rând care nu p
 legat sigur de o factură **nu intră în XML** — ajunge în raportul trimis pe e-mail,
 ca să fie verificat manual.
 
-Structura de lucru: **valuta e dată de folder, sursa nu are folder**. Borderourile
-tuturor surselor (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) stau împreună
-în folderul valutei lor; formatul se recunoaște după coloane. **O rulare procesează o
-singură sursă** — `--sursa`, implicit `cargus` — și le lasă neatinse pe celelalte: fiecare sursă e un agent separat, cu task-ul, jurnalul și raportul
-ei. Sursele: `cargus` (implicit), `emag`, `sameday`, `trendyol`, `skroutz`, `plationline`.
+Structura de lucru: **luna dă folderul, valuta îl dă pe cel dinăuntru, sursa nu are
+folder**. Borderourile tuturor surselor (Cargus, eMAG, Sameday, Trendyol, Skroutz,
+PlatiOnline) stau împreună în folderul valutei lor, sub luna pe care o acoperă;
+formatul se recunoaște după coloane. **O rulare procesează o singură sursă** —
+`--sursa`, implicit `cargus` — și le lasă neatinse pe celelalte: fiecare sursă e un
+agent separat, cu task-ul, jurnalul și raportul ei. Sursele: `cargus` (implicit),
+`emag`, `sameday`, `trendyol`, `skroutz`, `plationline`.
 
 ```
-borderouri/ron/  .xlsx / .csv  +  procesate/      facturi/  exporturile XML din Saga
+borderouri/<an>-<luna>/ron   .xlsx / .csv  +  procesate/   XML-ul si raportul
+borderouri/<an>-<luna>/eur
+borderouri/<an>-<luna>/huf
+borderouri/procesate/        jurnalele (.procesate*.json) TUTUROR lunilor
+facturi/<an>-<luna>/         exporturile XML din Saga
 ```
 
-**Azi e configurat doar RON.** O altă valută se adaugă cu o singură comandă
-(`--set-folder borderouri/eur --moneda EUR`, cont 5126) — nu e nevoie de cod nou.
+**Luna e cea acoperită de borderouri, nu cea a rulării** (19.09.2026): borderourile pe
+septembrie stau în `2026-09` și se procesează pe 5 octombrie. Folderele lunii se
+creează automat pe 1 ale lunii, de task-ul care deschide cardurile Paulei.
+
+**Jurnalele stau în afara lunii**, într-un singur folder (`borderouri/procesate`), dat
+cu `--jurnale` sau cu cheia `jurnale` din config. Ăsta nu e un detaliu de aranjare: un
+jurnal per lună ar porni gol în fiecare lună, iar o factură stinsă luna trecută s-ar
+putea stinge din nou luna asta — **încasare dublă în Saga**. Cu jurnale comune, cheia
+unui borderou e calea lui relativă (`2026-09/ron/borderou.xlsx`), deci două luni pot
+avea fișiere cu același nume fără ca a doua să fie sărită în tăcere.
+
+**Toate trei valutele sunt configurate** (`ron` 5125, `eur` și `huf` 5126). O valută
+nouă se adaugă cu `--set-folder <cale>` — valuta vine din numele ultimului folder.
 
 ## Unde stau fișierele
 
@@ -52,8 +69,9 @@ modul Mirror** pe calculatorul cu Saga — deci sunt fișiere reale pe disc, nu
 referințe către cloud:
 
 ```
-C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron
-C:\Users\Barna\My Drive\claude\incasari-saga\facturi
+C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\2026-09\ron
+C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\procesate
+C:\Users\Barna\My Drive\claude\incasari-saga\facturi\2026-09
 ```
 
 Trei consecințe practice:
@@ -62,12 +80,12 @@ Trei consecințe practice:
   montat doar în sesiunea interactivă a utilizatorului logat, deci un task programat
   nu-l vede. Calea de sub `C:\Users\<utilizator>\My Drive` e o cale reală și merge
   în ambele situații.
-- **XML-ul generat urcă singur în Drive.** Scriptul scrie în `borderouri\ron\procesate\`,
-  iar sincronizarea îl duce în cloud. Nu încărca nimic manual și nu folosi conectorul
-  de Drive pentru asta.
-- **Rulează de pe un singur calculator.** Jurnalul `.procesate.json` stă într-un folder
-  sincronizat; două mașini care procesează în paralel produc un al doilea fișier de
-  jurnal, iar evidența se rupe în tăcere.
+- **XML-ul generat urcă singur în Drive.** Scriptul scrie în
+  `borderouri\<an>-<luna>\<valuta>\procesate\`, iar sincronizarea îl duce în cloud. Nu
+  încărca nimic manual și nu folosi conectorul de Drive pentru asta.
+- **Rulează de pe un singur calculator.** Jurnalele din `borderouri\procesate\` stau
+  într-un folder sincronizat; două mașini care procesează în paralel produc un al doilea
+  fișier de jurnal, iar evidența se rupe în tăcere.
 
 Dacă tocmai s-a pus un borderou nou în Drive, verifică întâi că sincronizarea s-a
 terminat (iconița Drive din bara de sistem). Un fișier pe jumătate sincronizat se
@@ -288,6 +306,7 @@ propuse, e acolo.
 | `--reproceseaza "<nume.xlsx>"` | borderoul a fost corectat și trebuie regenerat |
 | `--sursa <sursa>` | altă sursă decât `cargus`; o sursă încă neimplementată iese cu codul 1 |
 | `--folder <cale>` | o rulare punctuală pe alt folder, fără să atingi configul; se poate repeta, valuta vine din numele folderului (`ron`/`eur`/`huf`) dacă lipsește `--moneda` |
+| `--jurnale <cale>` | folderul comun de jurnale, în afara lunii (`borderouri/procesate`); fără el, jurnalele stau în `<folder>/procesate` ca înainte |
 | `--facturi <cale>` | alt folder de facturi, doar pentru rularea asta |
 | `--fara-facturi` | nu lega facturile: `FacturaNumar` rămâne gol și nimic nu se sare |
 | `--arata-config` | arată configurarea curentă |

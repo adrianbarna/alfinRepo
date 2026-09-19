@@ -32,9 +32,9 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru Skroutz |
 |---|---|
 | `--sursa` | `skroutz` |
-| Foldere de borderouri | `borderouri/eur` |
-| Jurnal | `procesate/.procesate-skroutz.json` |
-| Raport pentru e-mail | `procesate/ultimul-raport-skroutz.txt` |
+| Foldere de borderouri | `borderouri/<an>-<luna>/eur` |
+| Jurnal | `borderouri/procesate/.procesate-skroutz.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
+| Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-skroutz.txt` |
 | `Agent`, pe AI Agent overview | `Agent Borderou Skroutz` |
 | `ID rulare`, pe ambele boarduri | `INC-SKROUTZ-<an>-<lună>` (ex. `INC-SKROUTZ-2026-07`) |
 | `Task`, pe Board Echipă | `<ID> · Verifică încasările Skroutz <luna> <anul> și importă-le în Saga` |

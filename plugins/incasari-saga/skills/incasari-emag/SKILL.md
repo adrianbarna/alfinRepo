@@ -32,9 +32,9 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru eMAG |
 |---|---|
 | `--sursa` | `emag` |
-| Foldere de borderouri | `borderouri/ron` (RO), `borderouri/eur` (BG), `borderouri/huf` (HU) |
-| Jurnal | `procesate/.procesate-emag.json` |
-| Raport pentru e-mail | `procesate/ultimul-raport-emag.txt` |
+| Foldere de borderouri | `borderouri/<an>-<luna>/ron` (RO), `borderouri/<an>-<luna>/eur` (BG), `borderouri/<an>-<luna>/huf` (HU) |
+| Jurnal | `borderouri/procesate/.procesate-emag.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
+| Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-emag.txt` |
 | `Agent`, pe AI Agent overview | `Agent Borderou eMAG` |
 | `ID rulare`, pe ambele boarduri | `INC-EMAG-<an>-<lună>` (ex. `INC-EMAG-2026-07`) |
 | `Task`, pe Board Echipă | `<ID> · Verifică încasările eMAG <luna> <anul> și importă-le în Saga` |

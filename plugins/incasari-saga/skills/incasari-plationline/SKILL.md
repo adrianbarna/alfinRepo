@@ -32,9 +32,9 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru PlatiOnline |
 |---|---|
 | `--sursa` | `plationline` |
-| Foldere de borderouri | `borderouri/ron` |
-| Jurnal | `procesate/.procesate-plationline.json` |
-| Raport pentru e-mail | `procesate/ultimul-raport-plationline.txt` |
+| Foldere de borderouri | `borderouri/<an>-<luna>/ron` |
+| Jurnal | `borderouri/procesate/.procesate-plationline.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
+| Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-plationline.txt` |
 | `Agent`, pe AI Agent overview | `Agent Borderou PlatiOnline` |
 | `ID rulare`, pe ambele boarduri | `INC-PLATIONLINE-<an>-<lună>` (ex. `INC-PLATIONLINE-2026-07`) |
 | `Task`, pe Board Echipă | `<ID> · Verifică încasările PlatiOnline <luna> <anul> și importă-le în Saga` |

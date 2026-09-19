@@ -32,9 +32,9 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru Sameday |
 |---|---|
 | `--sursa` | `sameday` |
-| Foldere de borderouri | `borderouri/ron` |
-| Jurnal | `procesate/.procesate-sameday.json` |
-| Raport pentru e-mail | `procesate/ultimul-raport-sameday.txt` |
+| Foldere de borderouri | `borderouri/<an>-<luna>/ron` |
+| Jurnal | `borderouri/procesate/.procesate-sameday.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
+| Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-sameday.txt` |
 | `Agent`, pe AI Agent overview | `Agent Borderou Sameday` |
 | `ID rulare`, pe ambele boarduri | `INC-SAMEDAY-<an>-<lună>` (ex. `INC-SAMEDAY-2026-07`) |
 | `Task`, pe Board Echipă | `<ID> · Verifică încasările Sameday <luna> <anul> și importă-le în Saga` |
