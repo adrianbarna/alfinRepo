@@ -59,12 +59,20 @@ La prima rulare vi se cer trei lucruri, o singură dată:
 
 Răspunsurile se salvează în `~/.claude/incasari-saga/config.json` și nu mai sunt cerute.
 
-Structura așteptată — **valuta e dată de folder**, sursa nu are folder (borderourile
-tuturor surselor stau împreună, formatul se recunoaște după coloane):
+Structura așteptată — **luna dă folderul, valuta îl dă pe cel dinăuntru**, sursa nu are
+folder (borderourile tuturor surselor stau împreună, formatul se recunoaște după
+coloane):
 
 ```
-borderouri/ron/   .xlsx / .csv  +  procesate/        facturi/   exporturile XML din Saga
+borderouri/<an>-<luna>/ron   .xlsx / .csv  +  procesate/   XML-ul si raportul
+borderouri/<an>-<luna>/eur
+borderouri/<an>-<luna>/huf
+borderouri/procesate/        jurnalele, comune tuturor lunilor
+facturi/<an>-<luna>/         exporturile XML din Saga
 ```
+
+Luna e cea acoperită de borderouri, nu cea a rulării: borderourile pe septembrie stau în
+`2026-09` și se procesează pe 5 octombrie.
 
 Fiecare sursă de borderouri (Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline) e
 un agent separat, cu task-ul lui programat și cu skill-ul lui în listă
@@ -138,10 +146,14 @@ când rămân mai multe la fel de plauzibile.
 - **Ce citește:** `.xlsx` și `.csv` fără dependențe externe (doar `python3` din stdlib) și
   exporturile de facturi din Saga: în lei ca XML (`<VFPData><c_xml>`, Windows-1252), în
   valută ca `.xlsx` sau XML (`cod_valuta`, `val_val` + `tva_val`).
-- **Ce scrie:** `<folder>/procesate/<nume borderou, cu spațiile înlocuite de _>.xml`, jurnalul
-  sursei (`.procesate.json` pentru Cargus, `.procesate-<sursa>.json` pentru celelalte; cheie
-  = numele fișierului, plus facturile stinse) și raportul ei (`ultimul-raport.txt`, respectiv
-  `ultimul-raport-<sursa>.txt`) — textul trimis pe email.
+- **Ce scrie:** `<folder>/procesate/<nume borderou, cu spațiile înlocuite de _>.xml` și
+  raportul sursei (`ultimul-raport.txt`, respectiv `ultimul-raport-<sursa>.txt` — textul
+  trimis pe email), ambele lângă borderouri; iar jurnalul sursei (`.procesate.json` pentru
+  Cargus, `.procesate-<sursa>.json` pentru celelalte; cheie = calea relativă a borderoului,
+  plus facturile stinse) în folderul comun dat cu `--jurnale`.
+- **De ce jurnalele stau în afara lunii:** un jurnal per lună ar porni gol în fiecare
+  lună, iar o factură stinsă luna trecută s-ar stinge din nou — încasare dublă în Saga.
+  Fiecare sursă scrie doar jurnalul ei, dar le citește pe toate.
 - **Configurația** stă în `~/.claude/incasari-saga/config.json`, în afara plugin-ului,
   ca să supraviețuiască actualizărilor. Poate fi mutată cu variabila `INCASARI_CONFIG`.
   Plugin-ul vine fără căi setate; prima configurare (și orice schimbare ulterioară) se

@@ -273,9 +273,16 @@ eșuează cu „calea nu există", ceea ce arată exact ca o configurare greșit
 Pe mașina curentă (contul Windows `Barna`), folderele de lucru ale încasărilor sunt:
 
 ```
-C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron
-C:\Users\Barna\My Drive\claude\incasari-saga\facturi
+C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\<an>-<luna>\ron   (si \eur, \huf)
+C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\procesate          (jurnalele)
+C:\Users\Barna\My Drive\claude\incasari-saga\facturi\<an>-<luna>
 ```
+
+Borderourile și facturile sunt împărțite pe lună (19.09.2026). Luna e cea acoperită de
+borderouri, nu cea a rulării: cele pe septembrie stau în `2026-09` și se procesează pe 5
+octombrie. Folderele lunii se creează automat pe 1, de task-ul programat care deschide și
+cardurile din Notion. **Folderul de jurnale nu e pe lună** — el ține minte ce facturi
+s-au stins, în toate lunile.
 
 ### Atenție la spațiu pe disc
 
@@ -291,13 +298,13 @@ Două consecințe practice, ambele au produs deja confuzie:
   sincronizarea, fișierul poate exista pe disc incomplet și se citește ca `.xlsx`
   corupt. Verifică iconița Drive din bara de sistem înainte de a rula.
 - **XML-ul generat nu apare instant în cloud.** Scriptul scrie în
-  `borderouri\ron\procesate\`, iar sincronizarea îl urcă după aceea. Nu încărca nimic
+  `borderouri\<an>-<luna>\<valuta>\procesate\`, iar sincronizarea îl urcă după aceea. Nu încărca nimic
   manual în Drive și nu folosi conectorul de Drive pentru asta — se dublează fișierele.
 
 ### Rulare pe un singur calculator
 
-Jurnalul `.procesate.json` (evidența borderourilor deja procesate) stă într-un folder
-sincronizat. **Procesează de pe un singur calculator.** Două mașini care rulează în
+Jurnalele (`borderouri\procesate\.procesate*.json`, evidența borderourilor procesate și
+a facturilor stinse) stau într-un folder sincronizat. **Procesează de pe un singur calculator.** Două mașini care rulează în
 paralel produc un al doilea fișier de jurnal, de tip `.procesate (1).json`, iar evidența
 se rupe fără niciun mesaj de eroare.
 
@@ -496,27 +503,30 @@ PAȘII
    și urmează-l — el e sursa de adevăr pentru tot fluxul. Scriptul e `scripts/proceseaza.py`
    (Python 3, fără pachete externe).
    REGULA DE AUR: nu genera XML de mână, nu citi borderourile cu alte unelte, nu edita
-   `.procesate.json`.
+   jurnalele `.procesate*.json`.
 
-2. Vezi ce e în Drive: device_list_dir recursiv pe `C:\Users\Barna\My Drive\claude\incasari-saga`.
-   Jurnalul `borderouri\ron\procesate\.procesate.json` spune ce s-a procesat deja. Dacă nu e
+2. Stabilește luna (`<LUNA>` = luna precedentă rulării, `<an>-<luna>`) și vezi ce e în Drive:
+   device_list_dir recursiv pe `C:\Users\Barna\My Drive\claude\incasari-saga`.
+   Jurnalele din `borderouri\procesate\` spun ce s-a procesat deja, în toate lunile. Dacă nu e
    niciun borderou nou, OPREȘTE-TE: fără email, fără card în Notion, fără notificare.
 
-3. Stage-uiește în sesiune: `config.json` din rădăcina folderului, borderourile din
-   `borderouri\ron`, tot ce e în `facturi`, și `borderouri\ron\procesate\.procesate.json` dacă
-   există. Pune jurnalul stage-uit lângă borderouri, în `procesate/`, ca scriptul să-l găsească.
+3. Stage-uiește în sesiune, păstrând structura de foldere: `config.json` din rădăcina folderului,
+   borderourile din `borderouri\<LUNA>\<valuta>`, tot ce e în `facturi\<LUNA>`, și TOATE
+   fișierele `.procesate*.json` din `borderouri\procesate\` — scriptul le citește pe toate, ca o
+   factură stinsă de altă sursă sau în altă lună să nu fie stinsă a doua oară.
 
 4. Copiază `config.json` stage-uit peste
    `alfinRepo/plugins/incasari-saga/skills/incasari-cargus/config.json` (scriptul îl citește de
    acolo cu prioritate). De acolo vin adresele de raport — NU le inventa și nu le lua din altă
    parte.
    Rulează:
-   `python3 <skill>/scripts/proceseaza.py --folder <cale staged borderouri/ron> --facturi <cale staged facturi> --json`
+   `python3 <skill>/scripts/proceseaza.py --sursa cargus --folder <staged borderouri/<LUNA>/ron> --jurnale <staged borderouri/procesate> --facturi <staged facturi/<LUNA>> --json`
    Cod de ieșire: 0 = a mers, 1 = eroare, 2 = configurare lipsă.
 
-5. Scrie rezultatele înapoi în Drive, în
-   `C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron\procesate\`: XML-ul generat,
-   `ultimul-raport.txt` ȘI `.procesate.json`. Fără jurnal, rularea următoare reprocesează tot.
+5. Scrie rezultatele înapoi în Drive, în două locuri diferite: XML-ul generat și
+   `ultimul-raport.txt` în `borderouri\<LUNA>\<valuta>\procesate\`, iar jurnalul
+   `.procesate.json` în `borderouri\procesate\` — folderul comun, NU în folderul lunii.
+   Fără jurnal, rularea următoare reprocesează tot.
 
 6. Trimite raportul cu Gmail: subiectul în `email.subiect`, corpul în `email.corp`, destinatarii
    în `email.catre` (din JSON). Adaugă la final calea completă a XML-ului în Drive. NU cere
@@ -563,15 +573,21 @@ C:\Users\Barna\My Drive\claude\incasari-saga\config.json
 ```json
 {
   "foldere": [
-    { "cale": "borderouri/ron", "moneda": "RON", "cont": "5125" }
+    { "cale": "borderouri/2026-09/ron", "moneda": "RON", "cont": "5125" },
+    { "cale": "borderouri/2026-09/eur", "moneda": "EUR", "cont": "5126" },
+    { "cale": "borderouri/2026-09/huf", "moneda": "HUF", "cont": "5126" }
   ],
-  "facturi": "facturi",
+  "jurnale": "borderouri/procesate",
+  "facturi": "facturi/2026-09",
   "email": ["alfin.consult.ai@gmail.com"]
 }
 ```
 
 Căile sunt **relative**, ca să meargă și pe Windows, și în container. Rularea din cloud le
-suprascrie oricum cu `--folder` și `--facturi`; din fișier vine, în practică, adresa de raport.
+suprascrie oricum cu `--folder`, `--jurnale` și `--facturi`; din fișier vine, în practică,
+adresa de raport. Pentru că folderele poartă luna, `foldere` și `facturi` îmbătrânesc la
+începutul lunii următoare — lucru fără efect asupra task-urilor programate, care își
+calculează luna singure.
 Fișierul stă în Drive, lângă date, nu pe vreun calculator anume — asta e tot rostul lui.
 
 > **Ăsta e singurul `config.json`.** Scriptul mai știe să citească și

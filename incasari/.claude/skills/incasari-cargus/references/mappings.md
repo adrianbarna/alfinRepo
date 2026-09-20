@@ -46,8 +46,9 @@ Formatul XML acceptat de Saga (Import documente → Încasări) este:
 ```
 
 Sursă: manualul Saga („Import date") + exemple funcționale de pe forumul Saga.
-Valuta se determină din **folderul** în care se află borderoul (`borderouri/ron` /
-`borderouri/eur` / `borderouri/huf`), nu din conținut.
+Valuta se determină din **numele folderului** în care se află borderoul — ultimul
+segment al căii: `borderouri/<an>-<luna>/ron`, `.../eur`, `.../huf` — nu din conținut.
+Folderul de deasupra dă luna, nu valuta.
 
 ## Reguli generale de fișier
 
@@ -98,7 +99,7 @@ MIXALIS KOYMLELLIS, cele Skroutz CHRISTOS, XIOURAS, GIOSIS). Cu plierea, avertis
 
 ---
 
-## Cargus / Packeta (folder `borderouri/ron` → cont 5125)
+## Cargus / Packeta (folder `borderouri/<an>-<luna>/ron` → cont 5125)
 
 **Format-sursă activ**, procesat automat de skill-ul `incasari-cargus`
 (`scripts/proceseaza.py`, sursa `cargus`).
@@ -132,7 +133,7 @@ sunt goale pe toate rândurile borderoului din iulie 2026.
 Scriptul raportează subtotalul pe fiecare `Data OP`, pentru reconciliere cu extrasul de
 cont (borderoul din iulie 2026 are 4: 10/16/23/30.07).
 
-Rezultat pentru borderoul din iulie 2026: `borderouri/ron/procesate/Cargus_Packeta_Iulie_2026.xml`
+Rezultat pentru borderoul din iulie 2026: `borderouri/<an>-<luna>/ron/procesate/Cargus_Packeta_Iulie_2026.xml`
 — 219 linii, total **26.570,21 RON** (26.569,26 în borderou; 87 de linii iau suma de pe
 factură).
 

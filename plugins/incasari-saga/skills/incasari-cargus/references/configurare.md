@@ -28,11 +28,29 @@ spune-i să-l instaleze de pe python.org.
 Astea sunt valorile de propus, nu de scris tăcut. Le arăți, utilizatorul confirmă
 („da", „lasă așa") sau dă altele, și abia atunci le salvezi.
 
+Rădăcina: `C:\Users\Barna\My Drive\claude\incasari-saga`. Sub ea, **borderourile și
+facturile sunt împărțite pe lună**, iar luna e cea acoperită de borderouri, nu cea a
+rulării: borderourile pe septembrie 2026 stau în `2026-09` și se procesează pe 5
+octombrie. `<LUNA>` de mai jos e luna în lucru, în formatul `<an>-<luna cu două cifre>`.
+
 | Ce | Valoarea propusă |
 |---|---|
-| Borderouri RON | `C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron` |
-| Facturi (export XML Saga) | `C:\Users\Barna\My Drive\claude\incasari-saga\facturi` |
+| Borderouri RON | `...\incasari-saga\borderouri\<LUNA>\ron` |
+| Borderouri EUR | `...\incasari-saga\borderouri\<LUNA>\eur` |
+| Borderouri HUF | `...\incasari-saga\borderouri\<LUNA>\huf` |
+| Jurnale (comune tuturor lunilor) | `...\incasari-saga\borderouri\procesate` |
+| Facturi (export XML Saga) | `...\incasari-saga\facturi\<LUNA>` |
 | Adresa de raport | `alfin.consult.ai@gmail.com` |
+
+**Folderul de jurnale nu e pe lună și nu trebuie să ajungă niciodată sub `<LUNA>`.** El
+ține minte ce facturi s-au stins deja, în toate lunile. Pus înăuntrul lunii, ar porni gol
+în fiecare lună, iar o factură stinsă luna trecută s-ar stinge din nou — încasare dublă
+în Saga. Se dă cu `--jurnale <cale>` la fiecare rulare, sau o dată prin cheia `jurnale`
+din `config.json`.
+
+Folderele lunii se creează automat pe 1 ale lunii, de task-ul programat care deschide și
+cardurile din Notion. Dacă lipsesc, cauza obișnuită e că acel task n-a rulat — nu le crea
+tu, spune-i utilizatorului.
 
 Căile sunt în **Google Drive sincronizat în modul Mirror**, deci fișiere reale pe disc.
 **Nu propune niciodată litera `G:`**, chiar dacă apare pe mașină: e un drive virtual
@@ -57,16 +75,22 @@ distanță.
 
 Pe rând, cu valoarea propusă din tabelul de mai sus:
 
-1. **Folderul cu borderourile în lei.**
+Întreabă întâi ce lună e în lucru și folosește-o ca `<LUNA>` (ex. `2026-09`). Nu o
+deduce din data de azi fără să confirmi: pe 5 octombrie luna în lucru e septembrie.
+
+1. **Folderele cu borderourile**, câte o comandă per valută. Valuta vine din numele
+   ultimului folder, deci `--moneda` e opțional; pune-l doar dacă folderul are alt nume.
 
    ```
-   py -3 <skill-dir>/scripts/proceseaza.py --set-folder "C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\ron" --moneda RON
+   py -3 <skill-dir>/scripts/proceseaza.py --set-folder "C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\<LUNA>\ron"
+   py -3 <skill-dir>/scripts/proceseaza.py --set-folder "C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\<LUNA>\eur"
+   py -3 <skill-dir>/scripts/proceseaza.py --set-folder "C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\<LUNA>\huf"
    ```
 
-2. **Folderul cu exporturile XML de facturi din Saga.**
+2. **Folderul cu exporturile XML de facturi din Saga**, tot pe luna în lucru.
 
    ```
-   py -3 <skill-dir>/scripts/proceseaza.py --set-facturi "C:\Users\Barna\My Drive\claude\incasari-saga\facturi"
+   py -3 <skill-dir>/scripts/proceseaza.py --set-facturi "C:\Users\Barna\My Drive\claude\incasari-saga\facturi\<LUNA>"
    ```
 
 3. **Adresele pentru raport.** Cu mai multe, separate prin virgulă, fără spații.
@@ -74,6 +98,17 @@ Pe rând, cu valoarea propusă din tabelul de mai sus:
    ```
    py -3 <skill-dir>/scripts/proceseaza.py --set-email "alfin.consult.ai@gmail.com"
    ```
+
+4. **Folderul de jurnale.** Nu are comandă `--set-*`: se adaugă cheia `jurnale` în
+   `config.json`, cu calea `...\incasari-saga\borderouri\procesate` — singura excepție de
+   la regula de aur de mai sus, pentru că fără ea fiecare rulare ar avea nevoie de
+   `--jurnale` pe linia de comandă. Task-urile programate îl dau oricum explicit.
+
+Pentru că folderele poartă luna, config-ul îmbătrânește: la începutul lunii următoare,
+`foldere` și `facturi` arată spre luna trecută. Task-urile programate nu sunt afectate —
+ele calculează luna singure și trimit `--folder` / `--facturi` / `--jurnale` explicit, iar
+din config iau doar adresele de e-mail. Pentru rulări de mână, ori refaci `--set-folder`
+pe luna nouă, ori dai căile la rulare.
 
 Dacă scriptul răspunde „Calea nu exista sau nu e un folder", spune-i utilizatorului și
 cere calea corectă — nu o corecta din proprie inițiativă. Pe o mașină cu Drive
@@ -98,14 +133,16 @@ Schimbă **doar ce cere utilizatorul**:
 
 | Ce se schimbă | Comanda |
 |---|---|
-| folderul de borderouri RON | `--set-folder "<cale>" --moneda RON` |
-| valută nouă (ex. EUR, cont 5126) | `--set-folder "<cale>" --moneda EUR` |
+| folderul unei valute | `--set-folder "<cale>"` (valuta vine din numele ultimului folder) |
+| valuta, dacă folderul are alt nume | `--set-folder "<cale>" --moneda EUR` |
 | folderul de facturi | `--set-facturi "<cale>"` |
 | adresele de raport | `--set-email "a@b.ro,c@d.ro"` (înlocuiește lista întreagă) |
+| folderul de jurnale | cheia `jurnale` din `config.json` |
 
 `--set-folder` **înlocuiește** intrarea valutei respective, nu adaugă un al doilea
 folder pe aceeași valută. RON merge pe contul 5125, orice altă valută pe 5126 —
-conturile le pune scriptul, nu se cer utilizatorului. **HUF e ignorat deocamdată.**
+conturile le pune scriptul, nu se cer utilizatorului. Toate trei valutele (RON, EUR,
+HUF) sunt active.
 
 ## Gmail lipsă
 
@@ -126,8 +163,14 @@ pierde nimic — doar raportul întârzie.
   `<proiect>/.claude/skills/`, căile din interiorul proiectului se salvează relativ
   (merge pe alt PC fără reconfigurare), cele din afara lui absolut. Căile din Drive
   sunt în afara proiectului, deci absolute.
-- Mutarea unui folder de valută nu pierde evidența: jurnalul `.procesate.json`
-  călătorește cu folderul. După mutare trebuie doar refăcut `--set-folder`.
+- Mutarea unui folder de valută nu pierde evidența: jurnalele stau oricum în afara lui,
+  în `borderouri\procesate`. După mutare trebuie doar refăcut `--set-folder`. Dacă muți
+  chiar folderul de jurnale, actualizează cheia `jurnale` — altfel evidența pare goală și
+  borderourile vechi se reprocesează.
+- Cheia unui borderou în jurnal e calea lui relativă la părintele folderului de jurnale
+  (`2026-09/ron/borderou.xlsx`), nu numele fișierului. De aceea două luni pot avea
+  fișiere cu același nume fără ca a doua să fie sărită. `--reproceseaza` acceptă și
+  numele, și cheia.
 - Variabila de mediu `INCASARI_CONFIG` poate indica alt fișier de config (util la
   teste); un `config.json` rămas lângă skill din instalări vechi are prioritate.
 - `_radacina_proiect()` deduce rădăcina din numele folderelor părinte

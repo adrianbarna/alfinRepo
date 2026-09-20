@@ -46,25 +46,30 @@ alfinRepo/incasari/   ← AICI. În git, fără date de client.
 ~/.claude/incasari-saga/config.json        ← Configul. Per mașină, nu se livrează.
 
 clienti/test-incasari/                     ← Datele. Niciodată în git.
-  borderouri/ron/  .xlsx / .csv, toate sursele în lei   +  procesate/
-  borderouri/eur/  eMAG BG, Skroutz                      +  procesate/
-  borderouri/huf/  eMAG HU                               +  procesate/
-  facturi/         exporturile XML din Saga (nume păstrat ca atare)
+  borderouri/<an>-<luna>/ron/  .xlsx / .csv, toate sursele în lei   +  procesate/
+  borderouri/<an>-<luna>/eur/  eMAG BG, Skroutz                      +  procesate/
+  borderouri/<an>-<luna>/huf/  eMAG HU                               +  procesate/
+  borderouri/procesate/        jurnalele, comune tuturor lunilor
+  facturi/<an>-<luna>/         exporturile XML din Saga (nume păstrat ca atare)
 ```
 
 La ALFIN, datele stau în Google Drive (Mirror):
 `C:\Users\Barna\My Drive\claude\incasari-saga\{borderouri,facturi}`.
 
-Structura datelor — **valuta e dată de folder, sursa nu are folder**. Calea către ele
+Structura datelor — **luna dă folderul, valuta îl dă pe cel dinăuntru, sursa nu are
+folder** (19.09.2026). Luna e cea acoperită de borderouri, nu cea a rulării: borderourile
+pe septembrie stau în `2026-09` și se procesează pe 5 octombrie; folderele lunii se
+creează automat pe 1, de task-ul programat. **Jurnalele au ieșit din folderul lunii**, în
+`borderouri/procesate`, dat cu `--jurnale` sau cu cheia `jurnale` din config — altfel ar
+porni goale în fiecare lună și o factură stinsă luna trecută s-ar stinge din nou.
+Calea către ele
 e absolută în `config.json`; se schimbă cu `--set-folder` / `--set-facturi`, niciodată
 editând configul de mână. **Skill-ul se livrează fără căi setate** (decizie din
 26.08.2026): pe o mașină nouă, prima configurare urmează
 `references/configurare.md`, care propune căile și le salvează prin script.
 
-**Azi e configurat doar RON** (decizie din 25.08.2026). EUR și HUF se adaugă cu câte o
-comandă când intră în lucru eMAG BG/HU și Skroutz — `--set-folder borderouri/eur` și
-`--set-folder borderouri/huf` (valuta vine din numele folderului, contul 5126 îl pune
-scriptul). Până atunci, HUF nu are niciun borderou procesabil.
+**Toate trei valutele sunt active** (19.09.2026; până atunci doar RON). Valuta vine din
+numele ultimului folder, contul 5126 pentru valută îl pune scriptul.
 
 ## Versionare și release
 
@@ -153,9 +158,9 @@ Un singur flux, în skill-ul `incasari-cargus`, cu un script care tratează **c�
 
 | Folder | Valută | Cont | Surse | Stare |
 |--------|--------|------|-------|-------|
-| `borderouri/ron` | RON | 5125 | Cargus, eMAG RO, Sameday, Trendyol, PlatiOnline | **activ** (doar Cargus implementat) |
-| `borderouri/eur` | EUR | 5126 | eMAG BG, Skroutz | de adăugat odată cu sursele lui |
-| `borderouri/huf` | HUF | 5126 | eMAG HU | de adăugat odată cu eMAG |
+| `borderouri/<an>-<luna>/ron` | RON | 5125 | Cargus, eMAG RO, Sameday, Trendyol, PlatiOnline | **activ** |
+| `borderouri/<an>-<luna>/eur` | EUR | 5126 | eMAG BG, Skroutz | **activ** |
+| `borderouri/<an>-<luna>/huf` | HUF | 5126 | eMAG HU | **activ** |
 
 **Surse, profiluri, agenți (11.09.2026).** În script, `SURSE` ține cele șase surse, iar
 `FORMATE` coloanele după care se recunoaște fiecare format; `PROFILURI` ține funcția care
@@ -322,7 +327,7 @@ acolo pe 16.09.2026, ca să plece odată cu plugin-ul), care acoperă toate cele
 exemple, cifrele de potrivire cu facturile și deciziile comune din 11.09.2026. Rezumat
 pentru orientare:
 
-### Cargus / Packeta (folderul `borderouri/ron`) — cel folosit azi
+### Cargus / Packeta (folderul `borderouri/<an>-<luna>/ron`) — cel folosit azi
 
 Header pe **două rânduri** (rândul 1 e o hartă parțială pusă de client cu numele din
 schema veche, rândul 2 are numele reale); datele încep de la rândul 3.
@@ -366,7 +371,7 @@ Facturile în valută vin într-un **export separat**, cu alte coloane (`cod_val
 ## Stare curentă / next steps
 
 1. **Cargus / Packeta — automatizat**, cu `FacturaNumar` completat din `facturi/`:
-   `borderouri/ron/procesate/Cargus_Packeta_Iulie_2026.xml` — 219 linii, 26.570,21 RON,
+   `borderouri/<an>-<luna>/ron/procesate/Cargus_Packeta_Iulie_2026.xml` — 219 linii, 26.570,21 RON,
    toate legate de factură. **De testat importul în Saga.**
 2. **Refactorizare pe surse (11.09.2026) — gata**, verificată pe borderoul de referință
    (XML identic la byte). Scriptul recunoaște toate cele șase surse, citește `.csv`,
@@ -433,12 +438,13 @@ Facturile în valută vin într-un **export separat**, cu alte coloane (`cod_val
   prima rulare pe o mașină nouă și orice schimbare de căi/adrese ulterioară
 - `~/.claude/incasari-saga/config.json` — configul mașinii curente (foldere, facturi,
   e-mail); se creează la prima configurare, nu se livrează cu skill-ul
-- `<date>/facturi/` — exporturile XML de facturi din Saga, sursa pentru `FacturaNumar`
-- `<date>/borderouri/<valuta>/procesate/ultimul-raport.txt` — raportul ultimei rulări,
-  textul trimis pe e-mail
+- `<date>/facturi/<an>-<luna>/` — exporturile XML de facturi din Saga, sursa pentru `FacturaNumar`
+- `<date>/borderouri/<an>-<luna>/<valuta>/procesate/ultimul-raport.txt` — raportul ultimei
+  rulări, textul trimis pe e-mail
 - `.claude/skills/incasari-cargus/references/mappings.md` — maparea fiecărei surse (**sursa de adevăr**)
-- `<date>/borderouri/ron/Cargus Packeta Iulie 2026.xlsx` — borderoul de referință
-- `<date>/borderouri/<valuta>/procesate/` — XML-urile generate + `.procesate.json`
+- `<date>/borderouri/<an>-<luna>/ron/Cargus Packeta Iulie 2026.xlsx` — borderoul de referință
+- `<date>/borderouri/<an>-<luna>/<valuta>/procesate/` — XML-urile generate
+- `<date>/borderouri/procesate/` — jurnalele (`.procesate*.json`), comune tuturor lunilor
 
 `<date>` = folderul de date din `config.json`, azi `clienti/test-incasari/`.
 Referite în notele vechi, dar **inexistente pe disc** — șterse din proiect pe
