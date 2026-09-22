@@ -270,13 +270,17 @@ eșuează cu „calea nu există", ceea ce arată exact ca o configurare greșit
 **Regula: în `config.json`, în skill-uri și în orice task, folosește calea de sub
 `C:\Users\<utilizator>\My Drive`.** Nu folosi `G:` nicăieri.
 
-Pe mașina curentă (contul Windows `Barna`), folderele de lucru ale încasărilor sunt:
+Pe mașina curentă (`dtd-dell-s1`, contul Windows `paula`), folderele de lucru ale încasărilor sunt:
 
 ```
-C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\<an>-<luna>\ron   (si \eur, \huf)
-C:\Users\Barna\My Drive\claude\incasari-saga\borderouri\procesate          (jurnalele)
-C:\Users\Barna\My Drive\claude\incasari-saga\facturi\<an>-<luna>
+C:\Users\paula\My Drive\claude\incasari-saga\borderouri\<an>-<luna>\ron   (si \eur, \huf)
+C:\Users\paula\My Drive\claude\incasari-saga\borderouri\procesate          (jurnalele)
+C:\Users\paula\My Drive\claude\incasari-saga\facturi\<an>-<luna>
 ```
+
+> **22.09.2026:** migrare de pe `ldtd01` (cont `Barna`) pe `dtd-dell-s1` (cont `paula`) — mașină comună
+> de birou, nu laptop personal. Fiind același cont Google (`alfin.consult.ai@gmail.com`), Mirror a
+> sincronizat automat tot ce era în Drive — n-a fost nevoie de nicio copiere manuală.
 
 Borderourile și facturile sunt împărțite pe lună (19.09.2026). Luna e cea acoperită de
 borderouri, nu cea a rulării: cele pe septembrie stau în `2026-09` și se procesează pe 5
@@ -462,7 +466,7 @@ din cloud, pe copii ale fișierelor urcate din Drive, iar rezultatele se scriu �
 | Câmp | Valoare |
 |---|---|
 | Nume | `Încasări lunare - Saga` |
-| Folder conectat | `C:\Users\Barna\My Drive\claude\incasari-saga` |
+| Folder conectat | `C:\Users\paula\My Drive\claude\incasari-saga` |
 | Frecvență | lunar, pe **5 ale lunii**, 07:00 UTC (10:00 ora României, vara) |
 | Conectori | Gmail, Notion (+ Google Drive, Google Calendar) |
 | Aprobări | **automat** — altfel rularea se oprește așteptând un „da" pe care nu-l vede nimeni |
@@ -489,8 +493,8 @@ dintr-un `config.json` ținut în Drive:
 Procesează borderourile noi de încasări Cargus/Packeta și trimite raportul pe e-mail.
 
 CONTEXT
-Rulezi în cloud. Folderul `C:\Users\Barna\My Drive\claude\incasari-saga` de pe calculatorul
-„ldtd01" e conectat la sesiune. Mașina virtuală Linux locală de pe acel calculator NU pornește
+Rulezi în cloud. Folderul `C:\Users\paula\My Drive\claude\incasari-saga` de pe calculatorul
+„dtd-dell-s1" e conectat la sesiune. Mașina virtuală Linux locală de pe acel calculator NU pornește
 (device_bash răspunde „Workspace unavailable"), deci nu încerca să rulezi acolo — folosește
 device_list_dir / device_stage_files / device_commit_files și rulează scriptul aici, în
 containerul din cloud.
@@ -506,7 +510,7 @@ PAȘII
    jurnalele `.procesate*.json`.
 
 2. Stabilește luna (`<LUNA>` = luna precedentă rulării, `<an>-<luna>`) și vezi ce e în Drive:
-   device_list_dir recursiv pe `C:\Users\Barna\My Drive\claude\incasari-saga`.
+   device_list_dir recursiv pe `C:\Users\paula\My Drive\claude\incasari-saga`.
    Jurnalele din `borderouri\procesate\` spun ce s-a procesat deja, în toate lunile. Dacă nu e
    niciun borderou nou, OPREȘTE-TE: fără email, fără card în Notion, fără notificare.
 
@@ -567,7 +571,7 @@ O rulare pierdută se recuperează declanșând task-ul manual, din lista de tas
 ### `config.json` — unul singur, în Drive
 
 ```
-C:\Users\Barna\My Drive\claude\incasari-saga\config.json
+C:\Users\paula\My Drive\claude\incasari-saga\config.json
 ```
 
 ```json

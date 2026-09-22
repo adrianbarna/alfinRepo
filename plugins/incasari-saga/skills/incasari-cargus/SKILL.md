@@ -135,6 +135,45 @@ Rolul tău: rulezi scriptul, rezumi raportul în chat (în română), îl trimi�
 închizi cardul rulării în board-ul Notion și predai verificarea Paulei, pe Board Echipă
 (pasul 3).
 
+## Poarta de intrare
+
+Înainte de orice procesare — indiferent de sursă — verifică pe **Board Echipă**
+(`https://app.notion.com/p/257459732c16428cb19a6f6b880dfa44`, data source
+`6ac9dfdd-5891-4194-a5f5-a2cebd9ff908`) că sunt **Done** două carduri diferite, nu unul.
+Amândouă sunt create automat de task-uri „Reminder lunar" separate de acest skill — nu le
+creezi tu și nu le muți tu în `Done`, doar le citești. Dacă lipsește oricare, oprește-te
+**înainte** de a stage-ui sau rula scriptul: nu genera XML, nu trimite raportul de
+procesare. Trimite în schimb un e-mail de reminder către adresele din `email.catre`
+(config), spunând clar ce anume lipsește.
+
+1. **Facturile — comun tuturor celor șase surse.** Cardul
+   `Adauga fisierul xml cu facturile in folderul facturi`. Caută-l cu `Task` egal cu
+   valoarea de mai sus și `date:Termen:start` în **luna curentă a rulării** (nu luna
+   procesată — o rulare din octombrie caută `LIKE '2026-10%'`, chiar dacă procesează
+   borderourile din septembrie). Procesează mai departe doar dacă `Responsabil` = `Done`.
+
+2. **Borderoul — per sursă.** Un card separat pentru fiecare sursă:
+   `Adaugă borderoul <Sursă>` (`<Sursă>` = Cargus, eMAG, Sameday, Trendyol, Skroutz sau
+   PlatiOnline — cea rulată acum; numele exact e `Cargus` aici, sau vezi tabelul
+   skill-ului subțire al sursei). Confirmă că Paula a pus fișierul propriu-zis în
+   `borderouri/<LUNA>/<valuta>`. **Titlul cardului nu are un format fix** — unele
+   task-uri pun în titlu luna acoperită de borderou, altele luna termenului — deci caută
+   după `Task` care **începe cu** `Adaugă borderoul <Sursă>` și confirmă cardul potrivit
+   după `Note`, care conține calea `borderouri/<LUNA>/` (LUNA fiind cea calculată la
+   pasul „Stabilește luna"). Procesează mai departe doar dacă `Responsabil` = `Done`.
+
+**Fișierul prezent pe disc nu ține loc de cardul de la punctul 2.** Un borderou poate fi
+deja în `borderouri/<LUNA>/<valuta>` fără ca Paula să fi confirmat asta pe board — atunci
+tot nu se procesează, până nu apare `Done`. E o poartă cerută explicit, nu o verificare
+de conveniență.
+
+Dacă unul din cele două carduri lipsește sau nu e `Done`, spune exact care — „cardul de
+facturi", „cardul de borderou <Sursă>", sau amândouă — în e-mailul de reminder și în orice
+raportare ulterioară (chat, Notion). Nu confunda asta cu cazul „nimic de procesat" de la
+pasul 3: acolo ambele carduri sunt Done, dar nu e niciun borderou nou de citit din folder
+(sau folderul lunii lipsește) — situație în care nu se trimite reminder, ci doar cardul de
+rulare „De verificat" pe AI Agent overview.
+
 ## Flux
 
 ### 1. Rulare normală (cazul obișnuit)
