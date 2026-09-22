@@ -32,7 +32,7 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru Skroutz |
 |---|---|
 | `--sursa` | `skroutz` |
-| Card poartă (borderou), pe Board Echipă — pasul „Poarta de intrare" | `Task` începe cu `Adaugă borderoul Skroutz` |
+| Card poartă (borderou), pe Board Echipă — pasul „Poarta de intrare" | `"Task" LIKE 'Adaug% borderoul Skroutz%'` (reminderul scrie „Adauga", fără diacritice) și `Note` cu `borderouri/<LUNA>/` |
 | Foldere de borderouri | `borderouri/<an>-<luna>/eur` |
 | Jurnal | `borderouri/procesate/.procesate-skroutz.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
 | Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-skroutz.txt` |

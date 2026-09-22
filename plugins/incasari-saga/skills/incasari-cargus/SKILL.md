@@ -153,14 +153,20 @@ procesare. Trimite în schimb un e-mail de reminder către adresele din `email.c
    borderourile din septembrie). Procesează mai departe doar dacă `Responsabil` = `Done`.
 
 2. **Borderoul — per sursă.** Un card separat pentru fiecare sursă:
-   `Adaugă borderoul <Sursă>` (`<Sursă>` = Cargus, eMAG, Sameday, Trendyol, Skroutz sau
+   `Adauga borderoul <Sursă> · <luna>` (`<Sursă>` = Cargus, eMAG, Sameday, Trendyol, Skroutz sau
    PlatiOnline — cea rulată acum; numele exact e `Cargus` aici, sau vezi tabelul
    skill-ului subțire al sursei). Confirmă că Paula a pus fișierul propriu-zis în
    `borderouri/<LUNA>/<valuta>`. **Titlul cardului nu are un format fix** — unele
    task-uri pun în titlu luna acoperită de borderou, altele luna termenului — deci caută
-   după `Task` care **începe cu** `Adaugă borderoul <Sursă>` și confirmă cardul potrivit
+   după `Task` care **începe cu** `Adaug… borderoul <Sursă>` (cu sau fără diacritice) și confirmă cardul potrivit
    după `Note`, care conține calea `borderouri/<LUNA>/` (LUNA fiind cea calculată la
    pasul „Stabilește luna"). Procesează mai departe doar dacă `Responsabil` = `Done`.
+
+   Concret, cu `notion-query-data-sources` (mod sql): `"Task" LIKE 'Adaug% borderoul
+   <Sursă>%'` **și** `"Note" LIKE '%borderouri/<LUNA>/%'`. `Adaug%` prinde și „Adauga"
+   (fără diacritice — așa scrie task-ul „Reminder lunar"), și „Adaugă". Dacă se potrivesc
+   mai multe carduri (de ex. unul creat de test și unul de reminder), poarta trece când
+   **cel puțin unul** e `Done`.
 
 **Fișierul prezent pe disc nu ține loc de cardul de la punctul 2.** Un borderou poate fi
 deja în `borderouri/<LUNA>/<valuta>` fără ca Paula să fi confirmat asta pe board — atunci
@@ -180,16 +186,28 @@ mai sus, deschide (sau, dacă există deja unul cu același `ID rulare`, actuali
 să faci al doilea):
 
 - pe **AI Agent overview**, cardul rulării, cu aceleași proprietăți ca la cazul „nimic de
-  procesat" (pasul 3 din „Flux"): `Rulare`, `ID rulare`, `Agent`, `Perioadă` (LUNA — dacă
-  poarta facturilor a picat înainte să apuci să calculezi LUNA, pune luna curentă a
-  rulării), `Declanșat`, `Declanșare` = `Automat (programat)`, `Fază` = `De verificat`,
+  procesat" (pasul 3 din „Flux"): `Rulare`, `ID rulare`, `Agent`, `Perioadă` (LUNA — și
+  când pică poarta facturilor, calculeaz-o înainte să scrii cardul, ca ID-ul și perioada
+  să fie aceleași cu ale rulării care va trece mai târziu), `Declanșat`, `Declanșare` =
+  `Automat (programat)`, `Fază` = `De verificat`,
   `Rezultat` = ce lipsește pe scurt (ex. „Cardul de borderou <Sursă> nu e Done" sau „Cardul
   de facturi nu e Done"), `Pas manual rămas` = ce anume trebuie făcut ca poarta să treacă.
   `Responsabil` rămâne gol, ca la orice card de pe acest board.
 - sub el, pe **Board Echipă**, o sarcină pentru Paula: `Responsabil` = `Paula`, `Termen`
   peste 3 zile, `Note` = același rezumat ca `Rezultat`, `Task` =
-  `<ID rulare> · Verifică poarta blocată <luna> <anul> din AI Agent overview`, cu link în
-  corp către cardul de mai sus.
+  `<ID rulare> · Verifică poarta blocată <Sursă> <luna LUNA> <anul> din AI Agent overview`,
+  cu link în corp către cardul de mai sus. Dacă există deja o sarcină „Verifică poarta
+  blocată" cu același ID, actualizeaz-o. N-o muta tu în `Done` — o închide Paula.
+
+Cardul de pe AI Agent overview e **același** pe care îl va refolosi rularea care trece
+mai târziu în lună (căutare după `Agent` + `Perioadă`), deci poarta blocată nu lasă un
+card orfan: după ce Paula deblochează și rularea reia, cardul trece în `Done` sau
+`Blocat`, ca orice rulare. Sarcina „Verifică poarta blocată" **nu** e un duplicat al
+sarcinii de verificare de la pasul 3 — sunt două sarcini diferite, cu același ID.
+
+Dacă uneltele Notion cad chiar în momentul opririi, trimite doar e-mailul (și
+notificarea, dacă rulezi programat) și spune acolo că cele două carduri n-au putut fi
+create.
 
 Astea sunt **pe lângă** e-mail, nu în locul lui, și nu ține loc de a te opri: tot nu
 generezi XML, nu stage-uiești și nu rulezi scriptul.
@@ -326,7 +344,9 @@ rularea s-a oprit, jurnalul spune unde și de ce — asta e tot rostul lui, iar 
 #### Sarcina de verificare, pe Board Echipă
 
 Se creează **doar când s-a scris XML**. Dacă există deja un card cu același ID în titlu,
-actualizează-l în loc să faci al doilea.
+actualizează-l în loc să faci al doilea. Excepție: o sarcină „Verifică poarta blocată" cu
+același ID (lăsată de o poartă blocată mai devreme în lună) nu contează ca duplicat — las-o
+cum e, o închide Paula, și creează sarcina de verificare separat.
 
 | Proprietate | Valoare |
 |---|---|
@@ -344,8 +364,20 @@ rândurilor sărite, și cei trei pași — verifică, importă în Saga (`Impor
 mută ea. Un agent care închide singur sarcina pe care tocmai a dat-o unui om face boardul
 inutil.
 
-**Când nu e nimic nou de procesat, nu crea niciun card** — nici pe un board, nici pe
-celălalt. O lună fără borderouri noi nu e o rulare.
+**Când nu e nimic nou de procesat** (ambele porți trec, dar folderul `<LUNA>` lipsește sau
+nu e niciun borderou nou al sursei): nu trimite raport pe e-mail și nu rula scriptul, dar
+lasă urmă, ca să se vadă că rularea a avut loc și a găsit gol:
+
+- pe **AI Agent overview**, cardul rulării cu `Fază` = `De verificat` — refolosește-l pe
+  cel cu același `Agent` și aceeași `Perioadă`, dacă există (de ex. de la o poartă blocată
+  mai devreme în lună); `Rezultat` = motivul („Niciun borderou <Sursă> nou pentru <LUNA>"
+  sau „Folderul <LUNA> lipsește"), `Pas manual rămas` = ce e de verificat;
+- pe **Board Echipă**, o sarcină scurtă pentru Paula: `<ID rulare> · Verifică rularea
+  <Sursă> <luna> <anul> din AI Agent overview`, `Termen` peste 3 zile, cu link către
+  cardul de mai sus. Aceeași regulă de duplicat ca la sarcina de verificare de mai sus.
+
+Cazul tipic e o lună în care sursa n-a trimis borderou și Paula a mutat cardul de borderou
+în `Done` cu o notă: sarcina îi cere doar să confirme că asta era situația.
 
 ### 4. Configurare lipsă sau de schimbat
 

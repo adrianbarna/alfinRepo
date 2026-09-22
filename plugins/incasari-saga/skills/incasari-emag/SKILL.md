@@ -32,7 +32,7 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru eMAG |
 |---|---|
 | `--sursa` | `emag` |
-| Card poartă (borderou), pe Board Echipă — pasul „Poarta de intrare" | `Task` începe cu `Adaugă borderoul eMAG` |
+| Card poartă (borderou), pe Board Echipă — pasul „Poarta de intrare" | `"Task" LIKE 'Adaug% borderoul eMAG%'` (reminderul scrie „Adauga", fără diacritice) și `Note` cu `borderouri/<LUNA>/` |
 | Foldere de borderouri | `borderouri/<an>-<luna>/ron` (RO), `borderouri/<an>-<luna>/eur` (BG), `borderouri/<an>-<luna>/huf` (HU) |
 | Jurnal | `borderouri/procesate/.procesate-emag.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
 | Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-emag.txt` |

@@ -32,7 +32,7 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru PlatiOnline |
 |---|---|
 | `--sursa` | `plationline` |
-| Card poartă (borderou), pe Board Echipă — pasul „Poarta de intrare" | `Task` începe cu `Adaugă borderoul PlatiOnline` |
+| Card poartă (borderou), pe Board Echipă — pasul „Poarta de intrare" | `"Task" LIKE 'Adaug% borderoul PlatiOnline%'` (reminderul scrie „Adauga", fără diacritice) și `Note` cu `borderouri/<LUNA>/` |
 | Foldere de borderouri | `borderouri/<an>-<luna>/ron` |
 | Jurnal | `borderouri/procesate/.procesate-plationline.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
 | Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-plationline.txt` |

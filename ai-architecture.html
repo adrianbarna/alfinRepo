@@ -142,6 +142,7 @@
   li.lane-h:first-child{padding-top:2px}
   .step.branch .t{font-style:italic}
   .step.branch .t::before{content:"↳ ";font-style:normal;color:var(--ink-3)}
+  .info{margin:-4px 0 16px;color:var(--ink-2);font-size:13px;max-width:110ch}
   footer{margin-top:26px;color:var(--ink-3);font-size:12.5px}
   code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.92em}
 </style>
@@ -150,10 +151,11 @@
 <div class="wrap">
   <header>
     <h1>ALFIN Consult — arhitectura agenților AI</h1>
-    <p class="sub">Cum curge informația printr-un agent, de la declanșatorul programat până la cardul închis în board. Alege un agent din tab-uri, apasă play, sau sari direct la un pas din listă.</p>
+    <p class="sub">Câte un tab pentru fiecare task programat: ce face, pas cu pas, în ordine — porțile, ramurile care se opresc, procesarea, ce carduri deschide și unde, și ce rămâne omului. Apasă play sau sari direct la un pas din listă; pașii cu „↳” sunt ramuri laterale, care se opresc.</p>
   </header>
 
   <div class="tabs" id="tabs" role="tablist"></div>
+  <p class="info" id="info"></p>
 
   <div class="layout">
     <div>
@@ -180,265 +182,600 @@
   </div>
 
   <footer>
-    Fișier din <code>adrianbarna/alfinRepo</code>. Agenții sunt definiți în structura
-    <code>AGENTS</code> din acest fișier — un agent nou înseamnă o intrare nouă acolo, nu cod nou.
+    Fișier din <code>adrianbarna/alfinRepo</code>. Task-urile sunt definite în structura
+    <code>AGENTS</code> din acest fișier; cele șase de borderouri se generează din <code>SURSE</code>
+    prin <code>borderouTask()</code>. Sursa de adevăr rămâne prompt-ul fiecărui task programat și
+    <code>plugins/incasari-saga/skills/incasari-cargus/SKILL.md</code> — dacă se schimbă acolo, se schimbă și aici.
   </footer>
 </div>
 
 <script>
 /* ────────────────────────────────────────────────────────────────────────────
-   CUM ADAUGI UN AGENT NOU
+   CUM ADAUGI SAU MODIFICI UN TASK
 
-   Adaugi o intrare în AGENTS, cu trei liste:
+   Fiecare tab e o intrare în AGENTS. Toate sunt „flux secvențial”:
+   benzi (lanes) citite rând cu rând, de la stânga la dreapta, și câte o cutie
+   nouă pentru fiecare pas, numerotată cu numărul pasului.
 
-     nodes  — cutiile. { id, x, y, w, h, kind, title, meta }
+     lanes  — { n, title, sub }  — y-ul se calculează singur (150px pe bandă)
+     nodes  — { id, c, l, kind, title, meta }  — c = coloana (0…6), l = banda;
+              x/y/w/h se calculează din grilă (vezi grid() mai jos)
               kind ∈ trigger | agent | code | data | extern | human
-     edges  — săgețile. { id, from:[nodeId, latură], to:[nodeId, latură] }
-              latură ∈ t | b | l | r  (sus, jos, stânga, dreapta), opțional
-              cu offset: ["script","t",-45] mută punctul cu 45px pe orizontală.
-     steps  — povestea, în ordine. { edges:[...], on:[nodeId,...], who, title,
-              desc, phase }  ·  who ∈ "agent" | "om"  ·  phase = faza din board
+     edges  — { id, from:[nodeId, latură, offset?], to:[…], label?, style? }
+              latură ∈ t | b | l | r ; style:"time" = săgeată punctată
+     steps  — { edges:[…], on:[…, cutiaNouă], who:"agent"|"om", phase, title,
+              desc, branch?, grp? }
+              branch:true = ramură laterală care se oprește (ex. „nu” la o
+              poartă); pașii cu același grp se colorează ca parcurși între ei.
 
-   Nimic altceva nu se schimbă: tab-urile, animația și lista de pași se
-   generează din datele astea. status:"planificat" arată doar un anunț.
+   Cele șase task-uri de borderouri au același schelet: sunt generate de
+   borderouTask() din datele fiecărei surse (SURSE). Schimbă scheletul o
+   singură dată, acolo, nu de șase ori.
 
-   FLUX SECVENȚIAL (recomandat — vezi „incasari”): numbered:true + lanes.
-     • o cutie per pas: fiecare pas aterizează pe o cutie nouă (ultimul id
-       din `on`), care primește numărul pasului. Un sistem folosit de două
-       ori (ex. Notion) apare ca două cutii, nu ca o săgeată înapoi.
-     • lanes — benzile etapelor, citite ca un text: rând cu rând, de la
-       stânga la dreapta. { y, h, n, title, sub }; nodurile încep la x=210.
-       Trecerea la rândul următor: from:[ultimul,"b"] → to:[primul,"t"].
-     • edge.style:"time" — săgeată punctată (legătură în timp, nu cauzală);
-       edge.label — text scurt lângă începutul săgeții („da”, „nu”).
-     • step.branch:true — ramură laterală care se oprește (ex. „nu” la poartă);
-       nu se colorează ca parcursă după ce fluxul merge mai departe.
+   Sursa de adevăr pentru ce face fiecare task e prompt-ul task-ului programat
+   (claude.ai → Scheduled tasks) și SKILL.md-ul din plugins/incasari-saga.
+   Pagina asta îl explică; dacă se schimbă prompt-ul, se schimbă și aici.
    ──────────────────────────────────────────────────────────────────────────── */
 
-const AGENTS = {
-  incasari: {
-    label: "Agent Borderou Cargus",
-    status: "activ",
-    plugin: "incasari-saga · skill incasari-cargus",
-    numbered: true,
-    view: [0, 0, 1280, 770],
+const AAO = "AI Agent overview";
+const BE = "Board Echipă";
+
+const SURSE = {
+  cargus: {
+    S: "Cargus", s: "cargus", ora: "10:00", id: "INC-&lt;LUNA&gt;",
+    rulare: "Încasări — &lt;luna&gt; &lt;anul&gt;",
+    subj1: "Incasari Saga: astept exportul de facturi pentru &lt;luna&gt; &lt;anul&gt;",
+    folder: "borderouri/&lt;LUNA&gt;/ron", foldMeta: "ron · .xlsx",
+    jurnal: ".procesate.json", raport: "ultimul-raport.txt",
+    cmd: "--sursa cargus --folder …/&lt;LUNA&gt;/ron",
+    put: "Borderoul Cargus (sau Packeta) pe luna încheiată, <code>.xlsx</code>, în <code>borderouri/&lt;LUNA&gt;/ron</code>. Numele fișierului nu contează — Cargus și Packeta se recunosc după coloane.",
+    keyMeta: "RefExp1 = inf_suplm",
+    key: "Cheia e <code>RefExp1 = inf_suplm</code> (numărul de expediție trecut pe factură), confirmată de total — până la 0,01 lei trece tăcut. Numele e doar control secundar: pe colet e persoana, pe factură firma. Suma din XML vine de pe factură, ca factura să se stingă exact. Un rând care nu se leagă sigur nu intră în XML — apare în raport ca sărit."
+  },
+  emag: {
+    S: "eMAG", s: "emag", ora: "10:30", id: "INC-EMAG-&lt;LUNA&gt;",
+    folder: "borderouri/&lt;LUNA&gt;/ron, /eur, /huf", foldMeta: "ron · eur · huf",
+    jurnal: ".procesate-emag.json", raport: "ultimul-raport-emag.txt",
+    cmd: "--sursa emag --folder …/ron --folder …/eur --folder …/huf",
+    put: "Trei fișiere <code>.xlsx</code>, după țară: RO în <code>ron</code>, BG în <code>eur</code>, HU în <code>huf</code>. <b>eMAG BG merge în <code>eur</code>, nu în <code>huf</code></b> — pus în <code>huf</code> ar ieși cu valuta greșită, împărțit la 100.",
+    keyMeta: "Order ID · pe comandă",
+    key: "O linie pe <b>comandă</b>, nu pe rând: fracțiunile aceleiași comenzi (card, ramburs, refund, voucher) se adună pe <code>Order ID</code>; o comandă plătită și returnată în același borderou iese pe 0 și nu intră în XML. <code>Data</code> e data virării. Plățile parțiale intră cu suma din borderou și avertisment — sunt principalul lucru de verificat la eMAG. Un fișier BG găsit în <code>huf</code> nu se procesează, se semnalează. Toate trei folderele se dau într-un singur apel de script."
+  },
+  sameday: {
+    S: "Sameday", s: "sameday", ora: "11:00", id: "INC-SAMEDAY-&lt;LUNA&gt;",
+    folder: "borderouri/&lt;LUNA&gt;/ron", foldMeta: "ron · .xlsx",
+    jurnal: ".procesate-sameday.json", raport: "ultimul-raport-sameday.txt",
+    cmd: "--sursa sameday --folder …/&lt;LUNA&gt;/ron",
+    put: "Borderoul Sameday pe luna încheiată, <code>.xlsx</code>, în <code>borderouri/&lt;LUNA&gt;/ron</code>.",
+    keyMeta: "nume + sumă + zi",
+    key: "Borderoul <b>nu are numărul comenzii</b> (<code>Referinta client</code> e goală), deci factura se caută după nume + sumă + ziua AWB-ului. Nu e cheie, deci potrivirile sunt mai fragile decât la alte surse. <code>Numar</code> și <code>FacturaID</code> din XML vin din <code>inf_suplm</code> al facturii găsite. Un client fără factură pe nume, sau cu două la fel de plauzibile, e sărit și raportat — cazul obișnuit de verificat manual."
+  },
+  trendyol: {
+    S: "Trendyol", s: "trendyol", ora: "11:30", id: "INC-TRENDYOL-&lt;LUNA&gt;",
+    folder: "borderouri/&lt;LUNA&gt;/ron", foldMeta: "ron · .xlsx",
+    jurnal: ".procesate-trendyol.json", raport: "ultimul-raport-trendyol.txt",
+    cmd: "--sursa trendyol --folder …/&lt;LUNA&gt;/ron",
+    put: "Borderoul Trendyol pe luna încheiată, <code>.xlsx</code>, în <code>borderouri/&lt;LUNA&gt;/ron</code>.",
+    keyMeta: "nume + sumă + dată",
+    key: "Waybill-ul nu apare pe factură, deci legarea e după nume + sumă + dată; coletele aceluiași client din aceeași zi se adună într-o linie. Clienții greci sunt facturați în EUR dar încasați în lei: linia intră în RON (5125), la valoarea în lei a facturii, <b>cu avertisment</b> — de verificat la import. Numele grecești se transliterează automat."
+  },
+  skroutz: {
+    S: "Skroutz", s: "skroutz", ora: "12:00", id: "INC-SKROUTZ-&lt;LUNA&gt;",
+    folder: "borderouri/&lt;LUNA&gt;/eur", foldMeta: "eur · .xlsx",
+    jurnal: ".procesate-skroutz.json", raport: "ultimul-raport-skroutz.txt",
+    cmd: "--sursa skroutz --folder …/&lt;LUNA&gt;/eur",
+    put: "Borderoul Skroutz pe luna încheiată, <code>.xlsx</code>, în <code>borderouri/&lt;LUNA&gt;/eur</code> (lângă el stă și eMAG BG, al altui agent).",
+    keyMeta: "Waybill = inf_suplm",
+    key: "Cheia e <code>Waybill = inf_suplm</code> — codul comenzii Skroutz e pe factură, inclusiv cu sufix (<code>…-2</code>). Rândurile cu suma 0 nu intră în XML. Folderul <code>eur</code> dă contul 5126 și moneda EUR. De urmărit: firma cu TVA grecesc (borderou fără TVA, factură cu TVA) și comanda facturată în lei, care nu apare în facturile în valută."
+  },
+  plationline: {
+    S: "PlatiOnline", s: "plationline", ora: "12:30", id: "INC-PLATIONLINE-&lt;LUNA&gt;",
+    folder: "borderouri/&lt;LUNA&gt;/ron", foldMeta: "ron · .csv",
+    jurnal: ".procesate-plationline.json", raport: "ultimul-raport-plationline.txt",
+    cmd: "--sursa plationline --folder …/&lt;LUNA&gt;/ron",
+    put: "Borderoul PlatiOnline, <code>.csv</code> cu separator <code>;</code>, în <code>borderouri/&lt;LUNA&gt;/ron</code>. Nu se convertește în alt format.",
+    keyMeta: "Order Number = inf_suplm",
+    key: "Cheia e <code>Order Number = inf_suplm</code>; data e în format american și poate cădea cu 1–3 zile <i>înaintea</i> facturii, deci se poate lega de o factură din luna precedentă — nu e o eroare. Comenzile B2B (seria <code>MCSCOD</code>) n-au Order Number pe factură: se leagă după sumă + zi, cu avertisment. <code>Credit</code> = bani întorși: linie negativă, pe storno."
+  }
+};
+
+function borderouTask(o) {
+  const S = o.S, ID = o.id;
+  const rul = o.rulare || `Încasări ${S} — &lt;luna&gt; &lt;anul&gt;`;
+  const subj1 = o.subj1 || `Incasari Saga ${S}: astept exportul de facturi pentru &lt;luna&gt; &lt;anul&gt;`;
+  const subj2 = `Incasari Saga ${S}: astept confirmarea borderoului pentru &lt;luna încheiată&gt;`;
+  const stopDesc = `PushNotification cu motivul, ce lipsește, cui a plecat mailul și ID-ul <code>${ID}</code>; apoi rularea se oprește. Dacă Notion cade chiar în momentul opririi, cardurile se sar și notificarea spune asta. <b>Reluarea:</b> următoarea pornire programată e abia luna viitoare, așa că după ce Paula rezolvă, rularea se pornește manual (Run now) — reia de la poarta 1 și refolosește cardul lunii.`;
+  return {
+    label: S, status: "activ", grid: true,
+    plugin: `Task programat „Procesare borderou ${S}” · 5 ale lunii, ${o.ora} ora României (cu o oră mai devreme iarna) · rulează în cloud, cu folderul <code>incasari-saga</code> din Drive conectat prin calculatorul dtd-dell-s1 · skill <code>incasari-${o.s}</code>`,
     lanes: [
-      { y:30,  h:120, n:"Etapa 1", title:"Pregătirea datelor",   sub:"Paula · cu zile înainte" },
-      { y:180, h:120, n:"Etapa 2", title:"Pornire și poartă",    sub:"sesiune Claude · skill" },
-      { y:330, h:120, n:"Etapa 3", title:"Procesarea",           sub:"proceseaza.py · fără AI" },
-      { y:480, h:120, n:"Etapa 4", title:"Raport și predare",    sub:"skill · Gmail · Notion" },
-      { y:630, h:120, n:"Etapa 5", title:"Verificare și import", sub:"Paula · pas manual" }
+      { n:"Etapa 1", title:"Pregătire",               sub:"1–4 ale lunii · Paula" },
+      { n:"Etapa 2", title:"Poarta 1 · facturi",      sub:`5 ale lunii, ${o.ora}` },
+      { n:"Etapa 3", title:"Poarta 2 · borderou",     sub:`cardul ${S} · per sursă` },
+      { n:"Etapa 4", title:"Ce e în Drive",           sub:"nimic nou? → oprire curată" },
+      { n:"Etapa 5", title:"Procesarea",              sub:"proceseaza.py · fără AI" },
+      { n:"Etapa 6", title:"Raport",                  sub:"Gmail · XML scris?" },
+      { n:"Etapa 7", title:"Închidere și predare",    sub:"card Done · sarcina Paulei" },
+      { n:"Etapa 8", title:"Verificare și import",    sub:"Paula · pas manual" },
+      { n:"Plasă",   title:"Oprire neprevăzută",      sub:"oriunde în afara porților" }
     ],
     nodes: [
-      // Etapa 1 — pregătirea datelor
-      { id:"remTask",   x:210,  y:60,  w:170, h:64, kind:"trigger", title:"Task programat",       meta:"cu zile înainte" },
-      { id:"remCard",   x:440,  y:60,  w:170, h:64, kind:"extern",  title:"Reminder creat",       meta:"Notion · Board Echipă" },
-      { id:"paulaExp",  x:670,  y:60,  w:170, h:64, kind:"human",   title:"Export facturi",       meta:"din Saga → Drive/facturi" },
-      { id:"remDone",   x:900,  y:60,  w:170, h:64, kind:"human",   title:"Reminder → „Done”",    meta:"semnalul „poți începe”" },
-      // Etapa 2 — pornire și poartă
-      { id:"routine",   x:210,  y:210, w:170, h:64, kind:"trigger", title:"Routine lunar",        meta:"pornește skill-ul" },
-      { id:"cardRun",   x:440,  y:210, w:190, h:64, kind:"extern",  title:"Card „În lucru”",      meta:"Notion · AI Agent overview" },
-      { id:"gate",      x:690,  y:210, w:190, h:64, kind:"code",    title:"Reminder în „Done”?",  meta:"poartă · da / nu" },
-      { id:"blocked",   x:960,  y:210, w:220, h:64, kind:"extern",  title:"Atenționare pe e-mail", meta:"card „Blocat” · rularea se oprește" },
-      // Etapa 3 — procesarea (proceseaza.py)
-      { id:"jurnal1",   x:210,  y:360, w:140, h:64, kind:"data",    title:"Citește jurnalul",     meta:".procesate.json" },
-      { id:"bord",      x:388,  y:360, w:140, h:64, kind:"data",    title:"Borderouri noi",       meta:"borderouri/ron · xlsx" },
-      { id:"fact",      x:566,  y:360, w:140, h:64, kind:"data",    title:"Facturi din Saga",     meta:"facturi · export XML" },
-      { id:"match",     x:744,  y:360, w:140, h:64, kind:"code",    title:"Leagă de facturi",     meta:"RefExp1 = inf_suplm" },
-      { id:"xml",       x:922,  y:360, w:140, h:64, kind:"data",    title:"Scrie XML-ul",         meta:"procesate/*.xml" },
-      { id:"jurnal2",   x:1100, y:360, w:140, h:64, kind:"data",    title:"Notează în jurnal",    meta:".procesate.json" },
-      // Etapa 4 — raport și predare
-      { id:"raport",    x:210,  y:510, w:170, h:64, kind:"agent",   title:"Rezumă raportul",      meta:"skill · nu recalculează" },
-      { id:"gmailR",    x:440,  y:510, w:170, h:64, kind:"extern",  title:"Raport pe e-mail",     meta:"Gmail · fără confirmare" },
-      { id:"cardDone",  x:670,  y:510, w:170, h:64, kind:"extern",  title:"Card „Done”",          meta:"Notion · AI Agent overview" },
-      { id:"handoff",   x:900,  y:510, w:190, h:64, kind:"extern",  title:"Card de verificare",   meta:"Board Echipă · coloana Paulei" },
-      // Etapa 5 — verificare și import (om)
-      { id:"paulaChk",  x:210,  y:660, w:170, h:64, kind:"human",   title:"Paula verifică",       meta:"totaluri · avertismente" },
-      { id:"saga",      x:440,  y:660, w:170, h:64, kind:"extern",  title:"Import în Saga",       meta:"XML → Încasări" },
-      { id:"teamDone",  x:670,  y:660, w:170, h:64, kind:"extern",  title:"Sarcina → „Done”",     meta:"încasările sunt în Saga" }
+      { id:"remTrig",  c:0, l:0, kind:"trigger", title:"Reminder lunar",        meta:"1 ale lunii · 08:00" },
+      { id:"remFact",  c:1, l:0, kind:"extern",  title:"Card facturi",          meta:`${BE} · termen 4` },
+      { id:"remBord",  c:2, l:0, kind:"extern",  title:`Card ${S}`,             meta:`borderou · ${BE}` },
+      { id:"paulaPut", c:3, l:0, kind:"human",   title:"Paula pune fișierele",  meta:"facturi + " + o.foldMeta },
+      { id:"paulaDone",c:4, l:0, kind:"human",   title:"Cardurile → Done",      meta:"confirmarea pentru rulare" },
+
+      { id:"runTrig",  c:0, l:1, kind:"trigger", title:`Rulare ${S}`,           meta:`5 ale lunii · ${o.ora}` },
+      { id:"gate1",    c:1, l:1, kind:"code",    title:"Card facturi Done?",    meta:"poarta 1 · luna curentă" },
+      { id:"g1mail",   c:2, l:1, kind:"extern",  title:"Mail reminder",         meta:"Gmail · config.json" },
+      { id:"g1card",   c:3, l:1, kind:"extern",  title:"Card „De verificat”",   meta:AAO },
+      { id:"g1task",   c:4, l:1, kind:"extern",  title:"Sarcină Paula",         meta:"poarta blocată · +3 zile" },
+      { id:"g1stop",   c:5, l:1, kind:"extern",  title:"Push + STOP",           meta:"reluare manuală" },
+
+      { id:"gate2",    c:0, l:2, kind:"code",    title:"Card borderou Done?",   meta:"poarta 2 · Note = LUNA" },
+      { id:"g2mail",   c:1, l:2, kind:"extern",  title:"Mail reminder",         meta:"Gmail · config.json" },
+      { id:"g2card",   c:2, l:2, kind:"extern",  title:"Card „De verificat”",   meta:AAO },
+      { id:"g2task",   c:3, l:2, kind:"extern",  title:"Sarcină Paula",         meta:"poarta blocată · +3 zile" },
+      { id:"g2stop",   c:4, l:2, kind:"extern",  title:"Push + STOP",           meta:"reluare manuală" },
+
+      { id:"list",     c:0, l:3, kind:"data",    title:"Listează Drive-ul",     meta:o.foldMeta },
+      { id:"hasNew",   c:1, l:3, kind:"code",    title:"Borderou nou?",         meta:"vs. jurnalul sursei" },
+      { id:"nnCard",   c:2, l:3, kind:"extern",  title:"Card „De verificat”",   meta:"nimic de procesat" },
+      { id:"nnTask",   c:3, l:3, kind:"extern",  title:"Sarcină Paula",         meta:"verifică rularea · +3 zile" },
+      { id:"nnStop",   c:4, l:3, kind:"extern",  title:"Push + STOP",           meta:"fără e-mail" },
+
+      { id:"clone",    c:0, l:4, kind:"code",    title:"git clone alfinRepo",   meta:"skill + script" },
+      { id:"stage",    c:1, l:4, kind:"data",    title:"Stage în cloud",        meta:"config · fișiere · jurnale" },
+      { id:"script",   c:2, l:4, kind:"code",    title:"proceseaza.py",         meta:`--sursa ${o.s}` },
+      { id:"match",    c:3, l:4, kind:"code",    title:"Leagă de facturi",      meta:o.keyMeta },
+      { id:"xml",      c:4, l:4, kind:"data",    title:"XML + raport",          meta:"procesate/*.xml" },
+      { id:"back",     c:5, l:4, kind:"data",    title:"Scrie înapoi în Drive", meta:"XML · jurnalul sursei" },
+
+      { id:"gmail",    c:0, l:5, kind:"extern",  title:"Raport pe e-mail",      meta:"Gmail · fără confirmare" },
+      { id:"xmlGate",  c:1, l:5, kind:"code",    title:"S-a scris XML?",        meta:"cod 0 · măcar o linie" },
+      { id:"blCard",   c:2, l:5, kind:"extern",  title:"Card „Blocat”",         meta:"fără sarcină pe board" },
+      { id:"blPush",   c:3, l:5, kind:"extern",  title:"Push",                  meta:"ce lipsește concret" },
+
+      { id:"cardDone", c:0, l:6, kind:"extern",  title:"Card „Done”",           meta:AAO },
+      { id:"task",     c:1, l:6, kind:"extern",  title:"Sarcină de verificare", meta:"Paula · +5 zile" },
+      { id:"push",     c:2, l:6, kind:"extern",  title:"Push final",            meta:"linii · total · avertismente" },
+
+      { id:"chk",      c:0, l:7, kind:"human",   title:"Paula verifică",        meta:"totaluri · avertismente" },
+      { id:"saga",     c:1, l:7, kind:"human",   title:"Import în Saga",        meta:"Import documente" },
+      { id:"teamDone", c:2, l:7, kind:"human",   title:"Sarcina → Done",        meta:"încasările sunt în Saga" },
+
+      { id:"err",      c:0, l:8, kind:"code",    title:"Oprire neprevăzută",    meta:"clone · script · timeout" },
+      { id:"errCard",  c:1, l:8, kind:"extern",  title:"Card „eroare”",         meta:"De verificat" },
+      { id:"errPush",  c:2, l:8, kind:"extern",  title:"Push",                  meta:"dacă Notion nu merge" }
     ],
     edges: [
-      { id:"e01",   from:["remTask","r"],  to:["remCard","l"] },
-      { id:"e02",   from:["remCard","r"],  to:["paulaExp","l"] },
-      { id:"e03",   from:["paulaExp","r"], to:["remDone","l"] },
-      { id:"eTime", from:["remDone","b"],  to:["routine","t"], style:"time", label:"în ziua rulării" },
-      { id:"e05",   from:["routine","r"],  to:["cardRun","l"] },
-      { id:"e06",   from:["cardRun","r"],  to:["gate","l"] },
-      { id:"eNu",   from:["gate","r"],     to:["blocked","l"], label:"nu" },
-      { id:"eDa",   from:["gate","b"],     to:["jurnal1","t"], label:"da" },
-      { id:"e09",   from:["jurnal1","r"],  to:["bord","l"] },
-      { id:"e10",   from:["bord","r"],     to:["fact","l"] },
-      { id:"e11",   from:["fact","r"],     to:["match","l"] },
-      { id:"e12",   from:["match","r"],    to:["xml","l"] },
-      { id:"e13",   from:["xml","r"],      to:["jurnal2","l"] },
-      { id:"e14",   from:["jurnal2","b"],  to:["raport","t"] },
-      { id:"e15",   from:["raport","r"],   to:["gmailR","l"] },
-      { id:"e16",   from:["gmailR","r"],   to:["cardDone","l"] },
-      { id:"e17",   from:["cardDone","r"], to:["handoff","l"] },
-      { id:"e18",   from:["handoff","b"],  to:["paulaChk","t"] },
-      { id:"e19",   from:["paulaChk","r"], to:["saga","l"] },
-      { id:"e20",   from:["saga","r"],     to:["teamDone","l"] }
+      { id:"a1", from:["remTrig","r"],  to:["remFact","l"] },
+      { id:"a2", from:["remFact","r"],  to:["remBord","l"] },
+      { id:"a3", from:["remBord","r"],  to:["paulaPut","l"] },
+      { id:"a4", from:["paulaPut","r"], to:["paulaDone","l"] },
+      { id:"t1", from:["paulaDone","b"],to:["runTrig","t"], style:"time", label:`pe 5, la ${o.ora}` },
+      { id:"b1", from:["runTrig","r"],  to:["gate1","l"] },
+      { id:"b2", from:["gate1","r"],    to:["g1mail","l"], label:"nu" },
+      { id:"b3", from:["g1mail","r"],   to:["g1card","l"] },
+      { id:"b4", from:["g1card","r"],   to:["g1task","l"] },
+      { id:"b5", from:["g1task","r"],   to:["g1stop","l"] },
+      { id:"c0", from:["gate1","b"],    to:["gate2","t"], label:"da" },
+      { id:"c2", from:["gate2","r"],    to:["g2mail","l"], label:"nu" },
+      { id:"c3", from:["g2mail","r"],   to:["g2card","l"] },
+      { id:"c4", from:["g2card","r"],   to:["g2task","l"] },
+      { id:"c5", from:["g2task","r"],   to:["g2stop","l"] },
+      { id:"d0", from:["gate2","b"],    to:["list","t"], label:"da" },
+      { id:"d1", from:["list","r"],     to:["hasNew","l"] },
+      { id:"d2", from:["hasNew","r"],   to:["nnCard","l"], label:"nu" },
+      { id:"d3", from:["nnCard","r"],   to:["nnTask","l"] },
+      { id:"d4", from:["nnTask","r"],   to:["nnStop","l"] },
+      { id:"e0", from:["hasNew","b"],   to:["clone","t"], label:"da" },
+      { id:"e1", from:["clone","r"],    to:["stage","l"] },
+      { id:"e2", from:["stage","r"],    to:["script","l"] },
+      { id:"e3", from:["script","r"],   to:["match","l"] },
+      { id:"e4", from:["match","r"],    to:["xml","l"] },
+      { id:"e5", from:["xml","r"],      to:["back","l"] },
+      { id:"f0", from:["back","b"],     to:["gmail","t"] },
+      { id:"f1", from:["gmail","r"],    to:["xmlGate","l"] },
+      { id:"f2", from:["xmlGate","r"],  to:["blCard","l"], label:"nu" },
+      { id:"f3", from:["blCard","r"],   to:["blPush","l"] },
+      { id:"g0", from:["xmlGate","b"],  to:["cardDone","t"], label:"da" },
+      { id:"g1", from:["cardDone","r"], to:["task","l"] },
+      { id:"g2", from:["task","r"],     to:["push","l"] },
+      { id:"h0", from:["push","b"],     to:["chk","t"], style:"time", label:"în zilele următoare" },
+      { id:"h1", from:["chk","r"],      to:["saga","l"] },
+      { id:"h2", from:["saga","r"],     to:["teamDone","l"] },
+      { id:"z1", from:["err","r"],      to:["errCard","l"] },
+      { id:"z2", from:["errCard","r"],  to:["errPush","l"] }
     ],
     steps: [
-      // Etapa 1
-      { edges:[], on:["remTask"], who:"agent", phase:"înainte de rulare",
-        title:"Pornește task-ul de reminder",
-        desc:"Un task programat separat rulează cu câteva zile înaintea rulării lunare. Singurul lui rost e ca pregătirea datelor să nu depindă de memoria nimănui." },
-      { edges:["e01"], on:["remTask","remCard"], who:"agent", phase:"Reminder → În lucru",
-        title:"Se creează reminderul Paulei",
-        desc:"Task-ul deschide singur, în coloana Paulei de pe Board Echipă, cardul de reminder pentru rularea care urmează." },
-      { edges:["e02"], on:["remCard","paulaExp"], who:"om", phase:"Paula",
-        title:"Paula exportă facturile din Saga",
-        desc:"Cardul îi cere un singur lucru: exportul de facturi din Saga, pus în folderul <code>facturi</code> de pe Drive. Cât timp cardul e deschis, agentul consideră că datele de intrare nu sunt gata." },
-      { edges:["e03"], on:["paulaExp","remDone"], who:"om", phase:"Reminder → Done",
-        title:"Paula mută reminderul în „Done”",
-        desc:"Bifa e semnalul convenit: pregătirea e făcută. E singurul lucru pe care rularea îl citește ca „poți începe”." },
-      // Etapa 2
-      { edges:["eTime"], on:["remDone","routine"], who:"agent", phase:"Programat → În lucru",
-        title:"În ziua rulării pornește routine-ul lunar",
-        desc:"Un task local din fila Code, legat de folderul din Drive. Nu cere nicio confirmare — o rulare care așteaptă un „da” la 8 dimineața e o rulare ratată. De aici până la predarea către Paula lucrează sesiunea singură, prin skill-ul <code>incasari-cargus</code>." },
-      { edges:["e05"], on:["routine","cardRun"], who:"agent", phase:"În lucru",
-        title:"Se deschide cardul rulării",
-        desc:"Skill-ul caută în AI Agent overview un card pentru luna curentă; dacă nu există, îl creează în „În lucru”. Dacă Notion lipsește din sesiune, rularea merge mai departe fără el." },
-      { edges:["e06"], on:["cardRun","gate"], who:"agent", phase:"În lucru",
-        title:"Poarta: reminderul e în „Done”?",
-        desc:"Înainte de orice prelucrare, rularea citește starea reminderului de la pasul 4. Tot ce urmează atârnă de răspunsul ăsta — e o poartă, nu o informație: <b>nu</b> duce la pasul 8 (oprire), <b>da</b> la pasul 9 (procesare)." },
-      { edges:["eNu"], on:["gate","blocked"], who:"agent", phase:"Blocat / Necesită input", branch:true,
-        title:"Dacă nu: e-mail Paulei, rularea se oprește",
-        desc:"Paula primește o atenționare pe e-mail cu ce anume lipsește, iar cardul rulării rămâne în „Blocat / Necesită input”. Nu se procesează nimic pe date incomplete; la rularea următoare verificarea se reia din același punct. Aici fluxul se termină — pașii 9–21 au loc doar pe ramura „da”." },
-      // Etapa 3
-      { edges:["eDa"], on:["gate","jurnal1"], who:"agent", phase:"În lucru",
-        title:"Dacă da: scriptul pornește și citește jurnalul",
-        desc:"Abia acum se apelează <code>proceseaza.py</code>. Aici se termină partea de model: conversia o face cod determinist — un borderou are sute de rânduri, iar XML-ul scris de un model nu e verificabil. Primul lucru citit e <code>.procesate.json</code>, evidența borderourilor duse la capăt; de aceea rularea e idempotentă: repornită, nu reface nimic." },
-      { edges:["e09"], on:["jurnal1","bord"], who:"agent", phase:"În lucru",
-        title:"Citește borderourile noi",
-        desc:"Fișiere reale pe disc, sincronizate prin Google Drive în modul Mirror. Valuta e dată de folder, nu de conținut; sursa (Cargus sau Packeta) se recunoaște după coloane." },
-      { edges:["e10"], on:["bord","fact"], who:"agent", phase:"În lucru",
-        title:"Citește exportul de facturi din Saga",
-        desc:"Exportul pus de Paula la pasul 3. Fără el nu se poate stinge nicio factură; când lipsește, scriptul o spune explicit în raport, în loc să sară rândurile în tăcere." },
-      { edges:["e11"], on:["fact","match"], who:"agent", phase:"În lucru",
-        title:"Leagă fiecare rând de factura lui",
-        desc:"Cheia e <code>RefExp1 = inf_suplm</code>, confirmată de total (până la 0,01 lei trece tăcut). Numele e doar control secundar — pe colet e persoana, pe factură firma. Un rând care nu se leagă sigur nu intră în XML." },
-      { edges:["e12"], on:["match","xml"], who:"agent", phase:"În lucru",
-        title:"Scrie XML-ul de import",
-        desc:"Un fișier per borderou, în <code>procesate/</code>, cu numele borderoului fără spații. Suma vine de pe factură, ca factura să se stingă exact." },
-      { edges:["e13"], on:["xml","jurnal2"], who:"agent", phase:"În lucru",
-        title:"Notează borderoul ca procesat",
-        desc:"Același <code>.procesate.json</code> de la pasul 9. Ce n-a mers nu se notează — un format nerecunoscut se reia automat la rularea următoare, după ce se adaugă maparea." },
-      // Etapa 4
-      { edges:["e14"], on:["jurnal2","raport"], who:"agent", phase:"În lucru",
-        title:"Raportul ajunge la skill",
-        desc:"Linii, total, defalcare pe zile, rânduri sărite, avertismente. Skill-ul nu recalculează nimic; doar rezumă și transmite mai departe." },
-      { edges:["e15"], on:["raport","gmailR"], who:"agent", phase:"În lucru",
+      { edges:[], on:["remTrig"], who:"agent", phase:"—",
+        title:"Pe 1 ale lunii rulează „Reminder lunar”",
+        desc:`Un task programat separat (vezi tab-ul „Reminder lunar”) creează în Drive folderele lunii încheiate — <code>&lt;LUNA&gt;</code>, ex. <code>2026-09</code> pentru rularea din 5 octombrie — și deschide cardurile Paulei. Rularea ${S} de pe 5 depinde de două dintre ele.` },
+      { edges:["a1"], on:["remTrig","remFact"], who:"agent", phase:`${BE} · Paula`,
+        title:"Cardul de facturi (comun tuturor surselor)",
+        desc:"<code>Adauga fisierul xml cu facturile in folderul facturi</code>, fără lună în titlu, <code>Termen</code> pe 4. Toate cele șase rulări de pe 5 îl caută după titlu + termen în luna curentă." },
+      { edges:["a2"], on:["remFact","remBord"], who:"agent", phase:`${BE} · Paula`,
+        title:`Cardul de borderou ${S}`,
+        desc:`<code>Adauga borderoul ${S} · &lt;luna&gt;</code> (fără diacritice), <code>Termen</code> pe 4, iar în <code>Note</code> calea <code>${o.folder}</code>. Nota — nu titlul — e cheia după care îl găsește poarta 2.` },
+      { edges:["a3"], on:["remBord","paulaPut"], who:"om", phase:"Paula",
+        title:"Paula pune exportul de facturi și borderoul",
+        desc:`Exportul de facturi din Saga în <code>facturi/&lt;LUNA&gt;</code> (<code>.xml</code> în lei, <code>.xlsx</code>/<code>.xml</code> în valută — nu <code>.xls</code>). ${o.put}` },
+      { edges:["a4"], on:["paulaPut","paulaDone"], who:"om", phase:"→ Done (echipă)",
+        title:"Paula mută cele două carduri în „Done”",
+        desc:`Mutarea e confirmarea; un fișier prezent în Drive nu ține loc de ea. Dacă luna asta n-a venit borderou ${S}, Paula mută oricum cardul în „Done”, cu o notă — rularea va ajunge atunci la cazul „nimic de procesat” (pașii 19–21).` },
+
+      { edges:["t1"], on:["paulaDone","runTrig"], who:"agent", phase:"rulare pornită",
+        title:`Pe 5, la ${o.ora}, pornește rularea ${S}`,
+        desc:`O sesiune nouă în cloud, fără memorie: tot ce știe e în prompt-ul task-ului. Nu cere confirmări. Pentru fișiere folosește <code>device_list_dir</code> / <code>device_stage_files</code> / <code>device_commit_files</code> — calculatorul nu are rețea, deci procesarea se face în cloud. Nimic nu se atinge înainte de poarta 1.` },
+      { edges:["b1"], on:["runTrig","gate1"], who:"agent", phase:"poarta 1",
+        title:"Poarta 1: cardul de facturi e „Done”?",
+        desc:"SQL pe Board Echipă: titlul exact și <code>date:Termen:start</code> în <b>luna curentă a rulării</b> (octombrie, deși procesează septembrie). Trece doar cu <code>Responsabil</code> = <code>Done</code>. Dacă uneltele Notion lipsesc din sesiune, nu blochează: merge mai departe și spune la final că poarta n-a putut fi verificată. <b>nu</b> → pașii 8–11; <b>da</b> → pasul 12." },
+      { edges:["b2"], on:["gate1","g1mail"], who:"agent", phase:"oprire la poarta 1", branch:true, grp:"g1",
+        title:"Nu: mail de reminder",
+        desc:`Subiect <code>${subj1}</code>, către adresele din <code>config.json</code> (rădăcina folderului din Drive) — niciodată inventate. Fără <code>git clone</code>, fără script, fără XML, fără modificări în Drive.` },
+      { edges:["b3"], on:["g1mail","g1card"], who:"agent", phase:`${AAO} · De verificat`, branch:true, grp:"g1",
+        title:`Cardul rulării pe ${AAO}: „De verificat”`,
+        desc:`Calculează <code>&lt;LUNA&gt;</code> și caută întâi un card cu <code>Agent</code> = <code>Agent Borderou ${S}</code> + <code>Perioadă</code> = LUNA; îl refolosește dacă există. <code>Rulare</code> = <code>${rul}</code>, <code>ID rulare</code> = <code>${ID}</code>, <code>Fază</code> = De verificat, <code>Rezultat</code> = „Poarta facturi: …”, <code>Pas manual rămas</code> = ce are Paula de făcut. <code>Responsabil</code> gol.` },
+      { edges:["b4"], on:["g1card","g1task"], who:"agent", phase:`${BE} · Paula`, branch:true, grp:"g1",
+        title:"Sarcina Paulei: „Verifică poarta blocată”",
+        desc:`<code>${ID} · Verifică poarta blocată ${S} &lt;luna&gt; &lt;anul&gt; din AI Agent overview</code>, <code>Responsabil</code> = Paula, <code>Termen</code> peste 3 zile, link către cardul de la pasul 9. Dacă există deja, o actualizează. N-o mută niciodată în „Done” — o închide Paula.` },
+      { edges:["b5"], on:["g1task","g1stop"], who:"agent", phase:"oprire", branch:true, grp:"g1",
+        title:"Notificare și oprire",
+        desc:stopDesc },
+
+      { edges:["c0"], on:["gate1","gate2"], who:"agent", phase:"poarta 2",
+        title:`Poarta 2: cardul de borderou ${S} e „Done”?`,
+        desc:`Calculează <code>&lt;LUNA&gt;</code> (luna precedentă, în Europe/Bucharest). Caută <code>"Task" LIKE 'Adaug% borderoul ${S}%'</code> și <code>"Note" LIKE '%borderouri/&lt;LUNA&gt;/%'</code> — prinde „Adauga” fără diacritice și orice lună din titlu. Trece dacă <b>măcar unul</b> dintre cardurile găsite e „Done”. Notion lipsă din sesiune → nu blochează. <b>nu</b> → pașii 13–16; <b>da</b> → pasul 17.` },
+      { edges:["c2"], on:["gate2","g2mail"], who:"agent", phase:"oprire la poarta 2", branch:true, grp:"g2",
+        title:"Nu: mail de reminder",
+        desc:`Subiect <code>${subj2}</code>: exportul de facturi e gata, dar cardul de borderou ${S} nu e în „Done” (sau nu există). Tot fără clone, script sau modificări în Drive.` },
+      { edges:["c3"], on:["g2mail","g2card"], who:"agent", phase:`${AAO} · De verificat`, branch:true, grp:"g2",
+        title:`Cardul rulării pe ${AAO}: „De verificat”`,
+        desc:`Același card ca la pasul 9 (căutat după <code>Agent</code> + <code>Perioadă</code>), cu <code>Rezultat</code> = „Poarta borderou: cardul „Adauga borderoul ${S}” pe &lt;luna&gt; nu e Done”.` },
+      { edges:["c4"], on:["g2card","g2task"], who:"agent", phase:`${BE} · Paula`, branch:true, grp:"g2",
+        title:"Sarcina Paulei: „Verifică poarta blocată”",
+        desc:`Aceeași sarcină ca la pasul 10 (<code>${ID} · Verifică poarta blocată ${S} …</code>) — dacă există deja de la o oprire anterioară, se actualizează, nu se dublează.` },
+      { edges:["c5"], on:["g2task","g2stop"], who:"agent", phase:"oprire", branch:true, grp:"g2",
+        title:"Notificare și oprire",
+        desc:stopDesc },
+
+      { edges:["d0"], on:["gate2","list"], who:"agent", phase:"rulare",
+        title:"Da: se uită în Drive",
+        desc:`<code>device_list_dir</code> recursiv pe folderul <code>incasari-saga</code>. Borderourile ${S} stau în <code>${o.folder}</code>; jurnalul <code>${o.jurnal}</code> stă în <code>borderouri/procesate</code>, comun tuturor lunilor. Borderourile altor surse din același folder nu se ating.` },
+      { edges:["d1"], on:["list","hasNew"], who:"agent", phase:"rulare",
+        title:`Există un borderou ${S} nou?`,
+        desc:`„Nou” = fișier al sursei care nu e deja în jurnal. Folderul <code>&lt;LUNA&gt;</code> lipsă sau niciun fișier nou → cazul „nimic de procesat” (pașii 19–21). Altfel → procesare (pasul 22).` },
+      { edges:["d2"], on:["hasNew","nnCard"], who:"agent", phase:`${AAO} · De verificat`, branch:true, grp:"nn",
+        title:"Nu: cardul rulării, „De verificat”",
+        desc:"Fără e-mail de raport și fără script. Cardul lunii — sau cel rămas de la o poartă blocată, refolosit — primește <code>Fază</code> = De verificat și motivul („Niciun borderou nou pentru &lt;LUNA&gt;” / „Folderul &lt;LUNA&gt; lipsește”)." },
+      { edges:["d3"], on:["nnCard","nnTask"], who:"agent", phase:`${BE} · Paula`, branch:true, grp:"nn",
+        title:"Sarcina Paulei: „Verifică rularea”",
+        desc:`<code>${ID} · Verifică rularea ${S} &lt;luna&gt; &lt;anul&gt; din AI Agent overview</code>, termen peste 3 zile — de obicei doar confirmarea că luna asta chiar n-a venit borderou. O sarcină „Verifică poarta blocată” cu același ID nu contează ca duplicat.` },
+      { edges:["d4"], on:["nnTask","nnStop"], who:"agent", phase:"oprire", branch:true, grp:"nn",
+        title:"Notificare și oprire",
+        desc:"PushNotification cu motivul și ID-ul rulării. Aici rularea se termină curat — nu e o eroare." },
+
+      { edges:["e0"], on:["hasNew","clone"], who:"agent", phase:"rulare",
+        title:"Da: ia skill-ul și scriptul din GitHub",
+        desc:`<code>git clone --depth 1 adrianbarna/alfinRepo</code>: pluginul nu e activat pe task, deci skill-ul <code>incasari-${o.s}</code> și <code>proceseaza.py</code> vin direct din repo. Skill-ul subțire trimite la <code>incasari-cargus/SKILL.md</code>, sursa de adevăr. Regula de aur: XML-ul nu se scrie de mână.` },
+      { edges:["e1"], on:["clone","stage"], who:"agent", phase:"rulare",
+        title:"Stage în cloud, cu structura de foldere",
+        desc:`<code>config.json</code>, borderourile din <code>${o.folder}</code>, tot <code>facturi/&lt;LUNA&gt;</code> și <b>toate</b> <code>.procesate*.json</code> — nu doar al lui: o factură stinsă de altă sursă sau în altă lună nu trebuie stinsă a doua oară. Aplatizarea folderelor ar strica cheile din jurnal.` },
+      { edges:["e2"], on:["stage","script"], who:"agent", phase:"rulare",
+        title:"Rulează proceseaza.py",
+        desc:`<code>python3 proceseaza.py ${o.cmd} --jurnale …/borderouri/procesate --facturi …/facturi/&lt;LUNA&gt; --json</code>. <code>--jurnale</code> e obligatoriu (altfel ar porni cu jurnal gol → încasare dublă). Fără <code>--moneda</code>: valuta vine din numele folderului. Cod de ieșire: 0 a mers, 1 eroare, 2 configurare lipsă.` },
+      { edges:["e3"], on:["script","match"], who:"agent", phase:"rulare",
+        title:"Leagă fiecare încasare de factura ei",
+        desc:o.key },
+      { edges:["e4"], on:["match","xml"], who:"agent", phase:"rulare",
+        title:"XML de import și raport",
+        desc:`Un XML per borderou, cu numele borderoului fără spații, plus <code>${o.raport}</code>. Rândurile sărite și avertismentele nu dispar: ajung în raport și pe carduri.` },
+      { edges:["e5"], on:["xml","back"], who:"agent", phase:"rulare",
+        title:"Scrie rezultatele înapoi în Drive",
+        desc:`XML-ul și raportul → <code>${o.folder}/procesate/</code>; jurnalul <code>${o.jurnal}</code> → <code>borderouri/procesate/</code>, folderul comun. Doar jurnalul propriu — pe ale celorlalte surse le-a citit, nu le modifică. Fără jurnal, rularea următoare ar reprocesa tot.` },
+
+      { edges:["f0"], on:["back","gmail"], who:"agent", phase:"rulare",
         title:"Raportul pleacă pe e-mail",
-        desc:"Fără confirmare: adresele stabilite la configurare <i>sunt</i> autorizarea. Se trimite și când toate rândurile au fost sărite — atunci e cel mai mult de verificat." },
-      { edges:["e16"], on:["gmailR","cardDone"], who:"agent", phase:"→ Done",
-        title:"Cardul rulării se închide în „Done”",
-        desc:"Același card deschis la pasul 6. În corpul lui se scrie jurnalul rulării, în română: ce comandă a rulat, ce fișiere, ce a ieșit, ce e de verificat, unde a plecat raportul. „Done” înseamnă aici „agentul a terminat”, nu „încasările sunt în Saga”. Dacă ceva a crăpat, cardul rămâne în „Blocat / Necesită input” și nu se predă nimic mai departe." },
-      { edges:["e17"], on:["cardDone","handoff"], who:"agent", phase:"→ Done",
-        title:"Verificarea se predă pe Board Echipă",
-        desc:"Un card nou în coloana Paulei, purtând același ID de rulare (<code>INC-2026-07</code>) ca al cardului din „Done” — ID-ul e singurul lucru care leagă cele două boarduri. În corp: cifrele, avertismentele, calea XML-ului și cei trei pași de făcut." },
-      // Etapa 5
-      { edges:["e18"], on:["handoff","paulaChk"], who:"om", phase:"Paula",
-        title:"Paula deschide sarcina și verifică",
-        desc:"Aici se termină ce poate face agentul singur. Paula verifică totalurile, avertismentele și rândurile sărite, cu raportul de pe e-mail alături." },
-      { edges:["e19"], on:["paulaChk","saga"], who:"om", phase:"Paula",
+        desc:"Subiectul, corpul și destinatarii vin din JSON-ul scriptului (<code>email.subiect</code>, <code>email.corp</code>, <code>email.catre</code>), plus calea XML-ului în Drive. Fără confirmare: adresele din configurare <i>sunt</i> autorizarea. Pleacă și când toate rândurile au fost sărite." },
+      { edges:["f1"], on:["gmail","xmlGate"], who:"agent", phase:"rulare",
+        title:"S-a scris XML?",
+        desc:"Decide cum se închide cardul rulării. <b>da</b> (cu sau fără avertismente) → pasul 32; <b>nu</b> (toate rândurile sărite, sau cod 1/2) → pașii 30–31." },
+      { edges:["f2"], on:["xmlGate","blCard"], who:"agent", phase:`${AAO} · Blocat / Necesită input`, branch:true, grp:"bl",
+        title:"Nu: cardul rulării, „Blocat / Necesită input”",
+        desc:"<code>Finalizat</code> gol, <code>Pas manual rămas</code> = ce lipsește concret (export de facturi, borderou corectat, configurare). Nu se deschide sarcină pe Board Echipă — n-are ce verifica nimeni încă." },
+      { edges:["f3"], on:["blCard","blPush"], who:"agent", phase:"oprire", branch:true, grp:"bl",
+        title:"Notificare: ce lipsește",
+        desc:"PushNotification cu ce anume a blocat rularea și ID-ul ei." },
+
+      { edges:["g0"], on:["xmlGate","cardDone"], who:"agent", phase:`${AAO} · Done`,
+        title:`Da: cardul rulării se închide în „Done”`,
+        desc:`Același card al lunii (căutat după <code>Agent</code> + <code>Perioadă</code> — căutarea doar după perioadă ar lua cardul altui agent). <code>Rulare</code> = <code>${rul}</code>, <code>ID rulare</code> = <code>${ID}</code>, <code>Finalizat</code> = acum, <code>Pas manual rămas</code> = „Verificarea e la Paula, pe Board Echipă”. În corp, jurnalul rulării, în română. „Done” aici = agentul a terminat.` },
+      { edges:["g1"], on:["cardDone","task"], who:"agent", phase:`${BE} · Paula`,
+        title:"Sarcina de verificare pentru Paula",
+        desc:`<code>${ID} · Verifică încasările ${S} &lt;luna&gt; &lt;anul&gt; și importă-le în Saga</code>, termen peste 5 zile. În corp: link la cardul rulării, calea XML-ului, cifrele, avertismentele, rândurile sărite și cei trei pași. O sarcină „Verifică poarta blocată” cu același ID (rămasă de la o oprire) nu e duplicat — rămân amândouă.` },
+      { edges:["g2"], on:["task","push"], who:"agent", phase:"rulare încheiată",
+        title:"Notificarea finală",
+        desc:"Câte linii și ce total, câte rânduri sărite, câte avertismente, unde e XML-ul, cui a plecat raportul, ID-ul rulării." },
+
+      { edges:["h0"], on:["push","chk"], who:"om", phase:"Paula",
+        title:"Paula verifică",
+        desc:"Aici se termină ce poate face agentul singur. Totalurile, avertismentele și rândurile sărite, cu raportul de pe e-mail alături." },
+      { edges:["h1"], on:["chk","saga"], who:"om", phase:"Paula",
         title:"Importul în Saga",
-        desc:"Import documente → Încasări, cu XML-ul scris la pasul 13 în <code>procesate/</code>. Singurul pas care atinge contabilitatea e făcut de om, deliberat." },
-      { edges:["e20"], on:["saga","teamDone"], who:"om", phase:"→ Done (echipă)",
+        desc:"Import documente → Încasări, cu XML-ul din <code>procesate/</code>. Singurul pas care atinge contabilitatea e făcut de om, deliberat." },
+      { edges:["h2"], on:["saga","teamDone"], who:"om", phase:"→ Done (echipă)",
         title:"Sarcina se mută în „Done”",
-        desc:"Pe Board Echipă, „Done” înseamnă „încasările sunt în Saga”. Coloana o mută omul: un agent nu închide niciodată singur sarcina pe care tocmai a dat-o cuiva." }
+        desc:"Pe Board Echipă, „Done” = încasările sunt în Saga. Coloana o mută omul; agentul nu închide niciodată singur o sarcină dată cuiva. Dacă mai există o sarcină „Verifică poarta blocată” pe aceeași lună, Paula o închide și pe ea." },
+
+      { edges:[], on:["err"], who:"agent", phase:"—", branch:true, grp:"err",
+        title:"Plasă: oprire neprevăzută",
+        desc:"Orice oprire în afara porților (pașii 7 și 12) și a închiderii cardului (pasul 32): eroare la <code>git clone</code>, excepție în script, unealtă căzută la mijloc, timeout, sesiune întreruptă." },
+      { edges:["z1"], on:["err","errCard"], who:"agent", phase:`${AAO} · De verificat`, branch:true, grp:"err",
+        title:"Card „eroare” pe AI Agent overview",
+        desc:`<code>Rulare</code> = <code>Încasări ${S === "Cargus" ? "" : S + " "}— eroare &lt;data&gt;</code>, <code>Fază</code> = De verificat, <code>Rezultat</code> = mesajul de eroare exact, <code>Pas manual rămas</code> = ce trebuie reparat ca rularea să poată fi reluată.` },
+      { edges:["z2"], on:["errCard","errPush"], who:"agent", phase:"—", branch:true, grp:"err",
+        title:"Notificare, dacă Notion nu merge",
+        desc:"Dacă nici Notion nu e disponibil, măcar un PushNotification cu aceleași detalii. Dacă nici el nu merge, rularea n-are cum să raporteze — de aceea există cardul de verificare lunar al Paulei." }
+    ]
+  };
+}
+
+const AGENTS = {
+  reminder: {
+    label: "Reminder lunar", status: "activ", grid: true,
+    plugin: "Task programat „Reminder lunar: foldere + export facturi + cele 6 borderouri (Paula)” · 1 ale lunii, 08:00 ora României (07:00 iarna) · rulează în cloud, cu folderul <code>incasari-saga</code> din Drive conectat",
+    lanes: [
+      { n:"Etapa 1", title:"Pornire",              sub:"1 ale lunii, 08:00" },
+      { n:"Etapa 2", title:"Folderele în Drive",   sub:"luna încheiată · nimic șters" },
+      { n:"Etapa 3", title:"Ce carduri există?",   sub:"idempotență" },
+      { n:"Etapa 4", title:"Cardurile Paulei",     sub:"Board Echipă · 7 carduri" },
+      { n:"Etapa 5", title:"Raport",               sub:"notificare" },
+      { n:"Etapa 6", title:"Paula",                sub:"până pe 4 · pas manual" },
+      { n:"Plasă",   title:"Oprire neprevăzută",   sub:"înainte de raport" }
+    ],
+    nodes: [
+      { id:"trig",   c:0, l:0, kind:"trigger", title:"Reminder lunar",        meta:"1 ale lunii · 08:00" },
+      { id:"dates",  c:1, l:0, kind:"code",    title:"Calculează datele",     meta:"LUNA = luna încheiată" },
+      { id:"ls",     c:0, l:1, kind:"data",    title:"Listează Drive-ul",     meta:"device_list_dir" },
+      { id:"mk",     c:1, l:1, kind:"data",    title:"Creează folderele",     meta:"LUNA/ron · eur · huf" },
+      { id:"readme", c:2, l:1, kind:"data",    title:"CITESTE-MA.txt",        meta:"în foldere goale" },
+      { id:"verify", c:3, l:1, kind:"data",    title:"Verifică folderele",    meta:"toate există?" },
+      { id:"q1",     c:0, l:2, kind:"extern",  title:"Interogare 1",          meta:"Termen în luna curentă" },
+      { id:"q2",     c:1, l:2, kind:"extern",  title:"Interogare 2",          meta:"Adaug% borderoul + Note" },
+      { id:"exists", c:2, l:2, kind:"code",    title:"Există deja?",          meta:"per card, din 7" },
+      { id:"skip",   c:3, l:2, kind:"data",    title:"Nu se recreează",       meta:"nici dacă e Done" },
+      { id:"cf",     c:0, l:3, kind:"extern",  title:"Card facturi",          meta:"titlu fix · termen 4" },
+      { id:"cb",     c:1, l:3, kind:"extern",  title:"6 carduri borderou",    meta:"Adauga borderoul … · Note" },
+      { id:"push",   c:0, l:4, kind:"extern",  title:"Push",                  meta:"foldere · carduri create" },
+      { id:"pPut",   c:0, l:5, kind:"human",   title:"Paula pune fișierele",  meta:"facturi · borderouri" },
+      { id:"pDone",  c:1, l:5, kind:"human",   title:"Cardurile → Done",      meta:"confirmare, până pe 4" },
+      { id:"runs",   c:2, l:5, kind:"trigger", title:"6 rulări pe 5",         meta:"10:00 → 12:30" },
+      { id:"err",    c:0, l:6, kind:"code",    title:"Oprire neprevăzută",    meta:"Drive · Notion · excepție" },
+      { id:"errCard",c:1, l:6, kind:"extern",  title:"Card „eroare”",         meta:"AI Agent overview" },
+      { id:"errPush",c:2, l:6, kind:"extern",  title:"Push",                  meta:"oricum" }
+    ],
+    edges: [
+      { id:"a1", from:["trig","r"],   to:["dates","l"] },
+      { id:"b0", from:["dates","b"],  to:["ls","t"] },
+      { id:"b1", from:["ls","r"],     to:["mk","l"] },
+      { id:"b2", from:["mk","r"],     to:["readme","l"] },
+      { id:"b3", from:["readme","r"], to:["verify","l"] },
+      { id:"c0", from:["verify","b"], to:["q1","t"] },
+      { id:"c1", from:["q1","r"],     to:["q2","l"] },
+      { id:"c2", from:["q2","r"],     to:["exists","l"] },
+      { id:"c3", from:["exists","r"], to:["skip","l"], label:"da" },
+      { id:"d0", from:["exists","b"], to:["cf","t"], label:"nu" },
+      { id:"d1", from:["cf","r"],     to:["cb","l"] },
+      { id:"e0", from:["cb","b"],     to:["push","t"] },
+      { id:"f0", from:["push","b"],   to:["pPut","t"], style:"time", label:"1–4 ale lunii" },
+      { id:"f1", from:["pPut","r"],   to:["pDone","l"] },
+      { id:"f2", from:["pDone","r"],  to:["runs","l"], style:"time", label:"pe 5" },
+      { id:"z1", from:["err","r"],    to:["errCard","l"] },
+      { id:"z2", from:["errCard","r"],to:["errPush","l"] }
+    ],
+    steps: [
+      { edges:[], on:["trig"], who:"agent", phase:"—",
+        title:"Pe 1 ale lunii, la 08:00, pornește task-ul",
+        desc:"Sesiune nouă în cloud, fără memorie, fără confirmări. Scopul: până pe 4 să existe în Drive locul unde Paula pune fișierele, iar pe board câte un card pentru fiecare lucru de pus — ca rulările de pe 5 să aibă ce verifica." },
+      { edges:["a1"], on:["trig","dates"], who:"agent", phase:"—",
+        title:"Calculează datele (rulează date, nu presupune)",
+        desc:"<code>&lt;luna&gt;</code> = luna curentă („octombrie 2026”), <code>&lt;luna încheiată&gt;</code> = cea precedentă, <code>&lt;LUNA&gt;</code> = luna precedentă ca folder (<code>2026-09</code>), <code>&lt;termen&gt;</code> = 4 ale lunii curente. Capcana principală: <b>folderul poartă luna acoperită de borderouri</b>, nu luna rulării." },
+      { edges:["b0"], on:["dates","ls"], who:"agent", phase:"—",
+        title:"Se uită ce există deja în Drive",
+        desc:"Pe folderul <code>incasari-saga</code>, conectat de pe calculatorul dtd-dell-s1. Nu se creează folderul lunii curente — ar sta gol o lună și ar deruta." },
+      { edges:["b1"], on:["ls","mk"], who:"agent", phase:"—",
+        title:"Creează folderele lunii, dacă lipsesc",
+        desc:"<code>borderouri/&lt;LUNA&gt;/ron</code>, <code>/eur</code>, <code>/huf</code>, fiecare cu <code>procesate/</code>, plus <code>facturi/&lt;LUNA&gt;</code>. <code>borderouri/procesate</code> (jurnalele tuturor lunilor) se lasă exact cum e: golit, ar duce la încasări duble în Saga. Nu șterge și nu suprascrie nimic." },
+      { edges:["b2"], on:["mk","readme"], who:"agent", phase:"—",
+        title:"Pune CITESTE-MA.txt",
+        desc:"În cele trei foldere de valută, copiat din <code>borderouri/CITESTE-MA.txt</code> (sau textul din prompt). Fără <code>device_bash</code>, un folder gol nu se poate crea — așa că <code>procesate/</code> și <code>facturi/&lt;LUNA&gt;</code> primesc și ele câte un <code>CITESTE-MA.txt</code> de o linie. Scriptul de procesare ignoră fișierele <code>.txt</code>." },
+      { edges:["b3"], on:["readme","verify"], who:"agent", phase:"—",
+        title:"Verifică că toate folderele există",
+        desc:"Încă un <code>device_list_dir</code> la final. O creare eșuată ajunge în notificarea de la pasul 13." },
+      { edges:["c0"], on:["verify","q1"], who:"agent", phase:"—",
+        title:"Interogarea 1: cardurile lunii curente",
+        desc:"SQL pe Board Echipă: toate cardurile cu <code>date:Termen:start LIKE '2026-10%'</code> (luna curentă)." },
+      { edges:["c1"], on:["q1","q2"], who:"agent", phase:"—",
+        title:"Interogarea 2: cardurile de borderou ale LUNII",
+        desc:"<code>\"Task\" LIKE 'Adaug% borderoul %' AND \"Note\" LIKE '%borderouri/&lt;LUNA&gt;/%'</code> — prinde și carduri create manual sau de test, cu alt termen sau altă lună în titlu, cu sau fără diacritice." },
+      { edges:["c2"], on:["q2","exists"], who:"agent", phase:"—",
+        title:"Decide, pentru fiecare din cele 7 carduri, dacă există",
+        desc:"Card de facturi: titlul exact + termen în luna curentă. Card de borderou al unei surse: <code>Adaug% borderoul &lt;Sursă&gt;%</code> cu termen în luna curentă <b>sau</b> cu <code>Note</code> pe <code>borderouri/&lt;LUNA&gt;/</code>. Rularea e idempotentă: pornită de două ori, a doua oară nu creează nimic." },
+      { edges:["c3"], on:["exists","skip"], who:"agent", phase:"—", branch:true, grp:"sk",
+        title:"Da: cardul nu se recreează",
+        desc:"Nici dacă e deja în „Done”, nici dacă e la alt responsabil. Nu modifică alte carduri și nu mută nimic în „Done” — asta e treaba omului." },
+      { edges:["d0"], on:["exists","cf"], who:"agent", phase:`${BE} · Paula`,
+        title:"Nu: cardul pentru exportul de facturi",
+        desc:"Titlu fix, fără lună: <code>Adauga fisierul xml cu facturile in folderul facturi</code> (rulările îl caută după text — nu se schimbă). <code>Responsabil</code> Paula, <code>Termen</code> pe 4, <code>Note</code> cu <code>facturi/&lt;LUNA&gt;</code>. În corp: ambele exporturi (lei <code>.xml</code>, valută <code>.xlsx</code>/<code>.xml</code>, nu <code>.xls</code>) și ce se întâmplă pe 5 dacă nu e gata — mail, card „De verificat”, sarcină „Verifică poarta blocată” la ea." },
+      { edges:["d1"], on:["cf","cb"], who:"agent", phase:`${BE} · Paula`,
+        title:"Câte un card per borderou (șase)",
+        desc:"<code>Adauga borderoul &lt;Sursă&gt; · &lt;luna&gt;</code> pentru Cargus, eMAG, Sameday, Trendyol, Skroutz, PlatiOnline; <code>Note</code> = <code>Borderoul &lt;Sursă&gt; pe &lt;luna încheiată&gt; → borderouri/&lt;LUNA&gt;/…</code> — nota e cheia porții 2. În corp: unde merge fișierul (eMAG în trei foldere; BG în <code>eur</code>, nu <code>huf</code>), că folderul contează și numele nu, și că mutarea în „Done” e confirmarea, chiar dacă fișierul e deja în Drive." },
+      { edges:["e0"], on:["cb","push"], who:"agent", phase:"rulare încheiată",
+        title:"Notificarea de o linie",
+        desc:"Ce foldere a creat și care existau, câte carduri a creat, câte existau și pentru ce surse. Notion lipsă, Drive inaccesibil sau o creare eșuată se spun explicit." },
+      { edges:["f0"], on:["push","pPut"], who:"om", phase:"Paula",
+        title:"Paula pune exportul și borderourile",
+        desc:"În folderele create la pasul 4. Folderul decide luna și valuta liniilor din Saga; numele fișierului nu contează." },
+      { edges:["f1"], on:["pPut","pDone"], who:"om", phase:"→ Done (echipă)",
+        title:"Paula mută cardurile în „Done”",
+        desc:"Câte unul pentru fiecare lucru pus. Dacă o sursă n-a trimis borderou luna asta, cardul ei se mută oricum în „Done”, cu o notă." },
+      { edges:["f2"], on:["pDone","runs"], who:"agent", phase:"—",
+        title:"Pe 5, cele șase rulări citesc cardurile",
+        desc:"Cargus 10:00, eMAG 10:30, Sameday 11:00, Trendyol 11:30, Skroutz 12:00, PlatiOnline 12:30 (ora României; cu o oră mai devreme iarna). Fiecare verifică cardul de facturi și cardul propriu de borderou — vezi tab-urile lor." },
+      { edges:[], on:["err"], who:"agent", phase:"—", branch:true, grp:"err",
+        title:"Plasă: oprire înainte de raport",
+        desc:"Eroare la citirea sau scrierea din Drive, Notion sau calculatorul indisponibile la mijloc, excepție, sesiune întreruptă." },
+      { edges:["z1"], on:["err","errCard"], who:"agent", phase:`${AAO} · De verificat`, branch:true, grp:"err",
+        title:"Card „eroare” pe AI Agent overview",
+        desc:"<code>Rulare</code> = <code>Reminder lunar foldere+carduri — eroare &lt;data&gt;</code>, <code>Agent</code> = <code>Reminder lunar borderouri</code>, <code>Fază</code> = De verificat, ce s-a întâmplat și ce e de reparat." },
+      { edges:["z2"], on:["errCard","errPush"], who:"agent", phase:"—", branch:true, grp:"err",
+        title:"Notificare, oricum",
+        desc:"PushNotification cu aceleași detalii, chiar dacă Notion nu merge." }
     ]
   },
 
+  cargus:      borderouTask(SURSE.cargus),
+  emag:        borderouTask(SURSE.emag),
+  sameday:     borderouTask(SURSE.sameday),
+  trendyol:    borderouTask(SURSE.trendyol),
+  skroutz:     borderouTask(SURSE.skroutz),
+  plationline: borderouTask(SURSE.plationline),
+
   monitorizare: {
-    label: "Monitorizare legislativă",
-    status: "activ",
-    plugin: "task programat · luni 10:00 · rulare în cloud",
-    view: [0, 0, 1280, 850],
-    nodes: [
-      { id:"rut",     x:40,   y:330, w:190, h:64, kind:"trigger", title:"Task programat",        meta:"luni 10:00 · săptămânal" },
-      { id:"notif",   x:270,  y:170, w:200, h:64, kind:"extern",  title:"Notificare + e-mail",   meta:"telefon · inbox ALFIN" },
-      { id:"sesiune", x:270,  y:326, w:200, h:72, kind:"agent",   title:"Sesiune Claude",        meta:"cloud · orchestrează" },
-      { id:"cautare", x:530,  y:326, w:200, h:72, kind:"agent",   title:"Căutare pe surse",      meta:"fereastră de 7 zile" },
-      { id:"filtru",  x:790,  y:330, w:190, h:64, kind:"agent",   title:"Filtru de relevanță",   meta:"are impact practic?" },
-      { id:"sinteza", x:1040, y:330, w:180, h:64, kind:"agent",   title:"Sinteza pe 4 arii",     meta:"act · dată MO · impact" },
-      { id:"mof",     x:520,  y:140, w:200, h:56, kind:"extern",  title:"Monitorul Oficial",     meta:"numărul actului · data" },
-      { id:"anaf",    x:760,  y:165, w:200, h:56, kind:"extern",  title:"ANAF",                  meta:"ordine · e-Factura · SAF-T" },
-      { id:"mf",      x:1000, y:190, w:200, h:56, kind:"extern",  title:"Ministerul Finanțelor", meta:"OMFP · raportare" },
-      { id:"poarta",  x:790,  y:480, w:190, h:64, kind:"code",    title:"Există ceva de dat?",   meta:"poartă · da / nu" },
-      { id:"gol",     x:1040, y:690, w:180, h:56, kind:"data",    title:"Niciun card",           meta:"săptămână fără impact" },
-      { id:"board",   x:270,  y:690, w:250, h:80, kind:"extern",  title:"Notion · Board Echipă", meta:"coloana Lacramioara" },
-      { id:"maya",    x:610,  y:698, w:190, h:64, kind:"human",   title:"Lacrămioara",           meta:"decide ce merge la clienți" }
+    label: "Monitorizare legislativă", status: "activ", grid: true,
+    plugin: "Task programat „Monitorizare legislativă săptămânală” · luni, 10:00 ora României (09:00 iarna) · rulează în cloud, fără calculator · memoria stă în ultimul card „Done” de pe AI Agent overview",
+    lanes: [
+      { n:"Etapa 1", title:"Pornire și stare",     sub:"luni 10:00 · Notion" },
+      { n:"Etapa 2", title:"Unelte",               sub:"Gmail + Notion" },
+      { n:"Etapa 3", title:"Colectare",            sub:"web · 3 niveluri de surse" },
+      { n:"Etapa 4", title:"Raport",               sub:"Gmail · doar dacă e ceva nou" },
+      { n:"Etapa 5", title:"Stare și predare",     sub:"card Done · Lăcrămioara" },
+      { n:"Etapa 6", title:"Lăcrămioara",          sub:"review · pas manual" },
+      { n:"Plasă",   title:"Oprire neprevăzută",   sub:"stare neatinsă" }
     ],
-    groups: [
-      { x:505, y:100, w:710, h:166, label:"Surse oficiale — căutate pe web la fiecare rulare" }
+    nodes: [
+      { id:"trig",   c:0, l:0, kind:"trigger", title:"Task săptămânal",       meta:"luni · 10:00" },
+      { id:"state",  c:1, l:0, kind:"extern",  title:"Citește starea",        meta:"ultimul card Done · JSON" },
+      { id:"sGate",  c:2, l:0, kind:"code",    title:"Există stare?",         meta:"card Done al agentului" },
+      { id:"noCfg",  c:3, l:0, kind:"data",    title:"Oprire, nimic scris",   meta:"lipsește bootstrap-ul" },
+      { id:"tGate",  c:0, l:1, kind:"code",    title:"Gmail + Notion?",       meta:"active în sesiune" },
+      { id:"tBlk",   c:1, l:1, kind:"extern",  title:"Card „Blocat”",         meta:"unealta lipsă" },
+      { id:"src",    c:0, l:2, kind:"agent",   title:"Caută pe surse",        meta:"Guvern · MO · specialitate" },
+      { id:"flt",    c:1, l:2, kind:"agent",   title:"Filtru contabil",       meta:"fiscal · TVA · salarizare" },
+      { id:"dedup",  c:2, l:2, kind:"agent",   title:"Deduplicare",           meta:"față de acte_vazute" },
+      { id:"recon",  c:3, l:2, kind:"agent",   title:"Reconciliere",          meta:"acte_in_asteptare" },
+      { id:"interp", c:4, l:2, kind:"agent",   title:"Interpretări",          meta:"2–3 surse / act" },
+      { id:"nGate",  c:0, l:3, kind:"code",    title:"Ceva nou?",             meta:"publicat sau adoptat" },
+      { id:"mail",   c:1, l:3, kind:"extern",  title:"E-mail raport",         meta:"către email_destinatar" },
+      { id:"mFail",  c:2, l:3, kind:"extern",  title:"Card „Blocat”",         meta:"stare veche păstrată" },
+      { id:"cDone",  c:0, l:4, kind:"extern",  title:"Card nou „Done”",       meta:"stare JSON în corp" },
+      { id:"lac",    c:1, l:4, kind:"extern",  title:"Card Lăcrămioara",      meta:`${BE} · +2 zile lucr.` },
+      { id:"rev",    c:0, l:5, kind:"human",   title:"Lăcrămioara citește",   meta:"e-mail sau card" },
+      { id:"lDone",  c:1, l:5, kind:"human",   title:"Card → Done",           meta:"review făcut" },
+      { id:"err",    c:0, l:6, kind:"code",    title:"Oprire neprevăzută",    meta:"web · timeout · excepție" },
+      { id:"errCard",c:1, l:6, kind:"extern",  title:"Card „eroare”",         meta:"De verificat" }
     ],
     edges: [
-      { id:"eStart",  from:["rut","r"],          to:["sesiune","l"] },
-      { id:"eSearch", from:["sesiune","r"],      to:["cautare","l"] },
-      { id:"eMof",    from:["cautare","t",-60],  to:["mof","b"] },
-      { id:"eAnaf",   from:["cautare","t"],      to:["anaf","b"] },
-      { id:"eMf",     from:["cautare","t",60],   to:["mf","b"] },
-      { id:"eFilt",   from:["cautare","r"],      to:["filtru","l"] },
-      { id:"eSint",   from:["filtru","r"],       to:["sinteza","l"] },
-      { id:"eBack",   from:["sinteza","b",-60],  to:["sesiune","b",60] },
-      { id:"eMail",   from:["sesiune","t"],      to:["notif","b"] },
-      { id:"eGate",   from:["sinteza","b",60],   to:["poarta","t",60] },
-      { id:"eNo",     from:["poarta","r"],       to:["gol","t"] },
-      { id:"eYes",    from:["poarta","b"],       to:["board","t",60] },
-      { id:"eHand",   from:["board","r"],        to:["maya","l"] },
-      { id:"eDone",   from:["maya","t",-40],     to:["board","t",40] }
+      { id:"a1", from:["trig","r"],   to:["state","l"] },
+      { id:"a2", from:["state","r"],  to:["sGate","l"] },
+      { id:"a3", from:["sGate","r"],  to:["noCfg","l"], label:"nu" },
+      { id:"b0", from:["sGate","b"],  to:["tGate","t"], label:"da" },
+      { id:"b1", from:["tGate","r"],  to:["tBlk","l"], label:"nu" },
+      { id:"c0", from:["tGate","b"],  to:["src","t"], label:"da" },
+      { id:"c1", from:["src","r"],    to:["flt","l"] },
+      { id:"c2", from:["flt","r"],    to:["dedup","l"] },
+      { id:"c3", from:["dedup","r"],  to:["recon","l"] },
+      { id:"c4", from:["recon","r"],  to:["interp","l"] },
+      { id:"d0", from:["interp","b"], to:["nGate","t"] },
+      { id:"d1", from:["nGate","r"],  to:["mail","l"], label:"da" },
+      { id:"d2", from:["mail","r"],   to:["mFail","l"], label:"eșec" },
+      { id:"e1", from:["mail","b"],   to:["cDone","t",40], label:"trimis" },
+      { id:"e2", from:["nGate","b"],  to:["cDone","t",-40], label:"nu · fără e-mail" },
+      { id:"e3", from:["cDone","r"],  to:["lac","l"] },
+      { id:"f0", from:["lac","b"],    to:["rev","t"], style:"time", label:"în zilele următoare" },
+      { id:"f1", from:["rev","r"],    to:["lDone","l"] },
+      { id:"z1", from:["err","r"],    to:["errCard","l"] }
     ],
     steps: [
-      { edges:["eStart"], on:["rut","sesiune"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Luni la 10:00 task-ul pornește singur",
-        desc:"O sesiune nouă, în cloud: nu cere calculatorul pornit și nu-și amintește nimic din conversațiile anterioare. Tot contextul — ariile, sursele, regulile — stă scris în prompt-ul task-ului, altfel nu există." },
-      { edges:[], on:["sesiune"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Stabilește fereastra: ultimele 7 zile",
-        desc:"Prima comandă e <code>date</code>. O rulare care presupune data ratează exact săptămâna pe care trebuie s-o acopere — iar ora de iarnă mută rularea cu o oră, nu ziua." },
-      { edges:["eSearch"], on:["sesiune","cautare"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Pornește căutarea pe cele patru arii",
-        desc:"Fiscal (Cod fiscal, TVA, impozite) · contribuții și Codul muncii · ANAF și sistemele electronice · contabilitate și raportare. Ariile sunt fixe, ca două rulări consecutive să fie comparabile." },
-      { edges:["eMof"], on:["cautare","mof"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Monitorul Oficial",
-        desc:"Sursa care dă numărul actului și data publicării. Fără ele o modificare nu e o modificare, ci un zvon — de aceea ce nu se poate confirma aici se marchează explicit ca neconfirmat." },
-      { edges:["eAnaf"], on:["cautare","anaf"], who:"agent", phase:"rulare (încă fără card)",
-        title:"ANAF — ordine și noutăți",
-        desc:"e-Factura, SAF-T (D406), e-TVA, e-Transport, SPV. Aici se schimbă termenele și procedurile, de multe ori fără să treacă printr-o lege — și tot aici se simt cel mai repede în lucrul zilnic." },
-      { edges:["eMf"], on:["cautare","mf"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Ministerul Finanțelor",
-        desc:"Ordinele privind reglementările contabile, situațiile financiare și termenele de depunere." },
-      { edges:["eFilt"], on:["cautare","filtru"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Filtrul de relevanță",
-        desc:"Se reține doar ce schimbă ceva în munca lunii. Presa de specialitate intră doar ca context, niciodată ca sursă a numărului de act. Restul se aruncă aici, nu în capul cititorului." },
-      { edges:["eSint"], on:["filtru","sinteza"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Sinteza",
-        desc:"Pentru fiecare act: tip și număr, data publicării în MO, ce se schimbă în două-trei propoziții, de la ce dată se aplică și impactul practic. La final, o secțiune scurtă „De făcut”." },
-      { edges:["eBack"], on:["sinteza","sesiune"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Sinteza devine concluzia rulării",
-        desc:"Spre deosebire de agentul de încasări, aici nu există niciun script determinist: tot ce iese e text scris de model. De asta filtrul e conservator, sursele sunt numite pe față, iar verificarea rămâne a cititorului." },
-      { edges:["eMail"], on:["sesiune","notif"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Notificarea și e-mailul pleacă",
-        desc:"Rezumatul ajunge pe telefon și pe adresa de contact, indiferent de rezultat. O săptămână goală e și ea o informație: înseamnă „s-a verificat”, nu „s-a uitat”." },
-      { edges:["eGate"], on:["sinteza","poarta"], who:"agent", phase:"rulare (încă fără card)",
-        title:"Poarta: există ceva cu impact practic?",
-        desc:"O singură întrebare decide dacă se atinge board-ul. Un card pe săptămână, creat din obișnuință, devine zgomot în două luni și nu-l mai citește nimeni." },
-      { edges:["eNo"], on:["poarta","gol"], who:"agent", phase:"fără card",
-        title:"Nu → nu se scrie nimic în Notion",
-        desc:"Board-ul rămâne neatins. Rularea se închide cu o singură frază în notificare, iar săptămâna următoare verificarea o ia de la capăt pe aceeași fereastră de 7 zile." },
-      { edges:["eYes"], on:["poarta","board"], who:"agent", phase:"Lacramioara",
-        title:"Da → card în coloana Lacramioara",
-        desc:"Titlu cu intervalul săptămânii, termen peste șapte zile, în <code>Note</code> o linie cu numărul modificărilor și aria principală; în corpul cardului, sinteza întreagă. Atenție: task-ul e deocamdată pe „întreabă înainte de a acționa”, deci scrierea în Notion așteaptă o confirmare. Până nu se trece pe aprobare automată, pasul ăsta nu se face nesupravegheat." },
-      { edges:["eHand"], on:["board","maya"], who:"om", phase:"Lacramioara",
-        title:"Lacrămioara preia sinteza",
-        desc:"Aici se termină ce poate face agentul singur. Decizia — ce se comunică clienților, cine trebuie anunțat, ce se schimbă în lucrul lunii — nu e o sarcină de căutare, ci una de răspundere profesională." },
-      { edges:["eDone"], on:["maya","board"], who:"om", phase:"→ Done",
+      { edges:[], on:["trig"], who:"agent", phase:"—",
+        title:"Luni la 10:00 pornește task-ul",
+        desc:"Sesiune nouă în cloud: nu cere calculatorul, nu folosește unelte de tip device și nu-și amintește nimic. Fără confirmări și fără întrebări. Nu există fișier de stare local — toată memoria stă în Notion." },
+      { edges:["a1"], on:["trig","state"], who:"agent", phase:"—",
+        title:"Citește starea din ultimul card „Done”",
+        desc:"Pe AI Agent overview: cardurile cu <code>Agent</code> = „Monitorizare fiscală” și <code>Fază</code> = Done, cel mai recent după <code>Finalizat</code>. Din corpul lui ia blocul JSON de sub „Stare (JSON)”: <code>email_destinatar</code>, <code>ultima_rulare</code>, <code>acte_vazute</code>, <code>acte_in_asteptare</code>." },
+      { edges:["a2"], on:["state","sGate"], who:"agent", phase:"—",
+        title:"Există un card de stare?",
+        desc:"<b>nu</b> → pasul 4; <b>da</b> → pasul 5." },
+      { edges:["a3"], on:["sGate","noCfg"], who:"agent", phase:"fără card", branch:true, grp:"nc",
+        title:"Nu: se oprește fără să scrie nimic",
+        desc:"Monitorizarea nu e configurată: nu creează card, nu trimite nimic, raportează doar că lipsește cardul de bootstrap și că trebuie o rulare manuală de configurare." },
+      { edges:["b0"], on:["sGate","tGate"], who:"agent", phase:"—",
+        title:"Gmail și Notion sunt active în sesiune?",
+        desc:"Nu doar autorizate pe cont — activate pentru acest task. <b>nu</b> → pasul 6; <b>da</b> → pasul 7." },
+      { edges:["b1"], on:["tGate","tBlk"], who:"agent", phase:`${AAO} · Blocat / Necesită input`, branch:true, grp:"tb",
+        title:"Nu: card „Blocat / Necesită input”",
+        desc:"Dacă Notion merge: card nou cu <code>Rezultat</code> = „Rulare oprită: &lt;unealta&gt; indisponibilă în sesiune” și instrucțiuni de reactivare a conectorului. Dacă nici Notion nu merge, n-are unde raporta și se oprește. Nu trimite notificare explicit." },
+      { edges:["c0"], on:["tGate","src"], who:"agent", phase:"—",
+        title:"Caută pe surse, de la ultima_rulare până azi",
+        desc:"Fereastra e exact de la <code>ultima_rulare</code> la azi — nu se lărgește. Trei niveluri: ședințele de Guvern, Monitorul Oficial, site-urile de specialitate. O sursă blocată nu oprește rularea." },
+      { edges:["c1"], on:["src","flt"], who:"agent", phase:"—",
+        title:"Filtru strict de relevanță contabilă",
+        desc:"Fiscalitate, TVA, impozite, salarizare, contribuții, declarații, proceduri fiscale — nimic din afara ariei." },
+      { edges:["c2"], on:["flt","dedup"], who:"agent", phase:"—",
+        title:"Deduplicare față de acte_vazute",
+        desc:"Ce a fost deja raportat într-o rulare anterioară nu se mai raportează." },
+      { edges:["c3"], on:["dedup","recon"], who:"agent", phase:"—",
+        title:"Reconciliază actele în așteptare",
+        desc:"Actele adoptate dar nepublicate (<code>acte_in_asteptare</code>) se confruntă cu ce s-a publicat între timp." },
+      { edges:["c4"], on:["recon","interp"], who:"agent", phase:"—",
+        title:"Cercetează interpretările",
+        desc:"Minimum 2–3 surse de interpretare pentru fiecare act nou. Fără aprobare pentru căutări web." },
+      { edges:["d0"], on:["interp","nGate"], who:"agent", phase:"—",
+        title:"A rămas ceva nou?",
+        desc:"<b>da</b> → e-mail (pasul 13); <b>nu</b> → fără e-mail, direct la cardul de stare (pasul 15)." },
+      { edges:["d1"], on:["nGate","mail"], who:"agent", phase:"—",
+        title:"Da: e-mailul cu noutățile",
+        desc:"Subiect „Noutăți legislative contabilitate – săptămâna &lt;început&gt; – &lt;sfârșit&gt;”, către <code>email_destinatar</code> din stare — niciodată ghicit, niciodată contul conectat. Doar acte și ce înseamnă ele; nimic despre surse blocate, Notion sau funcționarea internă. Fără confirmare." },
+      { edges:["d2"], on:["mail","mFail"], who:"agent", phase:`${AAO} · Blocat / Necesită input`, branch:true, grp:"mf",
+        title:"Dacă trimiterea eșuează: card „Blocat”",
+        desc:"Card nou „Blocat / Necesită input”, cu <b>starea veche neschimbată</b> în JSON — rularea următoare reia aceeași perioadă, nimic nu se pierde. Fără card pentru Lăcrămioara." },
+      { edges:["e1","e2"], on:["mail","cDone"], who:"agent", phase:`${AAO} · Done`,
+        title:"Card NOU „Done” cu starea actualizată",
+        desc:"Nu editează cardul vechi — istoricul rămâne. <code>Rulare</code> = „Monitorizare fiscală – &lt;interval&gt;”, <code>Finalizat</code> = azi, <code>Rezultat</code> = „3 acte noi, email trimis către …” sau „Nicio noutate, fără email”. În corp: Rezumat, Acte raportate, Stare (JSON) cu <code>ultima_rulare</code> = azi și listele actualizate. Starea se scrie doar după e-mail reușit sau „nimic nou” confirmat." },
+      { edges:["e3"], on:["cDone","lac"], who:"agent", phase:`${BE} · Lacramioara`,
+        title:"Card de review pentru Lăcrămioara",
+        desc:"Doar după cardul „Done”: <code>Review monitorizare fiscală – &lt;interval&gt;</code>, <code>Responsabil</code> Lacramioara, termen azi + 2 zile lucrătoare, cu mențiune către cardul Done și lista actelor. Dacă crearea eșuează, e-mailul și cardul Done rămân valabile. Task-ul nu trimite notificare explicit — sesiunea se încheie cu un rezumat." },
+      { edges:["f0"], on:["lac","rev"], who:"om", phase:"Lacramioara",
+        title:"Lăcrămioara face review-ul",
+        desc:"Pe e-mail sau pe cardul Done. Decizia — ce merge la clienți, ce se schimbă în lucrul lunii — e de răspundere profesională, nu de căutare." },
+      { edges:["f1"], on:["rev","lDone"], who:"om", phase:"→ Done (echipă)",
         title:"Cardul se mută în „Done”",
-        desc:"„Done” înseamnă aici că modificarea a fost citită și dusă mai departe, nu că agentul a terminat de căutat. Coloana o mută omul: un agent nu închide singur sarcina pe care tocmai a dat-o cuiva." }
+        desc:"O face omul; agentul nu închide sarcina pe care a dat-o." },
+      { edges:[], on:["err"], who:"agent", phase:"—", branch:true, grp:"err",
+        title:"Plasă: oprire neprevăzută",
+        desc:"Eroare la căutare, timeout, sesiune întreruptă, eroare la scrierea cardului de stare — orice nu e acoperit la pașii 6 și 14." },
+      { edges:["z1"], on:["err","errCard"], who:"agent", phase:`${AAO} · De verificat`, branch:true, grp:"err",
+        title:"Card „eroare”, starea rămâne neatinsă",
+        desc:"<code>Monitorizare fiscală — eroare &lt;data&gt;</code>, <code>Fază</code> = De verificat (nu Blocat — acela e pentru pașii 6 și 14). JSON-ul de stare nu se actualizează, deci rularea următoare reia aceeași perioadă." }
     ]
   }
 };
+
+/* grilă: x/y/w/h din coloană și bandă; y-ul benzilor din ordinea lor */
+const LANE_Y0 = 30, LANE_STEP = 150, LANE_H = 120, COL_X0 = 210, COL_W = 180, NODE_W = 162, NODE_H = 64;
+function grid(a) {
+  a.lanes.forEach((l, i) => { l.y = LANE_Y0 + i * LANE_STEP; l.h = LANE_H; });
+  a.nodes.forEach(n => {
+    n.x = COL_X0 + n.c * COL_W; n.y = a.lanes[n.l].y + (LANE_H - NODE_H) / 2;
+    n.w = NODE_W; n.h = NODE_H;
+  });
+  const cols = Math.max(...a.nodes.map(n => n.c)) + 1;
+  a.view = [0, 0, Math.max(1280, COL_X0 + cols * COL_W + 20), LANE_Y0 + a.lanes.length * LANE_STEP];
+  a.numbered = true;
+}
+Object.values(AGENTS).forEach(a => a.grid && grid(a));
 
 const KINDS = {
   trigger:{ fill:"var(--trigger-bg)", stroke:"var(--trigger)", label:"declanșator" },
@@ -504,6 +841,7 @@ function render(key) {
     return;
   }
   controls.style.display = ""; legend.style.display = "";
+  document.getElementById("info").innerHTML = a.plugin || "";
 
   const svg = el("svg", { viewBox: a.view.join(" "), role: "img", "aria-label": `Fluxul agentului ${a.label}` });
   const defs = el("defs");
@@ -622,7 +960,7 @@ function show(i) {
     // ce s-a parcurs deja rămâne vizibil (fără ramurile laterale), ce urmează e estompat
     const pastEdges = new Set(), pastNodes = new Set();
     a.steps.slice(0, stepIdx).forEach(p => {
-      if (p.branch) return;
+      if (p.branch && !(s.branch && p.grp && p.grp === s.grp)) return;
       p.edges.forEach(id => pastEdges.add(id));
       p.on.forEach(id => pastNodes.add(id));
     });
@@ -709,7 +1047,7 @@ document.addEventListener("keydown", e => {
   if (e.key === " ") { e.preventDefault(); playing ? stop() : play(); }
 });
 
-render("incasari");
+render("reminder");
 </script>
 </body>
 </html>
