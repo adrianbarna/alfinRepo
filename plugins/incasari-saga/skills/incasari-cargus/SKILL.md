@@ -174,6 +174,26 @@ pasul 3: acolo ambele carduri sunt Done, dar nu e niciun borderou nou de citit d
 (sau folderul lunii lipsește) — situație în care nu se trimite reminder, ci doar cardul de
 rulare „De verificat" pe AI Agent overview.
 
+**Poarta blocată lasă și ea urmă în Notion, nu doar în e-mail** — altfel cineva trebuie să
+verifice inboxul ca să afle că o rulare lunară n-a pornit. Pe lângă e-mailul de reminder de
+mai sus, deschide (sau, dacă există deja unul cu același `ID rulare`, actualizează-l în loc
+să faci al doilea):
+
+- pe **AI Agent overview**, cardul rulării, cu aceleași proprietăți ca la cazul „nimic de
+  procesat" (pasul 3 din „Flux"): `Rulare`, `ID rulare`, `Agent`, `Perioadă` (LUNA — dacă
+  poarta facturilor a picat înainte să apuci să calculezi LUNA, pune luna curentă a
+  rulării), `Declanșat`, `Declanșare` = `Automat (programat)`, `Fază` = `De verificat`,
+  `Rezultat` = ce lipsește pe scurt (ex. „Cardul de borderou <Sursă> nu e Done" sau „Cardul
+  de facturi nu e Done"), `Pas manual rămas` = ce anume trebuie făcut ca poarta să treacă.
+  `Responsabil` rămâne gol, ca la orice card de pe acest board.
+- sub el, pe **Board Echipă**, o sarcină pentru Paula: `Responsabil` = `Paula`, `Termen`
+  peste 3 zile, `Note` = același rezumat ca `Rezultat`, `Task` =
+  `<ID rulare> · Verifică poarta blocată <luna> <anul> din AI Agent overview`, cu link în
+  corp către cardul de mai sus.
+
+Astea sunt **pe lângă** e-mail, nu în locul lui, și nu ține loc de a te opri: tot nu
+generezi XML, nu stage-uiești și nu rulezi scriptul.
+
 ## Flux
 
 ### 1. Rulare normală (cazul obișnuit)
