@@ -32,6 +32,7 @@ regula de aur — e `<skills-dir>/incasari-cargus/SKILL.md`. `<skills-dir>` e fo
 | Ce | Valoare pentru Trendyol |
 |---|---|
 | `--sursa` | `trendyol` |
+| Card poartă (borderou), pe Board Echipă — pasul „Poarta de intrare" | `Task` începe cu `Adaugă borderoul Trendyol` |
 | Foldere de borderouri | `borderouri/<an>-<luna>/ron` |
 | Jurnal | `borderouri/procesate/.procesate-trendyol.json` — **comun tuturor lunilor**, dat cu `--jurnale` |
 | Raport pentru e-mail | `<folder lunii>/procesate/ultimul-raport-trendyol.txt` |
